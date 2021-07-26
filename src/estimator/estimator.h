@@ -97,9 +97,10 @@ public:
     MarginalizationFlag  marginalization_flag;
     Vector3d g;
 
+
+    // the actual solved results, Ps Vs Rs are the pose of the imu link 
     Matrix3d ric[2];
     Vector3d tic[2];
-
     Vector3d        Ps[(WINDOW_SIZE + 1)];
     Vector3d        Vs[(WINDOW_SIZE + 1)];
     Matrix3d        Rs[(WINDOW_SIZE + 1)];
@@ -136,6 +137,7 @@ public:
     double initial_timestamp;
 
 
+    // variable of optimization
     double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];
     double para_SpeedBias[WINDOW_SIZE + 1][SIZE_SPEEDBIAS];
     double para_Feature[NUM_OF_F][SIZE_FEATURE];

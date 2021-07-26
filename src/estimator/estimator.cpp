@@ -297,6 +297,7 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
     if (frame_count != 0)
     {
         // why pre_integrations[frame_count] and tmp_pre_integration
+        // according to IntegrationBase, push_back will also do propagate 
         pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);
         //if(solver_flag != NON_LINEAR)
         tmp_pre_integration->push_back(dt, linear_acceleration, angular_velocity);
@@ -682,6 +683,7 @@ void Estimator::optimization()
         return;
 
     //---- 2. marginalize variable
+    //--------This is actually more complicated than the previous ones
     TicToc t_whole_marginalization;
     if (marginalization_flag == MARGIN_OLD)
     {
@@ -1056,10 +1058,13 @@ void Estimator::double2vector()
 
     if(USE_IMU)
     {
+        // when this function is called, we know para_Pose and other para_* variables contain optimized value 
         Vector3d origin_R00 = Utility::R2ypr(Quaterniond(para_Pose[0][6],
                                                          para_Pose[0][3],
                                                          para_Pose[0][4],
                                                          para_Pose[0][5]).toRotationMatrix());
+
+        // this is because yaw is not observable so we do not use solved yaw. 
         double y_diff = origin_R0.x() - origin_R00.x();
         //TODO
         Matrix3d rot_diff = Utility::ypr2R(Vector3d(y_diff, 0, 0));
