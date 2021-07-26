@@ -196,5 +196,8 @@ void readParameters(std::string config_file)
         printf("no imu, fix extrinsic param; no time offset calibration\n");
     }
 
+    // VILEMO requires that we must use IMU and stereo camera
+    assert(USE_IMU == 1 && STEREO == 1);
+
     fsSettings.release();
 }

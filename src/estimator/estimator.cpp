@@ -22,6 +22,68 @@ Estimator::~Estimator()
 }
 
 void Estimator::clearState() {
+    mProcess.lock();
+    while(!accBuf.empty())
+        accBuf.pop();
+    while(!gyrBuf.empty())
+        gyrBuf.pop();
+    while(!featureBuf.empty())
+        featureBuf.pop();
+
+    prevTime = -1;
+    curTime = 0;
+    openExEstimation = 0;
+    initP = Eigen::Vector3d(0, 0, 0);
+    initR = Eigen::Matrix3d::Identity();
+    inputImageCnt = 0;
+    initFirstPoseFlag = false;
+
+    for (int i = 0; i < WINDOW_SIZE + 1; i++)
+    {
+        Rs[i].setIdentity();
+        Ps[i].setZero();
+        Vs[i].setZero();
+        Bas[i].setZero();
+        Bgs[i].setZero();
+        dt_buf[i].clear();
+        linear_acceleration_buf[i].clear();
+        angular_velocity_buf[i].clear();
+
+        if (pre_integrations[i] != nullptr)
+        {
+            delete pre_integrations[i];
+        }
+        pre_integrations[i] = nullptr;
+    }
+
+    for (int i = 0; i < NUM_OF_CAM; i++)
+    {
+        tic[i] = Vector3d::Zero();
+        ric[i] = Matrix3d::Identity();
+    }
+
+    first_imu = false,
+            sum_of_back = 0;
+    sum_of_front = 0;
+    frame_count = 0;
+    solver_flag = INITIAL;
+    initial_timestamp = 0;
+    all_image_frame.clear();
+
+    if (tmp_pre_integration != nullptr)
+        delete tmp_pre_integration;
+    if (last_marginalization_info != nullptr)
+        delete last_marginalization_info;
+
+    tmp_pre_integration = nullptr;
+    last_marginalization_info = nullptr;
+    last_marginalization_parameter_blocks.clear();
+
+    f_manager.clearState();
+
+    failure_occur = 0;
+
+    mProcess.unlock();
 }
 
 void Estimator::setParameter()
@@ -51,6 +113,7 @@ void Estimator::setParameter()
     mProcess.unlock();
 }
 
+// convert input image into featureFrame, and then save featureFrame in featureBuf
 void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 {
     inputImageCnt++;
@@ -90,6 +153,8 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 
 }
 
+// save imu data into buffer
+// use fastPredict to output an odometry that is the same frequency as IMU
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
     mBuf.lock();
@@ -98,6 +163,8 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     //printf("input imu with time %f \n", t);
     mBuf.unlock();
 
+    // this logic boosts output to the same rate as IMU
+    // need to deal this with leg odometry
     if (solver_flag == NON_LINEAR)
     {
         mPropagate.lock();
@@ -107,6 +174,7 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     }
 }
 
+// do not understand who will publish this (maybe other loop fusion stuff)
 void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame)
 {
     mBuf.lock();
@@ -117,9 +185,10 @@ void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Ma
         processMeasurements();
 }
 
+// in MULTIPLE_THREAD mode, this function will be called periodically
 void Estimator::processMeasurements()
 {
-    while (1)
+    while (ros::ok())
     {
 //        printf("process measurments\n");
         pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > feature;
@@ -128,6 +197,7 @@ void Estimator::processMeasurements()
         {
             feature = featureBuf.front();
             curTime = feature.first + td;
+            // wait until IMU is available
             while(1)
             {
                 if ((!USE_IMU  || IMUAvailable(feature.first + td)))
@@ -142,17 +212,26 @@ void Estimator::processMeasurements()
                 }
             }
             mBuf.lock();
+            // extract imu data from accbuf, gyrbuf
+            // save imu data into accVector and gyrVector
+
+            // TODO: get leg info and IMU together (interpolate leg measurement to IMU time)
+
+
             if(USE_IMU)
                 getIMUInterval(prevTime, curTime, accVector, gyrVector);
 
+            // remove feature buf
             featureBuf.pop();
             mBuf.unlock();
 
             if(USE_IMU)
             {
-                //
+                // average acc to get initial Rs[0]
                 if(!initFirstPoseFlag)
                     initFirstIMUPose(accVector);
+
+                // pre-integration?
                 for(size_t i = 0; i < accVector.size(); i++)
                 {
                     double dt;
@@ -200,6 +279,8 @@ void Estimator::initFirstPose(Eigen::Vector3d p, Eigen::Matrix3d r)
     initR = r;
 }
 
+//  t: the actual sensor message timestamp
+// dt: time since last IMU data
 void Estimator::processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity)
 {
     if (!first_imu)
@@ -215,6 +296,7 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
     }
     if (frame_count != 0)
     {
+        // why pre_integrations[frame_count] and tmp_pre_integration
         pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);
         //if(solver_flag != NON_LINEAR)
         tmp_pre_integration->push_back(dt, linear_acceleration, angular_velocity);
@@ -223,6 +305,8 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
         linear_acceleration_buf[frame_count].push_back(linear_acceleration);
         angular_velocity_buf[frame_count].push_back(angular_velocity);
 
+        // average this time's acc with previous time's acc
+        // update Rs Ps Vs directly, sort of giving them initial value
         int j = frame_count;
         Vector3d un_acc_0 = Rs[j] * (acc_0 - Bas[j]) - g;
         Vector3d un_gyr = 0.5 * (gyr_0 + angular_velocity) - Bgs[j];
@@ -256,11 +340,14 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     ROS_DEBUG("number of feature: %d", f_manager.getFeatureCount());
     Headers[frame_count] = header;
 
+    // for each new image, save previous pre integration, create a new tmp_pre_integration for the next image
     ImageFrame imageframe(image, header);
+    // this seems only used in initialization
     imageframe.pre_integration = tmp_pre_integration;
     all_image_frame.insert(make_pair(header, imageframe));
     tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
 
+    // 2: no estimation extrinsic at all
     if(ESTIMATE_EXTRINSIC == 2)
     {
         ROS_INFO("calibrating extrinsic param, rotation movement is needed");
@@ -279,6 +366,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         }
     }
 
+    // initialization, should change to using leg
     if (solver_flag == INITIAL)
     {
         // stereo + IMU initilization
@@ -324,11 +412,13 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     else
     {
         TicToc t_solve;
+        // for each feature, triangulate its depth
         f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
         optimization();
 
         ROS_DEBUG("solver costs: %fms", t_solve.toc());
 
+        // remove some failure detection and outline rejection mechanism first
 
         slideWindow();
 
@@ -354,6 +444,8 @@ bool Estimator::IMUAvailable(double t)
         return false;
 }
 
+//t0: the time of the previous image frame
+//t1: the time of the current image frame 
 bool Estimator::getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector,
                                vector<pair<double, Eigen::Vector3d>> &gyrVector)
 {
@@ -364,6 +456,7 @@ bool Estimator::getIMUInterval(double t0, double t1, vector<pair<double, Eigen::
     }
     printf("get imu from %f %f\n", t0, t1);
     printf("imu front time %f   imu end time %f\n", accBuf.front().first, accBuf.back().first);
+    // must have more IMU then image 
     if(t1 <= accBuf.back().first)
     {
         while (accBuf.front().first <= t0)
@@ -403,11 +496,11 @@ void Estimator::initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVecto
     averAcc = averAcc / n;
     printf("averge acc %f %f %f\n", averAcc.x(), averAcc.y(), averAcc.z());
     Matrix3d R0 = Utility::g2R(averAcc);
+    // remove yaw from R0 (so that final R0 has zero yaw)
     double yaw = Utility::R2ypr(R0).x();
     R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
     Rs[0] = R0;
     cout << "init R0 " << endl << Rs[0] << endl;
-    //Vs[0] = Vector3d(5, 0, 0);
 }
 
 void Estimator::fastPredictIMU(double t, Eigen::Vector3d linear_acceleration, Eigen::Vector3d angular_velocity)
@@ -457,6 +550,7 @@ void Estimator::optimization()
     TicToc t_whole, t_prepare;
     vector2double();
 
+    //---- 1. construct ceres problem and solve it
     ceres::Problem problem;
     ceres::LossFunction *loss_function;
     //loss_function = NULL;
@@ -587,6 +681,7 @@ void Estimator::optimization()
     if(frame_count < WINDOW_SIZE)
         return;
 
+    //---- 2. marginalize variable
     TicToc t_whole_marginalization;
     if (marginalization_flag == MARGIN_OLD)
     {
@@ -878,6 +973,7 @@ void Estimator::slideWindowNew()
     f_manager.removeFront(frame_count);
 }
 
+// why shift depth?
 void Estimator::slideWindowOld()
 {
     sum_of_back++;
