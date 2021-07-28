@@ -23,12 +23,35 @@ Estimator::~Estimator()
 
 void Estimator::clearState() {
     mProcess.lock();
+    // clear IMU buffer
     while(!accBuf.empty())
         accBuf.pop();
     while(!gyrBuf.empty())
         gyrBuf.pop();
     while(!featureBuf.empty())
         featureBuf.pop();
+
+    // clear legAngBufList (joint angle and foot force buffers)
+    if (legAngBufList.size() > 0)
+    {
+        for (int i = 0; i < NUM_OF_LEG; i++)
+        {
+            while(!legAngBufList[i].empty())
+                legAngBufList[i].pop();
+            while(!footForceBufList[i].empty())
+                footForceBufList[i].pop();
+        }
+    }
+    legAngBufList.clear();
+    footForceBufList.clear();
+    // init joint angle and foot force buffers
+    for (int i = 0; i < NUM_OF_LEG; i++)
+    {
+        queue<pair<double, Eigen::Vector3d>> legAngBuf;
+        queue<pair<double, Eigen::Vector3d>> footForceBuf;
+        legAngBufList.push_back(legAngBuf);
+        footForceBufList.push_back(footForceBuf);
+    }
 
     prevTime = -1;
     curTime = 0;
@@ -172,6 +195,20 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
         pubLatestOdometry(latest_P, latest_Q, latest_V, t);
         mPropagate.unlock();
     }
+}
+
+void Estimator::inputLeg(double t, const VectorXd &jointAngles, const VectorXd &footForces)
+{
+    mBuf.lock();
+    for (int i = 0; i < NUM_OF_LEG; i++)
+    {
+        Eigen::Vector3d ang(jointAngles[3*i],jointAngles[3*i+1],jointAngles[3*i+2]);
+        legAngBufList[i].push(make_pair(t, ang));
+        Eigen::Vector3d force(footForces[3*i], footForces[3*i+1], footForces[3*i+2]);
+        footForceBufList[i].push(make_pair(t, force));
+    }
+    printf("input leg joint state and foot force with time %f \n", t);
+    mBuf.unlock();
 }
 
 // do not understand who will publish this (maybe other loop fusion stuff)

@@ -11,6 +11,7 @@
 #include <std_msgs/Float32.h>
 #include <ceres/ceres.h>
 #include <unordered_map>
+#include <vector>
 #include <queue>
 #include <opencv2/core/eigen.hpp>
 #include <eigen3/Eigen/Dense>
@@ -40,6 +41,7 @@ public:
     // interface
     void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity);
+    void inputLeg(double t, const VectorXd &jointAngles, const VectorXd &footForces);
     void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame);
 
     void processMeasurements();
@@ -84,6 +86,10 @@ public:
     std::mutex mPropagate;
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
+
+    std::vector<queue<pair<double, Eigen::Vector3d>>> legAngBufList;
+    std::vector<queue<pair<double, Eigen::Vector3d>>> footForceBufList;
+
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
     double prevTime, curTime;
     bool openExEstimation;

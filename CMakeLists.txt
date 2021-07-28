@@ -17,6 +17,9 @@ find_package(catkin REQUIRED COMPONENTS
     cv_bridge
     camera_models
     image_transport
+
+    # must install unitree_ros
+    unitree_legged_msgs
 )
 
 find_package(OpenCV REQUIRED)

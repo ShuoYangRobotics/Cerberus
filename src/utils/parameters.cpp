@@ -35,11 +35,14 @@ double TD;
 int NUM_OF_CAM;
 int STEREO;
 int USE_IMU;
+int USE_LEG;
 int MULTIPLE_THREAD;
 map<int, Eigen::Vector3d> pts_gt;
 std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
+std::string LEG_TOPIC;
+int NUM_OF_LEG;
 int MAX_CNT;
 int MIN_DIST;
 double F_THRESHOLD;
@@ -100,6 +103,16 @@ void readParameters(std::string config_file)
         GYR_N = fsSettings["gyr_n"];
         GYR_W = fsSettings["gyr_w"];
         G.z() = fsSettings["g_norm"];
+    }
+
+    USE_LEG = fsSettings["use_leg_odom"];
+    printf("USE_LEG: %d\n", USE_LEG);
+    if(USE_LEG)
+    {
+        NUM_OF_LEG = fsSettings["num_of_leg"];
+        printf("leg number %d\n", NUM_OF_LEG);
+        fsSettings["leg_topic"] >> LEG_TOPIC;
+        printf("LEG_TOPIC: %s\n", LEG_TOPIC.c_str());
     }
 
     SOLVER_TIME = fsSettings["max_solver_time"];

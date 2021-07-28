@@ -14,6 +14,8 @@
 // ros related
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
+// unitree message
+#include <unitree_legged_msgs/LowState.h>
 
 // project related
 #include "estimator/estimator.h"
@@ -147,6 +149,27 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 
 }
 
+// the construction of this function should depends on the format of the input topic
+// here we use A1 robot from unitree so the message here is a unitree_legged_msgs
+void leg_state_callback(const unitree_legged_msgs::LowStateConstPtr& a1_state)
+{
+    // ROS_INFO("received");
+    // TODO: is this time stamp enough? should another "td" be used here to compensate
+    double t = ros::Time::now().toSec();
+    VectorXd joint_positions = VectorXd(NUM_OF_LEG*3);  // size 12
+    VectorXd foot_forces = VectorXd(NUM_OF_LEG*3);      // size 12
+    for (int i = 0; i < NUM_OF_LEG; i++)
+    {
+        joint_positions(3*i+0) = a1_state -> motorState[3*i+0].q;
+        joint_positions(3*i+1) = a1_state -> motorState[3*i+1].q;
+        joint_positions(3*i+2) = a1_state -> motorState[3*i+2].q;
+        foot_forces(3*i+0) = a1_state -> eeForce[i].x;
+        foot_forces(3*i+1) = a1_state -> eeForce[i].y;
+        foot_forces(3*i+2) = a1_state -> eeForce[i].z;
+    }
+    estimator.inputLeg(t, joint_positions, foot_forces);
+}
+
 
 void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
 {
@@ -246,6 +269,8 @@ int main(int argc, char **argv)
 
     readParameters(config_file);
     estimator.setParameter();
+    // to initialize data structure
+    estimator.clearState();
 
 #ifdef EIGEN_DONT_PARALLELIZE
     ROS_DEBUG("EIGEN_DONT_PARALLELIZE");
@@ -262,6 +287,9 @@ int main(int argc, char **argv)
     ros::Subscriber sub_restart = n.subscribe("/vins_restart", 100, restart_callback);
     ros::Subscriber sub_imu_switch = n.subscribe("/vins_imu_switch", 100, imu_switch_callback);
     ros::Subscriber sub_cam_switch = n.subscribe("/vins_cam_switch", 100, cam_switch_callback);
+
+    // the robot must publish a message with type unitree_legged_msgs::LowState
+    ros::Subscriber sub_leg_msg = n.subscribe(LEG_TOPIC, 2000, leg_state_callback);
 
     std::thread sync_thread{sync_process};
     ros::spin();
