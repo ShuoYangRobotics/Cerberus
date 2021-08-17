@@ -10,6 +10,8 @@
 #pragma once
 
 #include <cmath>
+#include <vector>
+#include <utility>
 #include <cassert>
 #include <cstring>
 #include <eigen3/Eigen/Dense>
@@ -117,6 +119,7 @@ class Utility
     }
 
     static Eigen::Matrix3d g2R(const Eigen::Vector3d &g);
+    static Eigen::Vector3d lerpGyro(double t, std::vector<std::pair<double, Eigen::Vector3d>> gyroVector);
 
     template <size_t N>
     struct uint_

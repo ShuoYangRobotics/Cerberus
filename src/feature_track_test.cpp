@@ -16,6 +16,7 @@
 #include <cv_bridge/cv_bridge.h>
 // unitree message
 #include <unitree_legged_msgs/LowState.h>
+#include <sensor_msgs/JointState.h>
 
 // project related
 #include "estimator/estimator.h"
@@ -72,7 +73,7 @@ cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
 // extract images with same timestamp from two topics
 void sync_process()
 {
-    while(ros::ok())
+    while(1)
     {
         if(STEREO)
         {
@@ -151,23 +152,27 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 
 // the construction of this function should depends on the format of the input topic
 // here we use A1 robot from unitree so the message here is a unitree_legged_msgs
-void leg_state_callback(const unitree_legged_msgs::LowStateConstPtr& a1_state)
+void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
 {
-    // ROS_INFO("received");
-    // TODO: is this time stamp enough? should another "td" be used here to compensate
-    double t = ros::Time::now().toSec();
+//     ROS_INFO("received");
+//     TODO: is this time stamp enough? should another "td" be used here to compensate
+    double t = a1_state -> header.stamp.toSec();
     VectorXd joint_positions = VectorXd(NUM_OF_LEG*3);  // size 12
+    VectorXd joint_velocities = VectorXd(NUM_OF_LEG*3);  // size 12
     VectorXd foot_forces = VectorXd(NUM_OF_LEG*3);      // size 12
     for (int i = 0; i < NUM_OF_LEG; i++)
     {
-        joint_positions(3*i+0) = a1_state -> motorState[3*i+0].q;
-        joint_positions(3*i+1) = a1_state -> motorState[3*i+1].q;
-        joint_positions(3*i+2) = a1_state -> motorState[3*i+2].q;
-        foot_forces(3*i+0) = a1_state -> eeForce[i].x;
-        foot_forces(3*i+1) = a1_state -> eeForce[i].y;
-        foot_forces(3*i+2) = a1_state -> eeForce[i].z;
+        joint_positions(3*i+0) = a1_state -> position[3*i+0];
+        joint_positions(3*i+1) = a1_state -> position[3*i+1];
+        joint_positions(3*i+2) = a1_state -> position[3*i+2];
+        joint_velocities(3*i+0) = a1_state -> velocity[3*i+0];
+        joint_velocities(3*i+1) = a1_state -> velocity[3*i+1];
+        joint_velocities(3*i+2) = a1_state -> velocity[3*i+2];
+        foot_forces(3*i+0) = a1_state -> position[12+i];
+        foot_forces(3*i+1) = a1_state -> velocity[12+i];
+        foot_forces(3*i+2) = a1_state -> effort[12+i];
     }
-    estimator.inputLeg(t, joint_positions, foot_forces);
+    estimator.inputLeg(t, joint_positions, joint_velocities, foot_forces);
 }
 
 
@@ -225,12 +230,12 @@ void imu_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
     if (switch_msg->data == true)
     {
         //ROS_WARN("use IMU!");
-        // estimator.changeSensorType(1, STEREO);
+        estimator.changeSensorType(1, STEREO);
     }
     else
     {
         //ROS_WARN("disable IMU!");
-        // estimator.changeSensorType(0, STEREO);
+        estimator.changeSensorType(0, STEREO);
     }
     return;
 }
@@ -240,12 +245,12 @@ void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
     if (switch_msg->data == true)
     {
         //ROS_WARN("use stereo!");
-        // estimator.changeSensorType(USE_IMU, 1);
+        estimator.changeSensorType(USE_IMU, 1);
     }
     else
     {
         //ROS_WARN("use mono camera (left)!");
-        // estimator.changeSensorType(USE_IMU, 0);
+        estimator.changeSensorType(USE_IMU, 0);
     }
     return;
 }
@@ -270,7 +275,7 @@ int main(int argc, char **argv)
     readParameters(config_file);
     estimator.setParameter();
     // to initialize data structure
-    estimator.clearState();
+//    estimator.clearState();
 
 #ifdef EIGEN_DONT_PARALLELIZE
     ROS_DEBUG("EIGEN_DONT_PARALLELIZE");
@@ -288,8 +293,8 @@ int main(int argc, char **argv)
     ros::Subscriber sub_imu_switch = n.subscribe("/vins_imu_switch", 100, imu_switch_callback);
     ros::Subscriber sub_cam_switch = n.subscribe("/vins_cam_switch", 100, cam_switch_callback);
 
-    // the robot must publish a message with type unitree_legged_msgs::LowState
-    ros::Subscriber sub_leg_msg = n.subscribe(LEG_TOPIC, 2000, leg_state_callback);
+    // the robot must publish a message with type sensor_msgs::JointState
+    ros::Subscriber sub_leg_msg = n.subscribe(LEG_TOPIC, 100, leg_state_callback);
 
     std::thread sync_thread{sync_process};
     ros::spin();

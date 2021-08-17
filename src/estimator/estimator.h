@@ -7,6 +7,7 @@
 #pragma once
 #include <thread>
 #include <mutex>
+#include <algorithm>
 #include <std_msgs/Header.h>
 #include <std_msgs/Float32.h>
 #include <ceres/ceres.h>
@@ -32,6 +33,8 @@
 #include "../initial/initial_alignment.h"
 #include "../initial/initial_ex_rotation.h"
 
+#include "../legKinematics/A1Kinematics.h"
+
 class Estimator {
 public:
     Estimator();
@@ -39,35 +42,47 @@ public:
     void setParameter();
 
     // interface
-    void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
-    void inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity);
-    void inputLeg(double t, const VectorXd &jointAngles, const VectorXd &footForces);
-    void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame);
-
-    void processMeasurements();
     void initFirstPose(Eigen::Vector3d p, Eigen::Matrix3d r);
+    void inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity);
+    void inputLeg(double t, const VectorXd &jointAngles, const VectorXd &jointVels, const VectorXd &footForces);
+    void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame);
+    void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity);
     // // most important function, trigger optimization
     void processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header);
+    void processMeasurements();
+    void changeSensorType(int use_imu, int use_stereo);
 
 
     // internal
     void clearState();
-    bool IMUAvailable(double t);
-    bool getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector,
-                        vector<pair<double, Eigen::Vector3d>> &gyrVector);
-    void initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVector);
-    void fastPredictIMU(double t, Eigen::Vector3d linear_acceleration, Eigen::Vector3d angular_velocity);
-    void updateLatestStates();  // readout latest states
-    // // most important internal functions
-    void optimization();
+    bool initialStructure();
+    bool visualInitialAlign();
+    bool relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l);
     void slideWindow();
     void slideWindowNew();
     void slideWindowOld();
-    // // convert between ceres optimization variables and system states
+    void optimization();
     void vector2double();
     void double2vector();
-
+    bool failureDetection();
+    bool getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector,
+                                              vector<pair<double, Eigen::Vector3d>> &gyrVector);
+    bool getLegInterval(double t0, double t1,
+                                   vector<pair<double, Eigen::VectorXd>> &jointAngVector,
+                                   vector<pair<double, Eigen::VectorXd>> &jointVelVector,
+                                   vector<pair<double, Eigen::VectorXd>> &footForceVector);
+    void getPoseInWorldFrame(Eigen::Matrix4d &T);
+    void getPoseInWorldFrame(int index, Eigen::Matrix4d &T);
+    void predictPtsInNextFrame();
+    void outliersRejection(set<int> &removeIndex);
+    double reprojectionError(Matrix3d &Ri, Vector3d &Pi, Matrix3d &rici, Vector3d &tici,
+                                     Matrix3d &Rj, Vector3d &Pj, Matrix3d &ricj, Vector3d &ticj,
+                                     double depth, Vector3d &uvi, Vector3d &uvj);
+    void updateLatestStates();
+    void fastPredictIMU(double t, Eigen::Vector3d linear_acceleration, Eigen::Vector3d angular_velocity);
+    bool IMUAvailable(double t);
+    void initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVector);
 
     enum SolverFlag
     {
@@ -88,6 +103,7 @@ public:
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
 
     std::vector<queue<pair<double, Eigen::Vector3d>>> legAngBufList;
+    std::vector<queue<pair<double, Eigen::Vector3d>>> legAngVelBufList;
     std::vector<queue<pair<double, Eigen::Vector3d>>> footForceBufList;
 
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
@@ -104,7 +120,7 @@ public:
     Vector3d g;
 
 
-    // the actual solved results, Ps Vs Rs are the pose of the imu link 
+    // the actual solved results, Ps Vs Rs are the pose of the imu link
     Matrix3d ric[2];
     Vector3d tic[2];
     Vector3d        Ps[(WINDOW_SIZE + 1)];
@@ -130,7 +146,7 @@ public:
     int inputImageCnt;
 
     FeatureManager f_manager;
-//    MotionEstimator m_estimator;
+    MotionEstimator m_estimator;
     InitialEXRotation initial_ex_rotation;
 
     bool first_imu;
@@ -170,6 +186,23 @@ public:
 
     bool initFirstPoseFlag;
     bool initThreadFlag;
+
+    // add leg kinematics
+    // the leg kinematics is relative to body frame, which is the center of the robot
+    // following are some parameters that defines the transformation between IMU frame and body frame
+    Eigen::Vector3d p_ib;
+    Eigen::Matrix3d R_ib;
+    // for each leg, there is an offset between the body frame and the hip motor (fx, fy)
+    double leg_offset_x[4] = {};
+    double leg_offset_y[4] = {};
+    // for each leg, there is an offset between the body frame and the hip motor (fx, fy)
+    double motor_offset[4] = {};
+    double upper_leg_length[4] = {};
+    double lower_leg_length[4] = {};
+    std::vector<Eigen::VectorXd> rho_fix_list;
+    std::vector<Eigen::VectorXd> rho_opt_list;
+    A1Kinematics a1_kin;
+
 };
 
 

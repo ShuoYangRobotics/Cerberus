@@ -1,12 +1,10 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(vileom)
 
-SET(CMAKE_BUILD_TYPE Debug)
-SET(CMAKE_C_FLAGS_DEBUG "-D_DEBUG")
-# https://github.com/ceres-solver/ceres-solver/issues/604, must use c++ 14
+set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-std=c++14")
 #-DEIGEN_USE_MKL_ALL")
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
 find_package(catkin REQUIRED COMPONENTS
     roscpp
@@ -55,6 +53,7 @@ add_library(vileom_lib
     src/factor/projectionOneFrameTwoCamFactor.cpp
     src/factor/marginalization_factor.cpp
 
+    src/legKinematics/A1Kinematics.cpp
 
     src/initial/solve_5pts.cpp
     src/initial/initial_aligment.cpp
@@ -64,10 +63,10 @@ add_library(vileom_lib
 target_link_libraries(vileom_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
 
 
-add_executable(vileom_feature_track_test src/feature_track_test.cpp)
+add_executable(vileom_feature_track_test src/feature_track_test.cpp )
 target_link_libraries(vileom_feature_track_test vileom_lib)
 
 
-add_executable(ceres_test src/test/ceres_test.cpp)
+add_executable(ceres_test src/test/ceres_test.cpp src/legKinematics/A1Kinematics.cpp)
 target_link_libraries(ceres_test ${CERES_LIBRARIES})
 
