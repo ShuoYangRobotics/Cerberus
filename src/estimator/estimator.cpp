@@ -129,33 +129,6 @@ void Estimator::setParameter()
         rho_opt_list.push_back(rho_opt);
     }
 
-    // clear legAngBufList (joint angle and foot force buffers)
-    if (legAngBufList.size() > 0)
-    {
-        for (int i = 0; i < NUM_OF_LEG; i++)
-        {
-            while(!legAngBufList[i].empty())
-                legAngBufList[i].pop();
-            while(!legAngVelBufList[i].empty())
-                legAngVelBufList[i].pop();
-            while(!footForceBufList[i].empty())
-                footForceBufList[i].pop();
-        }
-    }
-    legAngBufList.clear();
-    legAngVelBufList.clear();
-    footForceBufList.clear();
-    // init joint angle and foot force buffers
-    for (int i = 0; i < NUM_OF_LEG; i++)
-    {
-        queue<pair<double, Eigen::Vector3d>> legAngBuf;
-        queue<pair<double, Eigen::Vector3d>> legAngVelBuf;
-        queue<pair<double, Eigen::Vector3d>> footForceBuf;
-        legAngBufList.push_back(legAngBuf);
-        legAngVelBufList.push_back(legAngVelBuf);
-        footForceBufList.push_back(footForceBuf);
-    }
-
     mProcess.unlock();
 }
 void Estimator::changeSensorType(int use_imu, int use_stereo)
@@ -260,15 +233,9 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
 void Estimator::inputLeg(double t, const VectorXd &jointAngles, const VectorXd &jointVels, const VectorXd &footForces)
 {
     mBuf.lock();
-    for (int i = 0; i < NUM_OF_LEG; i++)
-    {
-        Eigen::Vector3d ang(jointAngles[3*i],jointAngles[3*i+1],jointAngles[3*i+2]);
-        legAngBufList[i].push(make_pair(t, ang));
-        Eigen::Vector3d vel(jointVels[3*i],jointVels[3*i+1],jointVels[3*i+2]);
-        legAngVelBufList[i].push(make_pair(t, vel));
-        Eigen::Vector3d force(footForces[3*i], footForces[3*i+1], footForces[3*i+2]);
-        footForceBufList[i].push(make_pair(t, force));
-    }
+    legAngBufList.push_back(make_pair(t, jointAngles));
+    legAngVelBufList.push_back(make_pair(t, jointVels));
+    footForceBufList.push_back(make_pair(t, footForces));
 //    printf("input leg joint state and foot force with time %f \n", t);
     mBuf.unlock();
 }
@@ -331,67 +298,142 @@ bool Estimator::IMUAvailable(double t)
         return false;
 }
 
-// jointAngVector, jointVelVector, footForceVector
-bool Estimator::getLegInterval(double t0, double t1,
-                               vector<pair<double, Eigen::VectorXd>> &jointAngVector,
-                               vector<pair<double, Eigen::VectorXd>> &jointVelVector,
-                               vector<pair<double, Eigen::VectorXd>> &footForceVector)
+// assume leg measurement has no delay, align Leg mesaurement with IMU measurement
+bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
+                                     vector<pair<double, Eigen::Vector3d>> &accVector,
+                                     vector<pair<double, Eigen::Vector3d>> &gyrVector,
+                                     vector<pair<double, Eigen::VectorXd>> &jointAngVector,
+                                     vector<pair<double, Eigen::VectorXd>> &jointVelVector,
+                                     vector<pair<double, Eigen::VectorXd>> &footForceVector)
 {
-    if(legAngBufList[0].empty())
+    if(accBuf.empty())
     {
-        printf("not receive leg measurements\n");
+        printf("not receive imu\n");
         return false;
     }
-//    printf("get leg from %f %f\n", t0, t1);
-//    printf("leg front time %f   leg end time %f\n", legAngBufList[0].front().first, legAngBufList[0].back().first);
-    // must have more leg data than image
-    if(t1 <= legAngBufList[0].back().first)
+//    printf("get imu from %f %f\n", t0, t1);
+//    printf("imu front time %f   imu end time %f\n", accBuf.front().first, accBuf.back().first);
+    // must have more IMU than image
+    if(t1 <= accBuf.back().first)
     {
-        while (legAngBufList[0].front().first <= t0)
+        while (accBuf.front().first <= t0)
         {
-            for (int i = 0; i < NUM_OF_LEG; i++)
-            {
-                legAngBufList[i].pop();
-                legAngVelBufList[i].pop();
-                footForceBufList[i].pop();
-            }
+            accBuf.pop();
+            gyrBuf.pop();
         }
-        while (legAngBufList[0].front().first < t1)
+        int starting_idx = 0; // this is used to speed up lerpLegSensors
+        Eigen::MatrixXd lerpMtx;
+        while (accBuf.front().first < t1)
         {
+            // TODO: does this t_delay matters?
+//            double leg_search_time = accBuf.front().first - t_delay;
+            double leg_search_time = accBuf.front().first;
+            accVector.push_back(accBuf.front());
+            accBuf.pop();
+            gyrVector.push_back(gyrBuf.front());
+            gyrBuf.pop();
+            // lerp
             // angle - only push once, push a 12d vector
-            Eigen::VectorXd ang_vec(3*NUM_OF_LEG); ang_vec.setZero();
-            jointAngVector.push_back(make_pair(legAngBufList[0].front().first, ang_vec));
-            for (int i = 0; i < NUM_OF_LEG; i++)
+            starting_idx = 0;
+            lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
+            if (starting_idx > 0)
             {
-                jointAngVector.back().second.segment<3>(3 * i) = legAngBufList[i].front().second;
-                legAngBufList[i].pop();
+                legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
+                legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
+                footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
             }
-            // velocity - only push once, push a 12d vector
-            Eigen::VectorXd vel_vec(3*NUM_OF_LEG); vel_vec.setZero();
-            jointVelVector.push_back(make_pair(legAngVelBufList[0].front().first, vel_vec));
-            for (int i = 0; i < NUM_OF_LEG; i++)
-            {
-                jointVelVector.back().second.segment<3>(3 * i) = legAngVelBufList[i].front().second;
-                legAngVelBufList[i].pop();
-            }
-            // foot force - only push once, push a 12d vector
-            Eigen::VectorXd force_vec(3*NUM_OF_LEG); force_vec.setZero();
-            footForceVector.push_back(make_pair(footForceBufList[0].front().first, force_vec));
-            for (int i = 0; i < NUM_OF_LEG; i++)
-            {
-                footForceVector.back().second.segment<3>(3 * i) = footForceBufList[i].front().second;
-                footForceBufList[i].pop();
-            }
+
+            jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
+            jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
+            footForceVector.push_back(make_pair(leg_search_time, lerpMtx.col(2)));
         }
-        // get IMU interval has a final push here, we do not do it
+        accVector.push_back(accBuf.front());
+        gyrVector.push_back(gyrBuf.front());
+
+        double leg_search_time = accBuf.front().first;
+        starting_idx = 0;
+        lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
+        if (starting_idx > 0)
+        {
+            legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
+            legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
+            footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
+        }
+        jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
+        jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
+        footForceVector.push_back(make_pair(leg_search_time, lerpMtx.col(2)));
+
     }
     else
     {
-        printf("wait for leg\n");
+        printf("wait for imu\n");
         return false;
     }
+    std::cout << " leg buff size "<< legAngBufList.size() << std::endl;
     return true;
 }
+
+// jointAngVector, jointVelVector, footForceVector
+//bool Estimator::getLegInterval(double t0, double t1,
+//                               vector<pair<double, Eigen::VectorXd>> &jointAngVector,
+//                               vector<pair<double, Eigen::VectorXd>> &jointVelVector,
+//                               vector<pair<double, Eigen::VectorXd>> &footForceVector)
+//{
+//    if(legAngBufList[0].empty())
+//    {
+//        printf("not receive leg measurements\n");
+//        return false;
+//    }
+////    printf("get leg from %f %f\n", t0, t1);
+////    printf("leg front time %f   leg end time %f\n", legAngBufList[0].front().first, legAngBufList[0].back().first);
+//    // must have more leg data than image
+//    if(t1 <= legAngBufList[0].back().first)
+//    {
+//        while (legAngBufList[0].front().first <= t0)
+//        {
+//            for (int i = 0; i < NUM_OF_LEG; i++)
+//            {
+//                legAngBufList[i].pop();
+//                legAngVelBufList[i].pop();
+//                footForceBufList[i].pop();
+//            }
+//        }
+//        while (legAngBufList[0].front().first < t1)
+//        {
+//            // angle - only push once, push a 12d vector
+//            Eigen::VectorXd ang_vec(3*NUM_OF_LEG); ang_vec.setZero();
+//            jointAngVector.push_back(make_pair(legAngBufList[0].front().first, ang_vec));
+//            for (int i = 0; i < NUM_OF_LEG; i++)
+//            {
+//                jointAngVector.back().second.segment<3>(3 * i) = legAngBufList[i].front().second;
+//                legAngBufList[i].pop();
+//            }
+//            // velocity - only push once, push a 12d vector
+//            Eigen::VectorXd vel_vec(3*NUM_OF_LEG); vel_vec.setZero();
+//            jointVelVector.push_back(make_pair(legAngVelBufList[0].front().first, vel_vec));
+//            for (int i = 0; i < NUM_OF_LEG; i++)
+//            {
+//                jointVelVector.back().second.segment<3>(3 * i) = legAngVelBufList[i].front().second;
+//                legAngVelBufList[i].pop();
+//            }
+//            // foot force - only push once, push a 12d vector
+//            Eigen::VectorXd force_vec(3*NUM_OF_LEG); force_vec.setZero();
+//            footForceVector.push_back(make_pair(footForceBufList[0].front().first, force_vec));
+//            for (int i = 0; i < NUM_OF_LEG; i++)
+//            {
+//                footForceVector.back().second.segment<3>(3 * i) = footForceBufList[i].front().second;
+//                footForceBufList[i].pop();
+//            }
+//        }
+//        // get IMU interval has a final push here, we do not do it
+//    }
+//    else
+//    {
+//        printf("wait for leg\n");
+//        return false;
+//    }
+//    return true;
+//}
 
 
 // in MULTIPLE_THREAD mode, this function will be called periodically
@@ -430,10 +472,7 @@ void Estimator::processMeasurements()
 
             // TODO: get leg info and IMU together
             if (USE_LEG && USE_IMU) {
-                getIMUInterval(prevTime, curTime, accVector, gyrVector);
-                // get Leg, prevTime-td, curTime-td
-                getLegInterval(prevTime-td, curTime-td, jointAngVector, jointVelVector, footForceVector);
-
+                getIMUAndLegInterval(prevTime, curTime, td, accVector, gyrVector, jointAngVector, jointVelVector, footForceVector);
             } else if(USE_IMU)
                 getIMUInterval(prevTime, curTime, accVector, gyrVector);
 
@@ -469,8 +508,8 @@ void Estimator::processMeasurements()
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
                 // Rs Ps now contains value after IMU propagation
-                std::cout << "Ps before IMU processing" << tmpPs <<std::endl;
-                std::cout << "Ps after IMU processing" << Ps[frame_count] <<std::endl;
+//                std::cout << "Ps before IMU processing" << tmpPs <<std::endl;
+//                std::cout << "Ps after IMU processing" << Ps[frame_count] <<std::endl;
 
                 if (USE_LEG)
                 {
@@ -517,9 +556,9 @@ void Estimator::processMeasurements()
                             v_measure += trust[j] * leg_observed_v;
                             //                        std::cout << leg_observed_v.transpose() << " \t with trust " << trust[j] << " force " << footForceVector[i].second.segment<3>(3 * j).norm() <<  std::endl;
                         }
-                        std::cout << "average leg velocities" << std::endl;
+//                        std::cout << "average leg velocities" << std::endl;
                         v_measure /= trust_sum;
-                        std::cout << v_measure.transpose() << std::endl;
+//                        std::cout << v_measure.transpose() << std::endl;
                     }
                 }
             }

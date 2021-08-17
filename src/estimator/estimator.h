@@ -13,6 +13,7 @@
 #include <ceres/ceres.h>
 #include <unordered_map>
 #include <vector>
+#include <deque>
 #include <queue>
 #include <opencv2/core/eigen.hpp>
 #include <eigen3/Eigen/Dense>
@@ -68,10 +69,16 @@ public:
     bool failureDetection();
     bool getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector,
                                               vector<pair<double, Eigen::Vector3d>> &gyrVector);
-    bool getLegInterval(double t0, double t1,
-                                   vector<pair<double, Eigen::VectorXd>> &jointAngVector,
-                                   vector<pair<double, Eigen::VectorXd>> &jointVelVector,
-                                   vector<pair<double, Eigen::VectorXd>> &footForceVector);
+    bool getIMUAndLegInterval(double t0, double t1, double t_delay,
+                                         vector<pair<double, Eigen::Vector3d>> &accVector,
+                                         vector<pair<double, Eigen::Vector3d>> &gyrVector,
+                                         vector<pair<double, Eigen::VectorXd>> &jointAngVector,
+                                         vector<pair<double, Eigen::VectorXd>> &jointVelVector,
+                                         vector<pair<double, Eigen::VectorXd>> &footForceVector);
+//    bool getLegInterval(double t0, double t1,
+//                                   vector<pair<double, Eigen::VectorXd>> &jointAngVector,
+//                                   vector<pair<double, Eigen::VectorXd>> &jointVelVector,
+//                                   vector<pair<double, Eigen::VectorXd>> &footForceVector);
     void getPoseInWorldFrame(Eigen::Matrix4d &T);
     void getPoseInWorldFrame(int index, Eigen::Matrix4d &T);
     void predictPtsInNextFrame();
@@ -102,9 +109,9 @@ public:
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
 
-    std::vector<queue<pair<double, Eigen::Vector3d>>> legAngBufList;
-    std::vector<queue<pair<double, Eigen::Vector3d>>> legAngVelBufList;
-    std::vector<queue<pair<double, Eigen::Vector3d>>> footForceBufList;
+    deque<pair<double, Eigen::VectorXd>> legAngBufList;
+    deque<pair<double, Eigen::VectorXd>> legAngVelBufList;
+    deque<pair<double, Eigen::VectorXd>> footForceBufList;
 
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
     double prevTime, curTime;

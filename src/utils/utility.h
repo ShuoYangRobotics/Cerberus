@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <vector>
+#include <deque>
 #include <utility>
 #include <cassert>
 #include <cstring>
@@ -120,7 +121,10 @@ class Utility
 
     static Eigen::Matrix3d g2R(const Eigen::Vector3d &g);
     static Eigen::Vector3d lerpGyro(double t, std::vector<std::pair<double, Eigen::Vector3d>> gyroVector);
-
+    static Eigen::MatrixXd lerpLegSensors(double t, int &starting_idx,
+                                            std::deque<std::pair<double, Eigen::VectorXd>> jointAngVector,
+                                            std::deque<std::pair<double, Eigen::VectorXd>> jointAngVelVector,
+                                            std::deque<std::pair<double, Eigen::VectorXd>> footForceVector);
     template <size_t N>
     struct uint_
     {
