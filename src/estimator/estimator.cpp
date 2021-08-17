@@ -481,6 +481,7 @@ void Estimator::processMeasurements()
             mBuf.unlock();
 
             Vector3d        tmpPs;
+            Vector3d        tmpPs2;
             Vector3d        tmpVs;
             Matrix3d        tmpRs;
 
@@ -507,23 +508,20 @@ void Estimator::processMeasurements()
                         dt = accVector[i].first - accVector[i - 1].first;
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
-                // Rs Ps now contains value after IMU propagation
-//                std::cout << "Ps before IMU processing" << tmpPs <<std::endl;
-//                std::cout << "Ps after IMU processing" << Ps[frame_count] <<std::endl;
 
                 if (USE_LEG)
                 {
                     // integrate leg to compare
-                    Eigen::Vector3d tmpPs2 = tmpPs;
+                    tmpPs2 = tmpPs;
                     Eigen::Matrix3d R_wi = tmpRs;
                     // TODO: check jointVelVector, jointAngVector and footForceVector have the same length, otherwise the intergation will gone error
 
                     for (size_t i = 0; i < jointAngVector.size(); i++) {
                         double dt;
                         if (i == 0)
-                            dt = jointAngVector[i].first - prevTime - td;
+                            dt = jointAngVector[i].first - prevTime;
                         else if (i == jointAngVector.size() - 1)
-                            dt = curTime - td - jointAngVector[i - 1].first;
+                            dt = curTime - jointAngVector[i - 1].first;
                         else
                             dt = jointAngVector[i].first - jointAngVector[i - 1].first;
                         // get current angular velocity
@@ -547,21 +545,28 @@ void Estimator::processMeasurements()
                             Vector3d p_if = p_ib + R_ib * p_bf;
                             Vector3d leg_observed_v_i = -R_ib * jac * dphi - Utility::skewSymmetric(omega) * p_if;
 
+                            // observed velocity in world frame
                             Vector3d leg_observed_v = R_wi * leg_observed_v_i;
 
                             trust[j] = std::min(std::max(
-                                    (footForceVector[i].second.segment<3>(3 * j).norm() - 10.0) / (120.0 - 0.0), 0.0),
+                                    (footForceVector[i].second.segment<3>(3 * j).squaredNorm() - 10.0*10.0) / (120.0*120 - 0.0), 0.0),
                                                 1.0);
                             trust_sum += trust[j];
                             v_measure += trust[j] * leg_observed_v;
-                            //                        std::cout << leg_observed_v.transpose() << " \t with trust " << trust[j] << " force " << footForceVector[i].second.segment<3>(3 * j).norm() <<  std::endl;
+//                            std::cout << leg_observed_v.transpose() << " \t with trust " << trust[j] << " force " << footForceVector[i].second.segment<3>(3 * j).norm() <<  std::endl;
                         }
 //                        std::cout << "average leg velocities" << std::endl;
                         v_measure /= trust_sum;
 //                        std::cout << v_measure.transpose() << std::endl;
+
+                        tmpPs2 += v_measure* dt;
                     }
                 }
             }
+            // Rs Ps now contains value after IMU propagation
+//            std::cout << "Ps before IMU processing" << tmpPs.transpose() <<std::endl;
+//            std::cout << "Ps after IMU processing" << Ps[frame_count].transpose() <<std::endl;
+//            std::cout << "Ps after leg intergration" << tmpPs2.transpose() <<std::endl;
 
 
             mProcess.lock();
