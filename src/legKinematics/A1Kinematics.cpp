@@ -10,14 +10,14 @@ Eigen::Vector3d A1Kinematics::fk(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eig
     return out;
 }
 
-Eigen::MatrixXd A1Kinematics::jac(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
-    Eigen::MatrixXd mtx(3,3);
+Eigen::Matrix3d A1Kinematics::jac(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
+    Eigen::Matrix3d mtx;
     autoFunc_d_fk_dq(q.data(), rho_opt.data(), rho_fix.data(), mtx.data());
     return mtx;
 }
 
-Eigen::MatrixXd A1Kinematics::dfk_drho(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
-    Eigen::MatrixXd mtx(3,3);
+Eigen::Matrix3d A1Kinematics::dfk_drho(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
+    Eigen::Matrix3d mtx;
     autoFunc_d_fk_dc(q.data(), rho_opt.data(), rho_fix.data(), mtx.data());
     return mtx;
 }

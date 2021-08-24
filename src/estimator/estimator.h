@@ -196,9 +196,9 @@ public:
 
     // add leg kinematics
     // the leg kinematics is relative to body frame, which is the center of the robot
-    // following are some parameters that defines the transformation between IMU frame and body frame
-    Eigen::Vector3d p_ib;
-    Eigen::Matrix3d R_ib;
+    // following are some parameters that defines the transformation between IMU frame(b) and robot body frame(r)
+    Eigen::Vector3d p_br;
+    Eigen::Matrix3d R_br;
     // for each leg, there is an offset between the body frame and the hip motor (fx, fy)
     double leg_offset_x[4] = {};
     double leg_offset_y[4] = {};

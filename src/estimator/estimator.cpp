@@ -113,8 +113,8 @@ void Estimator::setParameter()
     }
     // set leg kinematics related parameters
     // body_to_a1_body
-    p_ib = Eigen::Vector3d(-0.2293, 0.0, -0.067);
-    R_ib = Eigen::Matrix3d::Identity();
+    p_br = Eigen::Vector3d(-0.2293, 0.0, -0.067);
+    R_br = Eigen::Matrix3d::Identity();
     // leg order: 0-FL  1-FR  2-RL  3-RR
     leg_offset_x[0] = 0.1805; leg_offset_x[1] = 0.1805;  leg_offset_x[2] = -0.1805; leg_offset_x[3] = -0.1805;
     leg_offset_y[0] = 0.047;  leg_offset_y[1] = -0.047;  leg_offset_y[2] = 0.047;   leg_offset_y[3] = -0.047;
@@ -122,7 +122,7 @@ void Estimator::setParameter()
     upper_leg_length[0] = upper_leg_length[1] = upper_leg_length[2] = upper_leg_length[3] = 0.2;
     lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = 0.22;
 
-    for (size_t i = 0; i < NUM_OF_LEG; i++) {
+    for (int i = 0; i < NUM_OF_LEG; i++) {
         Eigen::VectorXd rho_fix(5); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i],lower_leg_length[i];
         Eigen::VectorXd rho_opt(3); rho_opt << 0.0,0.0,0.0;
         rho_fix_list.push_back(rho_fix);
@@ -513,7 +513,7 @@ void Estimator::processMeasurements()
                 {
                     // integrate leg to compare
                     tmpPs2 = tmpPs;
-                    Eigen::Matrix3d R_wi = tmpRs;
+                    Eigen::Matrix3d R_wb = tmpRs;
                     // TODO: check jointVelVector, jointAngVector and footForceVector have the same length, otherwise the intergation will gone error
 
                     for (size_t i = 0; i < jointAngVector.size(); i++) {
@@ -528,25 +528,25 @@ void Estimator::processMeasurements()
                         double t = jointAngVector[i].first;
                         Eigen::Vector3d omega = Utility::lerpGyro(t, gyrVector) - Bgs[frame_count];
 
-                        R_wi *= Utility::deltaQ(omega * dt).toRotationMatrix();
+                        R_wb *= Utility::deltaQ(omega * dt).toRotationMatrix();
 
                         // each leg integrates one velocity, they average to final v_measure
                         Vector3d v_measure(0, 0, 0);
                         double trust[4];
                         double trust_sum = 0;
                         //                    std::cout << "leg velocities" << std::endl;
-                        for (size_t j = 0; j < NUM_OF_LEG; j++) {
+                        for (int j = 0; j < NUM_OF_LEG; j++) {
                             Eigen::Vector3d phi = jointAngVector[i].second.segment<3>(3 * j);
                             Eigen::Vector3d dphi = jointVelVector[i].second.segment<3>(3 * j);
 
                             // first in body frame
                             Eigen::MatrixXd jac = a1_kin.jac(phi, rho_opt_list[j], rho_fix_list[j]);
-                            Vector3d p_bf = a1_kin.fk(phi, rho_opt_list[j], rho_fix_list[j]);
-                            Vector3d p_if = p_ib + R_ib * p_bf;
-                            Vector3d leg_observed_v_i = -R_ib * jac * dphi - Utility::skewSymmetric(omega) * p_if;
+                            Vector3d p_rf = a1_kin.fk(phi, rho_opt_list[j], rho_fix_list[j]);
+                            Vector3d p_bf = p_br + R_br * p_br;
+                            Vector3d leg_observed_v_b = -R_br * jac * dphi - Utility::skewSymmetric(omega) * p_bf;
 
                             // observed velocity in world frame
-                            Vector3d leg_observed_v = R_wi * leg_observed_v_i;
+                            Vector3d leg_observed_v = R_wb * leg_observed_v_b;
 
                             trust[j] = std::min(std::max(
                                     (footForceVector[i].second.segment<3>(3 * j).squaredNorm() - 10.0*10.0) / (120.0*120 - 0.0), 0.0),

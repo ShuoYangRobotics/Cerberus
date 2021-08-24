@@ -1,0 +1,274 @@
+//
+// Created by shuoy on 8/23/21.
+//
+
+#include "imu_leg_integration_base.h"
+
+IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vector3d &_gyr_0, const Ref<const VectorXd>& _phi_0,
+                                             const Ref<const VectorXd>& _dphi_0, const Ref<const VectorXd>& _c_0,
+                                             const Vector3d &_linearized_ba, const Vector3d &_linearized_bg,
+                                             const Ref<const VectorXd>& _linearized_rho,
+                                             std::vector<Eigen::VectorXd> _rho_fix_list, const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br)
+        : acc_0{_acc_0}, gyr_0{_gyr_0}, linearized_acc{_acc_0}, linearized_gyr{_gyr_0},
+          linearized_ba{_linearized_ba}, linearized_bg{_linearized_bg},
+          sum_dt{0.0}, delta_p{Eigen::Vector3d::Zero()}, delta_q{Eigen::Quaterniond::Identity()}, delta_v{Eigen::Vector3d::Zero()}
+{
+    jacobian.setIdentity();
+    covariance.setZero();
+
+    phi_0 = _phi_0;
+    dphi_0 = _dphi_0;
+    c_0 = _c_0;
+
+    linearized_phi = _phi_0;
+    linearized_dphi = _dphi_0;
+    linearized_c = _c_0;
+
+    linearized_rho = _linearized_rho;
+
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        delta_epsilon.push_back(Eigen::Vector3d::Zero());
+    }
+    noise.setZero();
+    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
+    // temporarily write some parameters here
+    const double PHI_N = 0.001;
+    const double DPHI_N = 0.005;
+    const double V_N = 0.01;  //This should links to foot contact force;
+    const double RHO_N = 0.01;
+    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+
+    // the fixed kinematics parameter
+    rho_fix_list = _rho_fix_list;
+    p_br = _p_br;
+    R_br = _R_br;
+}
+
+void IMULegIntegrationBase::push_back(double dt, const Eigen::Vector3d &acc, const Eigen::Vector3d &gyr,
+                                      const Ref<const VectorXd>& phi, const Ref<const VectorXd>& dphi, const Ref<const VectorXd>& c) {
+    dt_buf.push_back(dt);
+    acc_buf.push_back(acc);
+    gyr_buf.push_back(gyr);
+    phi_buf.push_back(phi);
+    dphi_buf.push_back(dphi);
+    c_buf.push_back(c);
+    propagate(dt, acc, gyr, phi, dphi, c);
+}
+
+void IMULegIntegrationBase::propagate(double _dt, const Vector3d &_acc_1, const Vector3d &_gyr_1,
+                                      const Ref<const VectorXd>& _phi_1, const Ref<const VectorXd>& _dphi_1, const Ref<const VectorXd>& _c_1) {
+    dt = _dt;
+    acc_1 = _acc_1;
+    gyr_1 = _gyr_1;
+    phi_1 = _phi_1;
+    dphi_1 = _dphi_1;
+    c_1 = _c_1;
+    Vector3d result_delta_p;
+    Quaterniond result_delta_q;
+    Vector3d result_delta_v;
+    std::vector<Eigen::Vector3d> result_delta_epsilon;
+    for (int j = 0; j < NUM_OF_LEG; j++) result_delta_epsilon.push_back(Eigen::Vector3d::Zero());
+    Vector3d result_linearized_ba;
+    Vector3d result_linearized_bg;
+    Eigen::VectorXd result_linearized_rho(3*NUM_OF_LEG);
+
+
+}
+
+void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
+                                                const Vector3d &_acc_1, const Vector3d &_gyr_1,
+                                                const Ref<const VectorXd> &_phi_0, const Ref<const VectorXd> &_dphi_0,
+                                                const Ref<const VectorXd> &_c_0, const Ref<const VectorXd> &_phi_1,
+                                                const Ref<const VectorXd> &_dphi_1, const Ref<const VectorXd> &_c_1,
+                                                const Vector3d &delta_p, const Quaterniond &delta_q,
+                                                const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
+                                                const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+                                                const Ref<const VectorXd> &linearized_rho, Vector3d &result_delta_p,
+                                                Quaterniond &result_delta_q, Vector3d &result_delta_v,
+                                                vector<Eigen::Vector3d> &result_delta_epsilon,
+                                                Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
+                                                Ref<Eigen::VectorXd> &result_linearized_rho, bool update_jacobian) {
+    Vector3d un_acc_0 = delta_q * (_acc_0 - linearized_ba);
+    Vector3d un_gyr = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
+    result_delta_q = delta_q * Quaterniond(1, un_gyr(0) * _dt / 2, un_gyr(1) * _dt / 2, un_gyr(2) * _dt / 2);
+    Vector3d un_acc_1 = result_delta_q * (_acc_1 - linearized_ba);
+    Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
+    result_delta_p = delta_p + delta_v * _dt + 0.5 * un_acc * _dt * _dt;
+    result_delta_v = delta_v + un_acc * _dt;
+    result_linearized_ba = linearized_ba;
+    result_linearized_bg = linearized_bg;
+
+    // some helper structs
+    Vector3d w_0_x = _gyr_0 - linearized_bg;
+    Vector3d w_1_x = _gyr_1 - linearized_bg;
+    Matrix3d R_w_0_x,R_w_1_x;
+
+    R_w_0_x<<0, -w_0_x(2), w_0_x(1),
+            w_0_x(2), 0, -w_0_x(0),
+            -w_0_x(1), w_0_x(0), 0;
+    R_w_1_x<<0, -w_1_x(2), w_1_x(1),
+            w_1_x(2), 0, -w_1_x(0),
+            -w_1_x(1), w_1_x(0), 0;
+
+    std::vector<Eigen::Vector3d> fi, fip1;
+    std::vector<Eigen::Matrix3d> Ji, Jip1;
+    std::vector<Eigen::Matrix3d> gi, gip1;
+    std::vector<Eigen::Matrix3d> hi, hip1;
+    std::vector<Eigen::Vector3d> vi, vip1;
+
+    // get velocity measurement
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        // calculate fk of each leg
+        fi.push_back( a1_kin.fk(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
+        fip1.push_back( a1_kin.fk(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
+        // calculate jacobian of each leg
+        Ji.push_back( a1_kin.jac(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
+        Jip1.push_back( a1_kin.jac(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
+        // calculate vm
+        vi.push_back( -R_br*Ji[j]*_dphi_0.segment<3>(3*j) - R_w_0_x*(p_br + R_br*fi[j]) );
+        vip1.push_back( -R_br*Jip1[j]*_dphi_1.segment<3>(3*j) - R_w_1_x*(p_br + R_br*fip1[j]) );
+
+        result_delta_epsilon[j] = delta_epsilon[j] + 0.5 * (delta_q*vi[j] + result_delta_q*vip1[j]) * _dt;
+        result_linearized_rho[j] = linearized_rho[j];
+
+        // calculate g
+        Eigen::MatrixXd dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+        Eigen::MatrixXd kron_dphi0(9,3); kron_dphi0.setZero();
+        kron_dphi0(0,0) = kron_dphi0(1,1) = kron_dphi0(2,2) = _phi_0(0);
+        kron_dphi0(0,3) = kron_dphi0(1,4) = kron_dphi0(2,5) = _phi_0(1);
+        kron_dphi0(0,6) = kron_dphi0(1,7) = kron_dphi0(2,8) = _phi_0(2);
+        gi.push_back( -delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdrho0) + R_w_0_x*R_br*Ji[j] );
+
+        Eigen::MatrixXd dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+        Eigen::MatrixXd kron_dphi1(9,3); kron_dphi1.setZero();
+        kron_dphi1(0,0) = kron_dphi1(1,1) = kron_dphi1(2,2) = _phi_1(0);
+        kron_dphi1(0,3) = kron_dphi1(1,4) = kron_dphi1(2,5) = _phi_1(1);
+        kron_dphi1(0,6) = kron_dphi1(1,7) = kron_dphi1(2,8) = _phi_1(2);
+        gip1.push_back( -result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdrho1) + R_w_1_x*R_br*Jip1[j] );
+
+        // calculate h
+        Eigen::MatrixXd dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+        hi.push_back( delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdphi0) + R_w_0_x*R_br*Ji[j] );
+        Eigen::MatrixXd dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+        hip1.push_back( result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdphi1) + R_w_1_x*R_br*Jip1[j] );
+    }
+
+    if(update_jacobian)
+    {
+        Vector3d w_x = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
+        Vector3d a_0_x = _acc_0 - linearized_ba;
+        Vector3d a_1_x = _acc_1 - linearized_ba;
+        Matrix3d R_w_x, R_a_0_x, R_a_1_x;
+
+        R_w_x<<0, -w_x(2), w_x(1),
+                w_x(2), 0, -w_x(0),
+                -w_x(1), w_x(0), 0;
+        R_a_0_x<<0, -a_0_x(2), a_0_x(1),
+                a_0_x(2), 0, -a_0_x(0),
+                -a_0_x(1), a_0_x(0), 0;
+        R_a_1_x<<0, -a_1_x(2), a_1_x(1),
+                a_1_x(2), 0, -a_1_x(0),
+                -a_1_x(1), a_1_x(0), 0;
+        Eigen::Matrix3d kappa_7 = (Matrix3d::Identity() - R_w_x * _dt);
+        // change to sparse matrix later otherwise they are too large
+        MatrixXd F = MatrixXd::Zero(STATE_SIZE, STATE_SIZE);
+        // F row 1
+        F.block<3, 3>(0, 0) = Matrix3d::Identity();
+        Eigen::Matrix3d kappa_1 = -0.5 * delta_q.toRotationMatrix() * R_a_0_x * _dt +
+                                  -0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * kappa_7 * _dt;
+        F.block<3, 3>(0, 3) = -0.5 * _dt * kappa_1;
+        F.block<3, 3>(0, 6) = MatrixXd::Identity(3,3) * _dt;
+        // 9 12 15 18 are 0
+        F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
+        F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
+        // F row 2
+        F.block<3, 3>(3, 3) = kappa_7;
+        F.block<3, 3>(3, 24) = -1.0 * MatrixXd::Identity(3,3) * _dt;
+        // F row 3
+        F.block<3, 3>(6, 3) = kappa_1;
+        F.block<3, 3>(6, 6) = Matrix3d::Identity();
+        F.block<3, 3>(6, 21) = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
+        F.block<3, 3>(6, 24) = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+
+        // F row 4 5 6 7
+        for (int j = 0; j < NUM_OF_LEG; j++) {
+            F.block<3, 3>(9+3*j, 3) = 0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) +
+                                      0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
+            F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
+            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j]);
+            F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
+        }
+        F.block<3, 3>(21, 21) = Matrix3d::Identity();
+        F.block<3, 3>(24, 24) = Matrix3d::Identity();
+        F.block<3, 3>(27, 27) = Matrix3d::Identity();
+        F.block<3, 3>(30, 30) = Matrix3d::Identity();
+        F.block<3, 3>(33, 33) = Matrix3d::Identity();
+        F.block<3, 3>(36, 36) = Matrix3d::Identity();
+
+        // get V
+        MatrixXd V = MatrixXd::Zero(STATE_SIZE,NOISE_SIZE);
+        V.block<3, 3>(0, 0) =  0.25 * delta_q.toRotationMatrix() * _dt * _dt;
+        V.block<3, 3>(0, 3) =  0.25 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * _dt * 0.5 * _dt;
+        V.block<3, 3>(0, 6) =  0.25 * result_delta_q.toRotationMatrix() * _dt * _dt;
+        V.block<3, 3>(0, 9) =  V.block<3, 3>(0, 3);
+        V.block<3, 3>(3, 3) =  0.5 * MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(3, 9) =  0.5 * MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(6, 0) =  0.5 * delta_q.toRotationMatrix() * _dt;
+        V.block<3, 3>(6, 3) =  0.5 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * 0.5 * _dt;
+        V.block<3, 3>(6, 6) =  0.5 * result_delta_q.toRotationMatrix() * _dt;
+        V.block<3, 3>(6, 9) =  V.block<3, 3>(6, 3);
+
+        // V row 4 5 6 7
+        for (int j = 0; j < NUM_OF_LEG; j++) {
+            V.block<3, 3>(9+3*j, 3) = 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                                                     - 0.5 * _dt * delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fi[j]);
+            V.block<3, 3>(9+3*j, 9) = 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                                                     - 0.5 * _dt * result_delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fip1[j]);
+            V.block<3, 3>(9+3*j, 18) = 0.5 * _dt * hi[j];
+            V.block<3, 3>(9+3*j, 21) = 0.5 * _dt * hip1[j];
+
+            V.block<3, 3>(9+3*j, 24) = 0.5 * _dt * delta_q.toRotationMatrix() * R_br * Ji[j];
+            V.block<3, 3>(9+3*j, 27) = 0.5 * _dt * result_delta_q.toRotationMatrix() * R_br * Jip1[j];
+            V.block<3, 3>(9+3*j, 30+3*j) = MatrixXd::Identity(3,3) * _dt;
+        }
+
+        V.block<3, 3>(21, 12) = Matrix3d::Identity();
+        V.block<3, 3>(24, 15) = Matrix3d::Identity();
+        V.block<3, 3>(27, 42) = Matrix3d::Identity();
+        V.block<3, 3>(30, 42) = Matrix3d::Identity();
+        V.block<3, 3>(33, 42) = Matrix3d::Identity();
+        V.block<3, 3>(36, 42) = Matrix3d::Identity();
+
+        jacobian = F * jacobian;
+        // change noise
+        for (int j = 0; j < NUM_OF_LEG; j++) {
+            // force within -50 - 150
+            Eigen::Vector3d average_c = 0.5 * (_c_0.segment<3>(3*j) + _c_1.segment<3>(3*j));
+            double force_mag = average_c.norm();
+            force_mag = std::max(force_mag, -10.0);
+            force_mag = std::min(force_mag, 150.0);
+
+            // a function maps contact force to noise
+            // https://elsenaju.eu/Calculator/online-curve-fit.htm
+            // https://www.desmos.com/calculator
+            //       force  -10    0    20    30   40   60  80  100    120    150
+            // uncertainty  1200  1000  100   50   30   20  1   0.04   0.01   0.001
+            double uncertainty = 101539464.774746358*exp(-0.000119309*pow(force_mag+315.337294101,2));
+            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * Eigen::Matrix3d::Identity();
+        }
+        covariance = F * covariance * F.transpose() + V * noise * V.transpose();
+    }
+}

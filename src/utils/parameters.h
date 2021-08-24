@@ -72,8 +72,8 @@ void readParameters(std::string config_file);
 
 enum SIZE_PARAMETERIZATION
 {
-    SIZE_POSE = 7,
-    SIZE_SPEEDBIAS = 9,
+    SIZE_POSE = 7,       // p3, q4
+    SIZE_SPEEDBIAS = 24,  // v 3, ba 3, bg 3, bv 3, rho1 3, rho2 3, rho3 3, rho 4 3
     SIZE_FEATURE = 1
 };
 
@@ -92,4 +92,18 @@ enum NoiseOrder
     O_GN = 3,
     O_AW = 6,
     O_GW = 9
+};
+
+enum ILStateOrder
+{
+    ILO_P = 0,
+    ILO_R = 3,
+    ILO_V = 6,
+    ILO_BA = 9,
+    ILO_BG = 12,
+    ILO_BV = 15,
+    ILO_RHO1 = 18,
+    ILO_RHO2 = 21,
+    ILO_RHO3 = 24,
+    ILO_RHO4 = 27,
 };

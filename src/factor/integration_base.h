@@ -201,7 +201,7 @@ class IntegrationBase
     Eigen::Vector3d acc_0, gyr_0;
     Eigen::Vector3d acc_1, gyr_1;
 
-    // the output of optimization, 
+    // hold the very first acc_0, to repropagate
     const Eigen::Vector3d linearized_acc, linearized_gyr;
     Eigen::Vector3d linearized_ba, linearized_bg;
 
@@ -211,9 +211,9 @@ class IntegrationBase
     Eigen::Matrix<double, 18, 18> noise;
 
     double sum_dt;
-    Eigen::Vector3d delta_p;
-    Eigen::Quaterniond delta_q;
-    Eigen::Vector3d delta_v;
+    Eigen::Vector3d delta_p;  // alpha
+    Eigen::Quaterniond delta_q;  // gamma
+    Eigen::Vector3d delta_v;     // beta
 
     std::vector<double> dt_buf;
     std::vector<Eigen::Vector3d> acc_buf;
