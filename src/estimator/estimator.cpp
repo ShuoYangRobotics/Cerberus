@@ -375,6 +375,9 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
         printf("wait for imu\n");
         return false;
     }
+    if (legAngBufList.size() > 100) {
+        legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+50-1);
+    }
     std::cout << " leg buff size "<< legAngBufList.size() << std::endl;
     return true;
 }
@@ -491,26 +494,26 @@ void Estimator::processMeasurements()
             Vector3d        tmpVs;
             Matrix3d        tmpRs;
 
-//            if (USE_LEG && USE_IMU) {
-//                // average acc to get initial Rs[0]
-//                if(!initFirstPoseFlag)
-//                    initFirstIMUPose(accVector);
-//                for(size_t i = 0; i < accVector.size(); i++)
-//                {
-//                    double dt;
-//                    if(i == 0)
-//                        dt = accVector[i].first - prevTime;
-//                    else if (i == accVector.size() - 1)
-//                        dt = curTime - accVector[i - 1].first;
-//                    else
-//                        dt = accVector[i].first - accVector[i - 1].first;
-////                    processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
-//
-//                    processIMULeg(accVector[i].first, dt, accVector[i].second, gyrVector[i].second,
-//                                  jointAngVector[i].second, jointVelVector[i].second, footForceVector[i].second);
-//                }
-//            }
-//            else
+            if (USE_LEG && USE_IMU) {
+                // average acc to get initial Rs[0]
+                if(!initFirstPoseFlag)
+                    initFirstIMUPose(accVector);
+                for(size_t i = 0; i < accVector.size(); i++)
+                {
+                    double dt;
+                    if(i == 0)
+                        dt = accVector[i].first - prevTime;
+                    else if (i == accVector.size() - 1)
+                        dt = curTime - accVector[i - 1].first;
+                    else
+                        dt = accVector[i].first - accVector[i - 1].first;
+//                    processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
+
+                    processIMULeg(accVector[i].first, dt, accVector[i].second, gyrVector[i].second,
+                                  jointAngVector[i].second, jointVelVector[i].second, footForceVector[i].second);
+                }
+            }
+            else
                 if(USE_IMU)
             {
                 // average acc to get initial Rs[0]

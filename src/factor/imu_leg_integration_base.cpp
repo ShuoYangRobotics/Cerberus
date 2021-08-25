@@ -136,6 +136,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     std::vector<Eigen::Vector3d> fi, fip1;
     std::vector<Eigen::Matrix3d> Ji, Jip1;
+    std::vector<Eigen::Matrix3d> dfdrhoi, dfdrhoip1;
     std::vector<Eigen::Matrix3d> gi, gip1;
     std::vector<Eigen::Matrix3d> hi, hip1;
     std::vector<Eigen::Vector3d> vi, vip1;
@@ -148,6 +149,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         // calculate jacobian of each leg
         Ji.push_back( a1_kin.jac(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
         Jip1.push_back( a1_kin.jac(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
+
+        // calculate derivative of fk wrt rho
+        dfdrhoi.push_back( a1_kin.dfk_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
+        dfdrhoip1.push_back( a1_kin.dfk_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
         // calculate vm
         vi.push_back( -R_br*Ji[j]*_dphi_0.segment<3>(3*j) - R_w_0_x*(p_br + R_br*fi[j]) );
         vip1.push_back( -R_br*Jip1[j]*_dphi_1.segment<3>(3*j) - R_w_1_x*(p_br + R_br*fip1[j]) );
@@ -158,23 +163,23 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         // calculate g
         Eigen::MatrixXd dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
         Eigen::MatrixXd kron_dphi0(3,9); kron_dphi0.setZero();
-        kron_dphi0(0,0) = kron_dphi0(1,1) = kron_dphi0(2,2) = _phi_0(0);
-        kron_dphi0(0,3) = kron_dphi0(1,4) = kron_dphi0(2,5) = _phi_0(1);
-        kron_dphi0(0,6) = kron_dphi0(1,7) = kron_dphi0(2,8) = _phi_0(2);
-        gi.push_back( -delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdrho0) + R_w_0_x*R_br*Ji[j] );
+        kron_dphi0(0,0) = kron_dphi0(1,1) = kron_dphi0(2,2) = _dphi_0(0+3*j);
+        kron_dphi0(0,3) = kron_dphi0(1,4) = kron_dphi0(2,5) = _dphi_0(1+3*j);
+        kron_dphi0(0,6) = kron_dphi0(1,7) = kron_dphi0(2,8) = _dphi_0(2+3*j);
+        gi.push_back( -delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdrho0 + R_w_0_x*R_br*dfdrhoi[j]) );
 
         Eigen::MatrixXd dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
         Eigen::MatrixXd kron_dphi1(3,9); kron_dphi1.setZero();
-        kron_dphi1(0,0) = kron_dphi1(1,1) = kron_dphi1(2,2) = _phi_1(0);
-        kron_dphi1(0,3) = kron_dphi1(1,4) = kron_dphi1(2,5) = _phi_1(1);
-        kron_dphi1(0,6) = kron_dphi1(1,7) = kron_dphi1(2,8) = _phi_1(2);
-        gip1.push_back( -result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdrho1) + R_w_1_x*R_br*Jip1[j] );
+        kron_dphi1(0,0) = kron_dphi1(1,1) = kron_dphi1(2,2) = _dphi_1(0+3*j);
+        kron_dphi1(0,3) = kron_dphi1(1,4) = kron_dphi1(2,5) = _dphi_1(1+3*j);
+        kron_dphi1(0,6) = kron_dphi1(1,7) = kron_dphi1(2,8) = _dphi_1(2+3*j);
+        gip1.push_back( -result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdrho1+ R_w_1_x*R_br*dfdrhoip1[j]) );
 
         // calculate h
         Eigen::MatrixXd dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
-        hi.push_back( delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdphi0) + R_w_0_x*R_br*Ji[j] );
+        hi.push_back( delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdphi0 + R_w_0_x*R_br*Ji[j]) );
         Eigen::MatrixXd dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
-        hip1.push_back( result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdphi1) + R_w_1_x*R_br*Jip1[j] );
+        hip1.push_back( result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdphi1 + R_w_1_x*R_br*Jip1[j]) );
     }
 
     if(update_jacobian)
@@ -216,10 +221,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
         // F row 4 5 6 7
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            F.block<3, 3>(9+3*j, 3) = 0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) +
+            F.block<3, 3>(9+3*j, 3) = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
                                       0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
             F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
-            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j]);
+            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
+                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5
             F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
         }
         F.block<3, 3>(21, 21) = Matrix3d::Identity();
@@ -336,9 +343,145 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     cout << "v diff       " << (turb_delta_v - result_delta_v).transpose() << endl;
     cout << "v jacob diff " << (step_jacobian.block<3, 3>(6, 0) * turb).transpose() << endl;
     cout << "ba diff      " << (turb_linearized_ba - result_linearized_ba).transpose() << endl;
-    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(9, 0) * turb).transpose() << endl;
+    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(21, 0) * turb).transpose() << endl;
     cout << "bg diff " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
-    cout << "bg jacob diff " << (step_jacobian.block<3, 3>(12, 0) * turb).transpose() << endl;
+    cout << "bg jacob diff " << (step_jacobian.block<3, 3>(24, 0) * turb).transpose() << endl;
 
+    midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
+                        _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
+                        delta_p, delta_q * Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2), delta_v, delta_epsilon,
+                        linearized_ba, linearized_bg, linearized_rho,
+                        turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon,
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+    cout << "turb q       " << endl;
+    cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
+    cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 3) * turb).transpose() << endl;
+    cout << "q diff       " << ((result_delta_q.inverse() * turb_delta_q).vec() * 2).transpose() << endl;
+    cout << "q jacob diff " << (step_jacobian.block<3, 3>(3, 3) * turb).transpose() << endl;
+    cout << "v diff       " << (turb_delta_v - result_delta_v).transpose() << endl;
+    cout << "v jacob diff " << (step_jacobian.block<3, 3>(6, 3) * turb).transpose() << endl;
+    cout << "epsilon1 diff       " << (turb_delta_epsilon[0] - result_delta_epsilon[0]).transpose() << endl;
+    cout << "epsilon1 jacob diff " << (step_jacobian.block<3, 3>(9, 3) * turb).transpose() << endl;
+    cout << "epsilon2 diff       " << (turb_delta_epsilon[1] - result_delta_epsilon[1]).transpose() << endl;
+    cout << "epsilon2 jacob diff " << (step_jacobian.block<3, 3>(12, 3) * turb).transpose() << endl;
+    cout << "epsilon3 diff       " << (turb_delta_epsilon[2] - result_delta_epsilon[2]).transpose() << endl;
+    cout << "epsilon3 jacob diff " << (step_jacobian.block<3, 3>(15, 3) * turb).transpose() << endl;
+    cout << "epsilon4 diff       " << (turb_delta_epsilon[3] - result_delta_epsilon[3]).transpose() << endl;
+    cout << "epsilon4 jacob diff " << (step_jacobian.block<3, 3>(18, 3) * turb).transpose() << endl;
+    cout << "ba diff      " << (turb_linearized_ba - result_linearized_ba).transpose() << endl;
+    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(21, 3) * turb).transpose() << endl;
+    cout << "bg diff      " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
+    cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 3) * turb).transpose() << endl;
+
+
+    midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
+                        _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
+                        delta_p, delta_q, delta_v, delta_epsilon,
+                        linearized_ba + turb, linearized_bg, linearized_rho,
+                        turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon,
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+    cout << "turb ba      " << endl;
+    cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
+    cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 21) * turb).transpose() << endl;
+    cout << "q diff       " << ((result_delta_q.inverse() * turb_delta_q).vec() * 2).transpose() << endl;
+    cout << "q jacob diff " << (step_jacobian.block<3, 3>(3, 21) * turb).transpose() << endl;
+    cout << "v diff       " << (turb_delta_v - result_delta_v).transpose() << endl;
+    cout << "v jacob diff " << (step_jacobian.block<3, 3>(6, 21) * turb).transpose() << endl;
+    cout << "epsilon1 diff       " << (turb_delta_epsilon[0] - result_delta_epsilon[0]).transpose() << endl;
+    cout << "epsilon1 jacob diff " << (step_jacobian.block<3, 3>(9, 21) * turb).transpose() << endl;
+    cout << "epsilon2 diff       " << (turb_delta_epsilon[1] - result_delta_epsilon[1]).transpose() << endl;
+    cout << "epsilon2 jacob diff " << (step_jacobian.block<3, 3>(12, 21) * turb).transpose() << endl;
+    cout << "epsilon3 diff       " << (turb_delta_epsilon[2] - result_delta_epsilon[2]).transpose() << endl;
+    cout << "epsilon3 jacob diff " << (step_jacobian.block<3, 3>(15, 21) * turb).transpose() << endl;
+    cout << "epsilon4 diff       " << (turb_delta_epsilon[3] - result_delta_epsilon[3]).transpose() << endl;
+    cout << "epsilon4 jacob diff " << (step_jacobian.block<3, 3>(18, 21) * turb).transpose() << endl;
+    cout << "ba diff      " << (turb_linearized_ba - result_linearized_ba).transpose() << endl;
+    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(21, 21) * turb).transpose() << endl;
+    cout << "bg diff      " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
+    cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 21) * turb).transpose() << endl;
+
+    midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
+                        _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
+                        delta_p, delta_q, delta_v, delta_epsilon,
+                        linearized_ba, linearized_bg + turb, linearized_rho,
+                        turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon,
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+    cout << "turb bg      " << endl;
+    cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
+    cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 24) * turb).transpose() << endl;
+    cout << "q diff       " << ((result_delta_q.inverse() * turb_delta_q).vec() * 2).transpose() << endl;
+    cout << "q jacob diff " << (step_jacobian.block<3, 3>(3, 24) * turb).transpose() << endl;
+    cout << "v diff       " << (turb_delta_v - result_delta_v).transpose() << endl;
+    cout << "v jacob diff " << (step_jacobian.block<3, 3>(6, 24) * turb).transpose() << endl;
+    cout << "epsilon1 diff       " << (turb_delta_epsilon[0] - result_delta_epsilon[0]).transpose() << endl;
+    cout << "epsilon1 jacob diff " << (step_jacobian.block<3, 3>(9, 24) * turb).transpose() << endl;
+    cout << "epsilon2 diff       " << (turb_delta_epsilon[1] - result_delta_epsilon[1]).transpose() << endl;
+    cout << "epsilon2 jacob diff " << (step_jacobian.block<3, 3>(12, 24) * turb).transpose() << endl;
+    cout << "epsilon3 diff       " << (turb_delta_epsilon[2] - result_delta_epsilon[2]).transpose() << endl;
+    cout << "epsilon3 jacob diff " << (step_jacobian.block<3, 3>(15, 24) * turb).transpose() << endl;
+    cout << "epsilon4 diff       " << (turb_delta_epsilon[3] - result_delta_epsilon[3]).transpose() << endl;
+    cout << "epsilon4 jacob diff " << (step_jacobian.block<3, 3>(18, 24) * turb).transpose() << endl;
+    cout << "ba diff      " << (turb_linearized_ba - result_linearized_ba).transpose() << endl;
+    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(21, 24) * turb).transpose() << endl;
+    cout << "bg diff      " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
+    cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 24) * turb).transpose() << endl;
+
+
+    Eigen::VectorXd input_turb_linearized_rho = linearized_rho;
+    input_turb_linearized_rho.segment<3>(0) += turb;
+    midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
+                        _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
+                        delta_p, delta_q, delta_v, delta_epsilon,
+                        linearized_ba, linearized_bg, input_turb_linearized_rho,
+                        turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon,
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+    cout << "turb rho1      " << endl;
+    cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
+    cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 27) * turb).transpose() << endl;
+    cout << "q diff       " << ((result_delta_q.inverse() * turb_delta_q).vec() * 2).transpose() << endl;
+    cout << "q jacob diff " << (step_jacobian.block<3, 3>(3, 27) * turb).transpose() << endl;
+    cout << "v diff       " << (turb_delta_v - result_delta_v).transpose() << endl;
+    cout << "v jacob diff " << (step_jacobian.block<3, 3>(6, 27) * turb).transpose() << endl;
+    cout << "epsilon1 diff       " << (turb_delta_epsilon[0] - result_delta_epsilon[0]).transpose() << endl;
+    cout << "epsilon1 jacob diff " << (step_jacobian.block<3, 3>(9, 27) * turb).transpose() << endl;
+    cout << "epsilon2 diff       " << (turb_delta_epsilon[1] - result_delta_epsilon[1]).transpose() << endl;
+    cout << "epsilon2 jacob diff " << (step_jacobian.block<3, 3>(12, 27) * turb).transpose() << endl;
+    cout << "epsilon3 diff       " << (turb_delta_epsilon[2] - result_delta_epsilon[2]).transpose() << endl;
+    cout << "epsilon3 jacob diff " << (step_jacobian.block<3, 3>(15, 27) * turb).transpose() << endl;
+    cout << "epsilon4 diff       " << (turb_delta_epsilon[3] - result_delta_epsilon[3]).transpose() << endl;
+    cout << "epsilon4 jacob diff " << (step_jacobian.block<3, 3>(18, 27) * turb).transpose() << endl;
+    cout << "ba diff      " << (turb_linearized_ba - result_linearized_ba).transpose() << endl;
+    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(21, 27) * turb).transpose() << endl;
+    cout << "bg diff      " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
+    cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 27) * turb).transpose() << endl;
+
+    input_turb_linearized_rho = linearized_rho;
+    input_turb_linearized_rho.segment<3>(6) += turb;
+    midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
+                        _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
+                        delta_p, delta_q, delta_v, delta_epsilon,
+                        linearized_ba, linearized_bg, input_turb_linearized_rho,
+                        turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon,
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+    cout << "turb rho3      " << endl;
+    cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
+    cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 33) * turb).transpose() << endl;
+    cout << "q diff       " << ((result_delta_q.inverse() * turb_delta_q).vec() * 2).transpose() << endl;
+    cout << "q jacob diff " << (step_jacobian.block<3, 3>(3, 33) * turb).transpose() << endl;
+    cout << "v diff       " << (turb_delta_v - result_delta_v).transpose() << endl;
+    cout << "v jacob diff " << (step_jacobian.block<3, 3>(6, 33) * turb).transpose() << endl;
+    cout << "epsilon1 diff       " << (turb_delta_epsilon[0] - result_delta_epsilon[0]).transpose() << endl;
+    cout << "epsilon1 jacob diff " << (step_jacobian.block<3, 3>(9, 33) * turb).transpose() << endl;
+    cout << "epsilon2 diff       " << (turb_delta_epsilon[1] - result_delta_epsilon[1]).transpose() << endl;
+    cout << "epsilon2 jacob diff " << (step_jacobian.block<3, 3>(12, 33) * turb).transpose() << endl;
+    cout << "epsilon3 diff       " << (turb_delta_epsilon[2] - result_delta_epsilon[2]).transpose() << endl;
+    cout << "epsilon3 jacob diff " << (step_jacobian.block<3, 3>(15, 33) * turb).transpose() << endl;
+    cout << "epsilon4 diff       " << (turb_delta_epsilon[3] - result_delta_epsilon[3]).transpose() << endl;
+    cout << "epsilon4 jacob diff " << (step_jacobian.block<3, 3>(18, 33) * turb).transpose() << endl;
+    cout << "ba diff      " << (turb_linearized_ba - result_linearized_ba).transpose() << endl;
+    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(21, 33) * turb).transpose() << endl;
+    cout << "bg diff      " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
+    cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 33) * turb).transpose() << endl;
+    cout << "rho jacob diff" << (step_jacobian.block<3, 3>(33, 33) * turb).transpose() << endl;
 
 }
