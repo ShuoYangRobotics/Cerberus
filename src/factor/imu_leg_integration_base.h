@@ -27,18 +27,29 @@ public:
     void propagate(double _dt, const Eigen::Vector3d &_acc_1, const Eigen::Vector3d &_gyr_1,
                    const Ref<const VectorXd>& _phi_1, const Ref<const VectorXd>& _dphi_1, const Ref<const VectorXd>& _c_1);
 
-    void midPointIntegration(double _dt,
-                             const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
-                             const Eigen::Vector3d &_acc_1, const Eigen::Vector3d &_gyr_1,
-                             const Ref<const VectorXd> &_phi_0, const Ref<const VectorXd> &_dphi_0, const Ref<const VectorXd> &_c_0,
-                             const Ref<const VectorXd> &_phi_1, const Ref<const VectorXd> &_dphi_1, const Ref<const VectorXd> &_c_1,
-                             const Eigen::Vector3d &delta_p, const Eigen::Quaterniond &delta_q, const Eigen::Vector3d &delta_v,
-                             const std::vector<Eigen::Vector3d>& delta_epsilon,
-                             const Eigen::Vector3d &linearized_ba, const Eigen::Vector3d &linearized_bg, const Ref<const VectorXd> &linearized_rho,
-                             Eigen::Vector3d &result_delta_p, Eigen::Quaterniond &result_delta_q, Eigen::Vector3d &result_delta_v,
-                             std::vector<Eigen::Vector3d> &result_delta_epsilon,
-                             Eigen::Vector3d &result_linearized_ba, Eigen::Vector3d &result_linearized_bg, Ref<Eigen::VectorXd> &result_linearized_rho,
-                             bool update_jacobian);
+    void midPointIntegration(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
+                             const Vector3d &_acc_1, const Vector3d &_gyr_1,
+                             const Ref<const VectorXd> &_phi_0, const Ref<const VectorXd> &_dphi_0,
+                             const Ref<const VectorXd> &_c_0, const Ref<const VectorXd> &_phi_1,
+                             const Ref<const VectorXd> &_dphi_1, const Ref<const VectorXd> &_c_1,
+                             const Vector3d &delta_p, const Quaterniond &delta_q,
+                             const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
+                             const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+                             const Ref<const VectorXd> &linearized_rho, Vector3d &result_delta_p,
+                             Quaterniond &result_delta_q, Vector3d &result_delta_v,
+                             vector<Eigen::Vector3d> &result_delta_epsilon,
+                             Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
+                             Eigen::VectorXd &result_linearized_rho, bool update_jacobian);
+
+    void checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
+                  const Vector3d &_acc_1, const Vector3d &_gyr_1,
+                  const Ref<const VectorXd> &_phi_0, const Ref<const VectorXd> &_dphi_0,
+                  const Ref<const VectorXd> &_c_0, const Ref<const VectorXd> &_phi_1,
+                  const Ref<const VectorXd> &_dphi_1, const Ref<const VectorXd> &_c_1,
+                  const Vector3d &delta_p, const Quaterniond &delta_q,
+                  const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
+                  const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+                  const Ref<const VectorXd> &linearized_rho);
 
 private:
     double dt;
@@ -62,6 +73,8 @@ private:
 
     Eigen::Matrix<double, STATE_SIZE, STATE_SIZE> jacobian, covariance;
     Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
+    Eigen::Matrix<double, STATE_SIZE, STATE_SIZE> step_jacobian;
+    Eigen::Matrix<double, STATE_SIZE, NOISE_SIZE> step_V;
 
     double sum_dt;
     Eigen::Vector3d delta_p;  // alpha

@@ -23,6 +23,7 @@
 #include "../featureTracker/feature_manager.h"
 #include "../featureTracker/feature_tracker.h"
 #include "../factor/imu_factor.h"
+#include "../factor/imu_leg_factor.h"
 #include "../factor/pose_local_parameterization.h"
 #include "../factor/marginalization_factor.h"
 #include "../factor/projectionTwoFrameOneCamFactor.h"
@@ -49,6 +50,10 @@ public:
     void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame);
     void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity);
+    void processIMULeg(double t, double dt,
+                       const Vector3d &linear_acceleration, const Vector3d &angular_velocity,
+                       const Ref<const VectorXd> &joint_angle, const Ref<const VectorXd> &joint_velocity,
+                       const Ref<const VectorXd> &foot_contact);
     // // most important function, trigger optimization
     void processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header);
     void processMeasurements();
@@ -135,6 +140,10 @@ public:
     Matrix3d        Rs[(WINDOW_SIZE + 1)];
     Vector3d        Bas[(WINDOW_SIZE + 1)];
     Vector3d        Bgs[(WINDOW_SIZE + 1)];
+    Vector3d        Rho1[(WINDOW_SIZE + 1)];
+    Vector3d        Rho2[(WINDOW_SIZE + 1)];
+    Vector3d        Rho3[(WINDOW_SIZE + 1)];
+    Vector3d        Rho4[(WINDOW_SIZE + 1)];
     double td;
 
     Matrix3d back_R0, last_R, last_R0;
@@ -142,11 +151,16 @@ public:
     double Headers[(WINDOW_SIZE + 1)];
 
     IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)];
+    IMULegIntegrationBase * il_pre_integrations[(WINDOW_SIZE + 1)];
     Vector3d acc_0, gyr_0;
+    VectorXd phi_0, dphi_0, c_0;
 
     vector<double> dt_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> linear_acceleration_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> angular_velocity_buf[(WINDOW_SIZE + 1)];
+    vector<VectorXd> joint_angle_buf[(WINDOW_SIZE + 1)];
+    vector<VectorXd> joint_velocity_buf[(WINDOW_SIZE + 1)];
+    vector<VectorXd> foot_contact_buf[(WINDOW_SIZE + 1)];
 
     int frame_count;
     int sum_of_outlier, sum_of_back, sum_of_front, sum_of_invalid;

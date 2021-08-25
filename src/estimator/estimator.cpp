@@ -55,6 +55,12 @@ void Estimator::clearState() {
             delete pre_integrations[i];
         }
         pre_integrations[i] = nullptr;
+
+        if (il_pre_integrations[i] != nullptr)
+        {
+            delete il_pre_integrations[i];
+        }
+        il_pre_integrations[i] = nullptr;
     }
 
     for (int i = 0; i < NUM_OF_CAM; i++)
@@ -439,7 +445,7 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
 // in MULTIPLE_THREAD mode, this function will be called periodically
 void Estimator::processMeasurements()
 {
-    while (1)
+    while (true)
     {
 //        printf("process measurments\n");
         pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > feature;
@@ -485,7 +491,27 @@ void Estimator::processMeasurements()
             Vector3d        tmpVs;
             Matrix3d        tmpRs;
 
-            if(USE_IMU)
+//            if (USE_LEG && USE_IMU) {
+//                // average acc to get initial Rs[0]
+//                if(!initFirstPoseFlag)
+//                    initFirstIMUPose(accVector);
+//                for(size_t i = 0; i < accVector.size(); i++)
+//                {
+//                    double dt;
+//                    if(i == 0)
+//                        dt = accVector[i].first - prevTime;
+//                    else if (i == accVector.size() - 1)
+//                        dt = curTime - accVector[i - 1].first;
+//                    else
+//                        dt = accVector[i].first - accVector[i - 1].first;
+////                    processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
+//
+//                    processIMULeg(accVector[i].first, dt, accVector[i].second, gyrVector[i].second,
+//                                  jointAngVector[i].second, jointVelVector[i].second, footForceVector[i].second);
+//                }
+//            }
+//            else
+                if(USE_IMU)
             {
                 // average acc to get initial Rs[0]
                 if(!initFirstPoseFlag)
@@ -509,59 +535,59 @@ void Estimator::processMeasurements()
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
 
-                if (USE_LEG)
-                {
-                    // integrate leg to compare
-                    tmpPs2 = tmpPs;
-                    Eigen::Matrix3d R_wb = tmpRs;
-                    // TODO: check jointVelVector, jointAngVector and footForceVector have the same length, otherwise the intergation will gone error
-
-                    for (size_t i = 0; i < jointAngVector.size(); i++) {
-                        double dt;
-                        if (i == 0)
-                            dt = jointAngVector[i].first - prevTime;
-                        else if (i == jointAngVector.size() - 1)
-                            dt = curTime - jointAngVector[i - 1].first;
-                        else
-                            dt = jointAngVector[i].first - jointAngVector[i - 1].first;
-                        // get current angular velocity
-                        double t = jointAngVector[i].first;
-                        Eigen::Vector3d omega = Utility::lerpGyro(t, gyrVector) - Bgs[frame_count];
-
-                        R_wb *= Utility::deltaQ(omega * dt).toRotationMatrix();
-
-                        // each leg integrates one velocity, they average to final v_measure
-                        Vector3d v_measure(0, 0, 0);
-                        double trust[4];
-                        double trust_sum = 0;
-                        //                    std::cout << "leg velocities" << std::endl;
-                        for (int j = 0; j < NUM_OF_LEG; j++) {
-                            Eigen::Vector3d phi = jointAngVector[i].second.segment<3>(3 * j);
-                            Eigen::Vector3d dphi = jointVelVector[i].second.segment<3>(3 * j);
-
-                            // first in body frame
-                            Eigen::MatrixXd jac = a1_kin.jac(phi, rho_opt_list[j], rho_fix_list[j]);
-                            Vector3d p_rf = a1_kin.fk(phi, rho_opt_list[j], rho_fix_list[j]);
-                            Vector3d p_bf = p_br + R_br * p_br;
-                            Vector3d leg_observed_v_b = -R_br * jac * dphi - Utility::skewSymmetric(omega) * p_bf;
-
-                            // observed velocity in world frame
-                            Vector3d leg_observed_v = R_wb * leg_observed_v_b;
-
-                            trust[j] = std::min(std::max(
-                                    (footForceVector[i].second.segment<3>(3 * j).squaredNorm() - 10.0*10.0) / (120.0*120 - 0.0), 0.0),
-                                                1.0);
-                            trust_sum += trust[j];
-                            v_measure += trust[j] * leg_observed_v;
-//                            std::cout << leg_observed_v.transpose() << " \t with trust " << trust[j] << " force " << footForceVector[i].second.segment<3>(3 * j).norm() <<  std::endl;
-                        }
-//                        std::cout << "average leg velocities" << std::endl;
-                        v_measure /= trust_sum;
-//                        std::cout << v_measure.transpose() << std::endl;
-
-                        tmpPs2 += v_measure* dt;
-                    }
-                }
+//                if (USE_LEG)
+//                {
+//                    // integrate leg to compare
+//                    tmpPs2 = tmpPs;
+//                    Eigen::Matrix3d R_wb = tmpRs;
+//                    // TODO: check jointVelVector, jointAngVector and footForceVector have the same length, otherwise the intergation will gone error
+//
+//                    for (size_t i = 0; i < jointAngVector.size(); i++) {
+//                        double dt;
+//                        if (i == 0)
+//                            dt = jointAngVector[i].first - prevTime;
+//                        else if (i == jointAngVector.size() - 1)
+//                            dt = curTime - jointAngVector[i - 1].first;
+//                        else
+//                            dt = jointAngVector[i].first - jointAngVector[i - 1].first;
+//                        // get current angular velocity
+//                        double t = jointAngVector[i].first;
+//                        Eigen::Vector3d omega = Utility::lerpGyro(t, gyrVector) - Bgs[frame_count];
+//
+//                        R_wb *= Utility::deltaQ(omega * dt).toRotationMatrix();
+//
+//                        // each leg integrates one velocity, they average to final v_measure
+//                        Vector3d v_measure(0, 0, 0);
+//                        double trust[4];
+//                        double trust_sum = 0;
+//                        //                    std::cout << "leg velocities" << std::endl;
+//                        for (int j = 0; j < NUM_OF_LEG; j++) {
+//                            Eigen::Vector3d phi = jointAngVector[i].second.segment<3>(3 * j);
+//                            Eigen::Vector3d dphi = jointVelVector[i].second.segment<3>(3 * j);
+//
+//                            // first in body frame
+//                            Eigen::MatrixXd jac = a1_kin.jac(phi, rho_opt_list[j], rho_fix_list[j]);
+//                            Vector3d p_rf = a1_kin.fk(phi, rho_opt_list[j], rho_fix_list[j]);
+//                            Vector3d p_bf = p_br + R_br * p_br;
+//                            Vector3d leg_observed_v_b = -R_br * jac * dphi - Utility::skewSymmetric(omega) * p_bf;
+//
+//                            // observed velocity in world frame
+//                            Vector3d leg_observed_v = R_wb * leg_observed_v_b;
+//
+//                            trust[j] = std::min(std::max(
+//                                    (footForceVector[i].second.segment<3>(3 * j).squaredNorm() - 10.0*10.0) / (120.0*120 - 0.0), 0.0),
+//                                                1.0);
+//                            trust_sum += trust[j];
+//                            v_measure += trust[j] * leg_observed_v;
+////                            std::cout << leg_observed_v.transpose() << " \t with trust " << trust[j] << " force " << footForceVector[i].second.segment<3>(3 * j).norm() <<  std::endl;
+//                        }
+////                        std::cout << "average leg velocities" << std::endl;
+//                        v_measure /= trust_sum;
+////                        std::cout << v_measure.transpose() << std::endl;
+//
+//                        tmpPs2 += v_measure* dt;
+//                    }
+//                }
             }
             // Rs Ps now contains value after IMU propagation
 //            std::cout << "Ps before IMU processing" << tmpPs.transpose() <<std::endl;
@@ -661,6 +687,68 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
     }
     acc_0 = linear_acceleration;
     gyr_0 = angular_velocity; 
+}
+
+void Estimator::processIMULeg(double t, double dt,
+                   const Vector3d &linear_acceleration, const Vector3d &angular_velocity,
+                   const Ref<const VectorXd> &joint_angle, const Ref<const VectorXd> &joint_velocity,
+                   const Ref<const VectorXd> &foot_contact)
+{
+    if (!first_imu)
+    {
+        first_imu = true;
+        acc_0 = linear_acceleration;
+        gyr_0 = angular_velocity;
+        phi_0 = joint_angle;
+        dphi_0 = joint_velocity;
+        c_0 = foot_contact;
+    }
+
+    if (!pre_integrations[frame_count])
+    {
+        pre_integrations[frame_count] = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
+    }
+
+    if (!il_pre_integrations[frame_count])
+    {
+        Eigen::VectorXd tmp(12);
+        tmp.segment<3>(0) = Rho1[frame_count];
+        tmp.segment<3>(3) = Rho2[frame_count];
+        tmp.segment<3>(6) = Rho3[frame_count];
+        tmp.segment<3>(9) = Rho4[frame_count];
+        il_pre_integrations[frame_count] = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
+                                                                     Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
+    }
+
+    if (frame_count != 0)
+    {
+        pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);
+        il_pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity, joint_angle, joint_velocity, foot_contact);
+        //if(solver_flag != NON_LINEAR)
+        tmp_pre_integration->push_back(dt, linear_acceleration, angular_velocity);
+
+        dt_buf[frame_count].push_back(dt);
+        linear_acceleration_buf[frame_count].push_back(linear_acceleration);
+        angular_velocity_buf[frame_count].push_back(angular_velocity);
+        joint_angle_buf[frame_count].emplace_back(joint_angle);
+        joint_velocity_buf[frame_count].emplace_back(joint_velocity);
+        foot_contact_buf[frame_count].emplace_back(foot_contact);
+
+        int j = frame_count;
+        Vector3d un_acc_0 = Rs[j] * (acc_0 - Bas[j]) - g;
+        Vector3d un_gyr = 0.5 * (gyr_0 + angular_velocity) - Bgs[j];
+        Rs[j] *= Utility::deltaQ(un_gyr * dt).toRotationMatrix();
+        Vector3d un_acc_1 = Rs[j] * (linear_acceleration - Bas[j]) - g;
+        Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
+        Ps[j] += dt * Vs[j] + 0.5 * dt * dt * un_acc;
+        Vs[j] += dt * un_acc;
+    }
+    acc_0 = linear_acceleration;
+    gyr_0 = angular_velocity;
+    phi_0 = joint_angle;
+    dphi_0 = joint_velocity;
+    c_0 = foot_contact;
+
 }
 
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header)
