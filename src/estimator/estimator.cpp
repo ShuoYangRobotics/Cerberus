@@ -1402,6 +1402,10 @@ void Estimator::optimization()
             int j = i + 1;
             if (pre_integrations[j]->sum_dt > 10.0)
                 continue;
+
+            // for testing:
+            // add a new IMU-leg factor, evaluate residual
+
             IMUFactor* imu_factor = new IMUFactor(pre_integrations[j]);
             problem.AddResidualBlock(imu_factor, NULL, para_Pose[i], para_SpeedBias[i], para_Pose[j], para_SpeedBias[j]);
         }

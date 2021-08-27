@@ -12,8 +12,15 @@
 #include "../utils/parameters.h"
 #include "imu_leg_integration_base.h"
 
-class IMULegFactor {
+class IMULegFactor : public ceres::SizedCostFunction<39, 7, 21, 7, 21>{
+public:
+    IMULegFactor() = delete;
+    IMULegFactor(IMULegIntegrationBase* _il_pre_integration):il_pre_integration(_il_pre_integration)
+            {
+            }
 
+    virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
+    IMULegIntegrationBase* il_pre_integration;
 };
 
 

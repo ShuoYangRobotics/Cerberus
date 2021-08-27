@@ -74,6 +74,7 @@ enum SIZE_PARAMETERIZATION
 {
     SIZE_POSE = 7,       // p3, q4
     SIZE_SPEEDBIAS = 9,  // v 3, ba 3, bg 3, bv 3, rho1 3, rho2 3, rho3 3, rho 4 3
+    SIZE_SPEED_LEG_BIAS = 21,
     SIZE_FEATURE = 1
 };
 
@@ -94,16 +95,19 @@ enum NoiseOrder
     O_GW = 9
 };
 
-enum ILStateOrder
+enum ILStateOrder // error state, total is RESIDUAL_STATE_SIZE
 {
     ILO_P = 0,
     ILO_R = 3,
     ILO_V = 6,
-    ILO_BA = 9,
-    ILO_BG = 12,
-    ILO_BV = 15,
-    ILO_RHO1 = 18,
-    ILO_RHO2 = 21,
-    ILO_RHO3 = 24,
-    ILO_RHO4 = 27,
+    ILO_EPS1 = 9,
+    ILO_EPS2 = 12,
+    ILO_EPS3 = 15,
+    ILO_EPS4 = 18,
+    ILO_BA = 21,
+    ILO_BG = 24,
+    ILO_RHO1 = 27,
+    ILO_RHO2 = 30,
+    ILO_RHO3 = 33,
+    ILO_RHO4 = 36,
 };

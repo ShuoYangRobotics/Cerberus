@@ -17,6 +17,8 @@
 #include <cstring>
 #include <eigen3/Eigen/Dense>
 
+typedef Eigen::Matrix<double, 12, 1> Vector12d;
+
 class Utility
 {
   public:
