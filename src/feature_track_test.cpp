@@ -157,9 +157,9 @@ void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
 //     ROS_INFO("received");
 //     TODO: is this time stamp enough? should another "td" be used here to compensate
     double t = a1_state -> header.stamp.toSec();
-    VectorXd joint_positions = VectorXd(NUM_OF_LEG*3);  // size 12
-    VectorXd joint_velocities = VectorXd(NUM_OF_LEG*3);  // size 12
-    VectorXd foot_forces = VectorXd(NUM_OF_LEG*3);      // size 12
+    Vector12d joint_positions;
+    Vector12d joint_velocities;
+    Vector12d foot_forces;
     for (int i = 0; i < NUM_OF_LEG; i++)
     {
         joint_positions(3*i+0) = a1_state -> position[3*i+0];

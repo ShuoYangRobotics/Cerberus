@@ -46,14 +46,14 @@ public:
     // interface
     void initFirstPose(Eigen::Vector3d p, Eigen::Matrix3d r);
     void inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity);
-    void inputLeg(double t, const VectorXd &jointAngles, const VectorXd &jointVels, const VectorXd &footForces);
+    void inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngles, const Eigen::Ref<const Vector12d>& jointVels, const Eigen::Ref<const Vector12d>& footForces);
     void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame);
     void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity);
     void processIMULeg(double t, double dt,
                        const Vector3d &linear_acceleration, const Vector3d &angular_velocity,
-                       const Ref<const VectorXd> &joint_angle, const Ref<const VectorXd> &joint_velocity,
-                       const Ref<const VectorXd> &foot_contact);
+                       const Ref<const Vector12d> &joint_angle, const Ref<const Vector12d> &joint_velocity,
+                       const Ref<const Vector12d> &foot_contact);
     // // most important function, trigger optimization
     void processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header);
     void processMeasurements();
@@ -62,9 +62,9 @@ public:
 
     // internal
     void clearState();
-    bool initialStructure();
-    bool visualInitialAlign();
-    bool relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l);
+//    bool initialStructure();
+//    bool visualInitialAlign();
+//    bool relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l);
     void slideWindow();
     void slideWindowNew();
     void slideWindowOld();
@@ -77,9 +77,9 @@ public:
     bool getIMUAndLegInterval(double t0, double t1, double t_delay,
                                          vector<pair<double, Eigen::Vector3d>> &accVector,
                                          vector<pair<double, Eigen::Vector3d>> &gyrVector,
-                                         vector<pair<double, Eigen::VectorXd>> &jointAngVector,
-                                         vector<pair<double, Eigen::VectorXd>> &jointVelVector,
-                                         vector<pair<double, Eigen::VectorXd>> &footForceVector);
+                                         vector<pair<double, Vector12d>> &jointAngVector,
+                                         vector<pair<double, Vector12d>> &jointVelVector,
+                                         vector<pair<double, Vector12d>> &footForceVector);
 //    bool getLegInterval(double t0, double t1,
 //                                   vector<pair<double, Eigen::VectorXd>> &jointAngVector,
 //                                   vector<pair<double, Eigen::VectorXd>> &jointVelVector,
@@ -114,9 +114,9 @@ public:
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
 
-    deque<pair<double, Eigen::VectorXd>> legAngBufList;
-    deque<pair<double, Eigen::VectorXd>> legAngVelBufList;
-    deque<pair<double, Eigen::VectorXd>> footForceBufList;
+    deque<pair<double, Vector12d>> legAngBufList;
+    deque<pair<double, Vector12d>> legAngVelBufList;
+    deque<pair<double, Vector12d>> footForceBufList;
 
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
     double prevTime, curTime;
@@ -153,14 +153,14 @@ public:
     IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)];
     IMULegIntegrationBase * il_pre_integrations[(WINDOW_SIZE + 1)];
     Vector3d acc_0, gyr_0;
-    VectorXd phi_0, dphi_0, c_0;
+    Vector12d phi_0, dphi_0, c_0;
 
     vector<double> dt_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> linear_acceleration_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> angular_velocity_buf[(WINDOW_SIZE + 1)];
-    vector<VectorXd> joint_angle_buf[(WINDOW_SIZE + 1)];
-    vector<VectorXd> joint_velocity_buf[(WINDOW_SIZE + 1)];
-    vector<VectorXd> foot_contact_buf[(WINDOW_SIZE + 1)];
+    vector<Vector12d> joint_angle_buf[(WINDOW_SIZE + 1)];
+    vector<Vector12d> joint_velocity_buf[(WINDOW_SIZE + 1)];
+    vector<Vector12d> foot_contact_buf[(WINDOW_SIZE + 1)];
 
     int frame_count;
     int sum_of_outlier, sum_of_back, sum_of_front, sum_of_invalid;
@@ -182,7 +182,8 @@ public:
 
     // variable of optimization
     double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];
-    double para_SpeedBias[WINDOW_SIZE + 1][SIZE_SPEEDBIAS];
+    double para_SpeedBias[WINDOW_SIZE + 1][SIZE_SPEEDBIAS]; // velocity and IMU bias
+    double para_LegBias[WINDOW_SIZE + 1][12];    // leg bias
     double para_Feature[NUM_OF_F][SIZE_FEATURE];
     double para_Ex_Pose[2][SIZE_POSE];
     double para_Retrive_Pose[SIZE_POSE];
@@ -196,6 +197,7 @@ public:
 
     map<double, ImageFrame> all_image_frame;
     IntegrationBase *tmp_pre_integration;
+    IMULegIntegrationBase *tmp_il_pre_integration;
 
     Eigen::Vector3d initP;
     Eigen::Matrix3d initR;

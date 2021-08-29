@@ -49,14 +49,14 @@ Eigen::Vector3d Utility::lerpGyro(double t, std::vector<std::pair<double, Eigen:
     }
 }
 
-Eigen::MatrixXd Utility::lerpLegSensors(double t, int &starting_idx,
-                                        std::deque<std::pair<double, Eigen::VectorXd>> jointAngVector,
-                                        std::deque<std::pair<double, Eigen::VectorXd>> jointAngVelVector,
-                                        std::deque<std::pair<double, Eigen::VectorXd>> footForceVector)
+Eigen::Matrix<double, 12, 3> Utility::lerpLegSensors(double t, int &starting_idx,
+                                        std::deque<std::pair<double, Vector12d>> jointAngVector,
+                                        std::deque<std::pair<double, Vector12d>> jointAngVelVector,
+                                        std::deque<std::pair<double, Vector12d>> footForceVector)
 {
     int idx1, idx2;
     double t1, t2;
-    Eigen::MatrixXd out(jointAngVector.front().second.size(),3);
+    Eigen::Matrix<double, 12, 3> out; out.setZero();
     if (t < jointAngVector.front().first)
     {
         out.col(0) = jointAngVector.front().second;
@@ -83,8 +83,8 @@ Eigen::MatrixXd Utility::lerpLegSensors(double t, int &starting_idx,
         }
         t1 = jointAngVector[idx1].first;
         t2 = jointAngVector[idx2].first;
-        Eigen::VectorXd vec1 = jointAngVector[idx1].second;
-        Eigen::VectorXd vec2 = jointAngVector[idx2].second;
+        Eigen::Matrix<double, 12, 1> vec1 = jointAngVector[idx1].second;
+        Eigen::Matrix<double, 12, 1> vec2 = jointAngVector[idx2].second;
         out.col(0) = vec1 + (t-t1)*(vec2-vec1)/(t2-t);
         vec1 = jointAngVelVector[idx1].second;
         vec2 = jointAngVelVector[idx2].second;

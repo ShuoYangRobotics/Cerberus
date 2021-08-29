@@ -30,6 +30,12 @@ void Estimator::clearState() {
         gyrBuf.pop();
     while(!featureBuf.empty())
         featureBuf.pop();
+    while(!legAngBufList.empty())
+        legAngBufList.pop_back();
+    while(!legAngVelBufList.empty())
+        legAngVelBufList.pop_back();
+    while(!footForceBufList.empty())
+        footForceBufList.pop_back();
 
     prevTime = -1;
     curTime = 0;
@@ -46,9 +52,18 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
+        Rho1[i].setZero(); Rho1[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho2[i].setZero(); Rho2[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho3[i].setZero(); Rho3[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho4[i].setZero(); Rho4[i] = 1e-5*Eigen::Vector3d::Random();
+
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
         angular_velocity_buf[i].clear();
+        joint_angle_buf[i].clear();
+        joint_velocity_buf[i].clear();
+        foot_contact_buf[i].clear();
+
 
         if (pre_integrations[i] != nullptr)
         {
@@ -79,10 +94,15 @@ void Estimator::clearState() {
 
     if (tmp_pre_integration != nullptr)
         delete tmp_pre_integration;
+
+    if (tmp_il_pre_integration!= nullptr)
+        delete tmp_il_pre_integration;
+
     if (last_marginalization_info != nullptr)
         delete last_marginalization_info;
 
     tmp_pre_integration = nullptr;
+    tmp_il_pre_integration = nullptr;
     last_marginalization_info = nullptr;
     last_marginalization_parameter_blocks.clear();
 
@@ -159,6 +179,7 @@ void Estimator::changeSensorType(int use_imu, int use_stereo)
                     delete last_marginalization_info;
 
                 tmp_pre_integration = nullptr;
+                tmp_il_pre_integration = nullptr;
                 last_marginalization_info = nullptr;
                 last_marginalization_parameter_blocks.clear();
             }
@@ -236,7 +257,8 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     }
 }
 
-void Estimator::inputLeg(double t, const VectorXd &jointAngles, const VectorXd &jointVels, const VectorXd &footForces)
+void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngles,
+                         const Eigen::Ref<const Vector12d>& jointVels, const Eigen::Ref<const Vector12d>& footForces)
 {
     mBuf.lock();
     legAngBufList.push_back(make_pair(t, jointAngles));
@@ -308,9 +330,9 @@ bool Estimator::IMUAvailable(double t)
 bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
                                      vector<pair<double, Eigen::Vector3d>> &accVector,
                                      vector<pair<double, Eigen::Vector3d>> &gyrVector,
-                                     vector<pair<double, Eigen::VectorXd>> &jointAngVector,
-                                     vector<pair<double, Eigen::VectorXd>> &jointVelVector,
-                                     vector<pair<double, Eigen::VectorXd>> &footForceVector)
+                                     vector<pair<double, Vector12d>> &jointAngVector,
+                                     vector<pair<double, Vector12d>> &jointVelVector,
+                                     vector<pair<double, Vector12d>> &footForceVector)
 {
     if(accBuf.empty())
     {
@@ -328,7 +350,7 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
             gyrBuf.pop();
         }
         int starting_idx = 0; // this is used to speed up lerpLegSensors
-        Eigen::MatrixXd lerpMtx;
+        Eigen::Matrix<double, 12, 3> lerpMtx;
         while (accBuf.front().first < t1)
         {
             // TODO: does this t_delay matters?
@@ -378,7 +400,7 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
     if (legAngBufList.size() > 100) {
         legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+50-1);
     }
-    std::cout << " leg buff size "<< legAngBufList.size() << std::endl;
+//    std::cout << " leg buff size "<< legAngBufList.size() << std::endl;
     return true;
 }
 
@@ -455,7 +477,7 @@ void Estimator::processMeasurements()
         vector<pair<double, Eigen::Vector3d>> accVector, gyrVector;
 
         // vector of time index, Vector12d for ang, vel Vector4d for footForce
-        vector<pair<double, Eigen::VectorXd>> jointAngVector, jointVelVector, footForceVector;
+        vector<pair<double, Vector12d>> jointAngVector, jointVelVector, footForceVector;
 
         if(!featureBuf.empty())
         {
@@ -513,8 +535,7 @@ void Estimator::processMeasurements()
                                   jointAngVector[i].second, jointVelVector[i].second, footForceVector[i].second);
                 }
             }
-            else
-                if(USE_IMU)
+            else if(USE_IMU)
             {
                 // average acc to get initial Rs[0]
                 if(!initFirstPoseFlag)
@@ -537,66 +558,7 @@ void Estimator::processMeasurements()
                         dt = accVector[i].first - accVector[i - 1].first;
                     processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
                 }
-
-//                if (USE_LEG)
-//                {
-//                    // integrate leg to compare
-//                    tmpPs2 = tmpPs;
-//                    Eigen::Matrix3d R_wb = tmpRs;
-//                    // TODO: check jointVelVector, jointAngVector and footForceVector have the same length, otherwise the intergation will gone error
-//
-//                    for (size_t i = 0; i < jointAngVector.size(); i++) {
-//                        double dt;
-//                        if (i == 0)
-//                            dt = jointAngVector[i].first - prevTime;
-//                        else if (i == jointAngVector.size() - 1)
-//                            dt = curTime - jointAngVector[i - 1].first;
-//                        else
-//                            dt = jointAngVector[i].first - jointAngVector[i - 1].first;
-//                        // get current angular velocity
-//                        double t = jointAngVector[i].first;
-//                        Eigen::Vector3d omega = Utility::lerpGyro(t, gyrVector) - Bgs[frame_count];
-//
-//                        R_wb *= Utility::deltaQ(omega * dt).toRotationMatrix();
-//
-//                        // each leg integrates one velocity, they average to final v_measure
-//                        Vector3d v_measure(0, 0, 0);
-//                        double trust[4];
-//                        double trust_sum = 0;
-//                        //                    std::cout << "leg velocities" << std::endl;
-//                        for (int j = 0; j < NUM_OF_LEG; j++) {
-//                            Eigen::Vector3d phi = jointAngVector[i].second.segment<3>(3 * j);
-//                            Eigen::Vector3d dphi = jointVelVector[i].second.segment<3>(3 * j);
-//
-//                            // first in body frame
-//                            Eigen::MatrixXd jac = a1_kin.jac(phi, rho_opt_list[j], rho_fix_list[j]);
-//                            Vector3d p_rf = a1_kin.fk(phi, rho_opt_list[j], rho_fix_list[j]);
-//                            Vector3d p_bf = p_br + R_br * p_br;
-//                            Vector3d leg_observed_v_b = -R_br * jac * dphi - Utility::skewSymmetric(omega) * p_bf;
-//
-//                            // observed velocity in world frame
-//                            Vector3d leg_observed_v = R_wb * leg_observed_v_b;
-//
-//                            trust[j] = std::min(std::max(
-//                                    (footForceVector[i].second.segment<3>(3 * j).squaredNorm() - 10.0*10.0) / (120.0*120 - 0.0), 0.0),
-//                                                1.0);
-//                            trust_sum += trust[j];
-//                            v_measure += trust[j] * leg_observed_v;
-////                            std::cout << leg_observed_v.transpose() << " \t with trust " << trust[j] << " force " << footForceVector[i].second.segment<3>(3 * j).norm() <<  std::endl;
-//                        }
-////                        std::cout << "average leg velocities" << std::endl;
-//                        v_measure /= trust_sum;
-////                        std::cout << v_measure.transpose() << std::endl;
-//
-//                        tmpPs2 += v_measure* dt;
-//                    }
-//                }
             }
-            // Rs Ps now contains value after IMU propagation
-//            std::cout << "Ps before IMU processing" << tmpPs.transpose() <<std::endl;
-//            std::cout << "Ps after IMU processing" << Ps[frame_count].transpose() <<std::endl;
-//            std::cout << "Ps after leg intergration" << tmpPs2.transpose() <<std::endl;
-
 
             mProcess.lock();
             processImage(feature.second, feature.first);
@@ -694,8 +656,8 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
 
 void Estimator::processIMULeg(double t, double dt,
                    const Vector3d &linear_acceleration, const Vector3d &angular_velocity,
-                   const Ref<const VectorXd> &joint_angle, const Ref<const VectorXd> &joint_velocity,
-                   const Ref<const VectorXd> &foot_contact)
+                   const Ref<const Vector12d> &joint_angle, const Ref<const Vector12d> &joint_velocity,
+                   const Ref<const Vector12d> &foot_contact)
 {
     if (!first_imu)
     {
@@ -714,7 +676,7 @@ void Estimator::processIMULeg(double t, double dt,
 
     if (!il_pre_integrations[frame_count])
     {
-        Eigen::VectorXd tmp(12);
+        Vector12d tmp;
         tmp.segment<3>(0) = Rho1[frame_count];
         tmp.segment<3>(3) = Rho2[frame_count];
         tmp.segment<3>(6) = Rho3[frame_count];
@@ -725,10 +687,11 @@ void Estimator::processIMULeg(double t, double dt,
 
     if (frame_count != 0)
     {
-        pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);
+//        pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);
         il_pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity, joint_angle, joint_velocity, foot_contact);
         //if(solver_flag != NON_LINEAR)
-        tmp_pre_integration->push_back(dt, linear_acceleration, angular_velocity);
+//        tmp_pre_integration->push_back(dt, linear_acceleration, angular_velocity);
+        tmp_il_pre_integration->push_back(dt, linear_acceleration, angular_velocity, joint_angle, joint_velocity, foot_contact);
 
         dt_buf[frame_count].push_back(dt);
         linear_acceleration_buf[frame_count].push_back(linear_acceleration);
@@ -775,53 +738,62 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     Headers[frame_count] = header;
 
     ImageFrame imageframe(image, header);
-    imageframe.pre_integration = tmp_pre_integration;
+    imageframe.il_pre_integration = tmp_il_pre_integration;
     all_image_frame.insert(make_pair(header, imageframe));
-    tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
+//    tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
 
-    if(ESTIMATE_EXTRINSIC == 2)
-    {
-        ROS_INFO("calibrating extrinsic param, rotation movement is needed");
-        if (frame_count != 0)
-        {
-            vector<pair<Vector3d, Vector3d>> corres = f_manager.getCorresponding(frame_count - 1, frame_count);
-            Matrix3d calib_ric;
-            if (initial_ex_rotation.CalibrationExRotation(corres, pre_integrations[frame_count]->delta_q, calib_ric))
-            {
-                ROS_WARN("initial extrinsic rotation calib success");
-                ROS_WARN_STREAM("initial extrinsic rotation: " << endl << calib_ric);
-                ric[0] = calib_ric;
-                RIC[0] = calib_ric;
-                ESTIMATE_EXTRINSIC = 1;
-            }
-        }
-    }
+    Vector12d tmp;
+    tmp.segment<3>(0) = Rho1[frame_count];
+    tmp.segment<3>(3) = Rho2[frame_count];
+    tmp.segment<3>(6) = Rho3[frame_count];
+    tmp.segment<3>(9) = Rho4[frame_count];
+    tmp_il_pre_integration = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
+                                                                 Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
+
+    // we do not really use this
+//    if(ESTIMATE_EXTRINSIC == 2)
+//    {
+//        ROS_INFO("calibrating extrinsic param, rotation movement is needed");
+//        if (frame_count != 0)
+//        {
+//            vector<pair<Vector3d, Vector3d>> corres = f_manager.getCorresponding(frame_count - 1, frame_count);
+//            Matrix3d calib_ric;
+//            if (initial_ex_rotation.CalibrationExRotation(corres, pre_integrations[frame_count]->delta_q, calib_ric))
+//            {
+//                ROS_WARN("initial extrinsic rotation calib success");
+//                ROS_WARN_STREAM("initial extrinsic rotation: " << endl << calib_ric);
+//                ric[0] = calib_ric;
+//                RIC[0] = calib_ric;
+//                ESTIMATE_EXTRINSIC = 1;
+//            }
+//        }
+//    }
 
     if (solver_flag == INITIAL)
     {
         // monocular + IMU initilization
-        if (!STEREO && USE_IMU)
-        {
-            if (frame_count == WINDOW_SIZE)
-            {
-                bool result = false;
-                if(ESTIMATE_EXTRINSIC != 2 && (header - initial_timestamp) > 0.1)
-                {
-                    result = initialStructure();
-                    initial_timestamp = header;
-                }
-                if(result)
-                {
-                    optimization();
-                    updateLatestStates();
-                    solver_flag = NON_LINEAR;
-                    slideWindow();
-                    ROS_INFO("Initialization finish!");
-                }
-                else
-                    slideWindow();
-            }
-        }
+//        if (!STEREO && USE_IMU)
+//        {
+//            if (frame_count == WINDOW_SIZE)
+//            {
+//                bool result = false;
+//                if(ESTIMATE_EXTRINSIC != 2 && (header - initial_timestamp) > 0.1)
+//                {
+//                    result = initialStructure();
+//                    initial_timestamp = header;
+//                }
+//                if(result)
+//                {
+//                    optimization();
+//                    updateLatestStates();
+//                    solver_flag = NON_LINEAR;
+//                    slideWindow();
+//                    ROS_INFO("Initialization finish!");
+//                }
+//                else
+//                    slideWindow();
+//            }
+//        }
 
         // stereo + IMU initilization
         if(STEREO && USE_IMU)
@@ -841,7 +813,9 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 solveGyroscopeBias(all_image_frame, Bgs);
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
-                    pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]);
+                    // TODO: maybe better initialize the leg bias
+                    Vector12d tmp; tmp.setZero();
+                    il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], tmp);
                 }
                 optimization();
                 updateLatestStates();
@@ -852,21 +826,21 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         }
 
         // stereo only initilization
-        if(STEREO && !USE_IMU)
-        {
-            f_manager.initFramePoseByPnP(frame_count, Ps, Rs, tic, ric);
-            f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
-            optimization();
-
-            if(frame_count == WINDOW_SIZE)
-            {
-                optimization();
-                updateLatestStates();
-                solver_flag = NON_LINEAR;
-                slideWindow();
-                ROS_INFO("Initialization finish!");
-            }
-        }
+//        if(STEREO && !USE_IMU)
+//        {
+//            f_manager.initFramePoseByPnP(frame_count, Ps, Rs, tic, ric);
+//            f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
+//            optimization();
+//
+//            if(frame_count == WINDOW_SIZE)
+//            {
+//                optimization();
+//                updateLatestStates();
+//                solver_flag = NON_LINEAR;
+//                slideWindow();
+//                ROS_INFO("Initialization finish!");
+//            }
+//        }
 
         if(frame_count < WINDOW_SIZE)
         {
@@ -877,6 +851,10 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             Rs[frame_count] = Rs[prev_frame];
             Bas[frame_count] = Bas[prev_frame];
             Bgs[frame_count] = Bgs[prev_frame];
+            Rho1[frame_count] = Rho1[prev_frame];
+            Rho2[frame_count] = Rho2[prev_frame];
+            Rho3[frame_count] = Rho3[prev_frame];
+            Rho4[frame_count] = Rho4[prev_frame];
         }
 
     }
@@ -923,243 +901,244 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     }  
 }
 
-bool Estimator::initialStructure()
-{
-    TicToc t_sfm;
-    //check imu observibility
-    {
-        map<double, ImageFrame>::iterator frame_it;
-        Vector3d sum_g;
-        for (frame_it = all_image_frame.begin(), frame_it++; frame_it != all_image_frame.end(); frame_it++)
-        {
-            double dt = frame_it->second.pre_integration->sum_dt;
-            Vector3d tmp_g = frame_it->second.pre_integration->delta_v / dt;
-            sum_g += tmp_g;
-        }
-        Vector3d aver_g;
-        aver_g = sum_g * 1.0 / ((int)all_image_frame.size() - 1);
-        double var = 0;
-        for (frame_it = all_image_frame.begin(), frame_it++; frame_it != all_image_frame.end(); frame_it++)
-        {
-            double dt = frame_it->second.pre_integration->sum_dt;
-            Vector3d tmp_g = frame_it->second.pre_integration->delta_v / dt;
-            var += (tmp_g - aver_g).transpose() * (tmp_g - aver_g);
-            //cout << "frame g " << tmp_g.transpose() << endl;
-        }
-        var = sqrt(var / ((int)all_image_frame.size() - 1));
-        //ROS_WARN("IMU variation %f!", var);
-        if(var < 0.25)
-        {
-            ROS_INFO("IMU excitation not enouth!");
-            //return false;
-        }
-    }
-    // global sfm
-    Quaterniond Q[frame_count + 1];
-    Vector3d T[frame_count + 1];
-    map<int, Vector3d> sfm_tracked_points;
-    vector<SFMFeature> sfm_f;
-    for (auto &it_per_id : f_manager.feature)
-    {
-        int imu_j = it_per_id.start_frame - 1;
-        SFMFeature tmp_feature;
-        tmp_feature.state = false;
-        tmp_feature.id = it_per_id.feature_id;
-        for (auto &it_per_frame : it_per_id.feature_per_frame)
-        {
-            imu_j++;
-            Vector3d pts_j = it_per_frame.point;
-            tmp_feature.observation.push_back(make_pair(imu_j, Eigen::Vector2d{pts_j.x(), pts_j.y()}));
-        }
-        sfm_f.push_back(tmp_feature);
-    }
-    Matrix3d relative_R;
-    Vector3d relative_T;
-    int l;
-    if (!relativePose(relative_R, relative_T, l))
-    {
-        ROS_INFO("Not enough features or parallax; Move device around");
-        return false;
-    }
-    GlobalSFM sfm;
-    if(!sfm.construct(frame_count + 1, Q, T, l,
-              relative_R, relative_T,
-              sfm_f, sfm_tracked_points))
-    {
-        ROS_DEBUG("global SFM failed!");
-        marginalization_flag = MARGIN_OLD;
-        return false;
-    }
+//bool Estimator::initialStructure()
+//{
+//    TicToc t_sfm;
+//    //check imu observibility
+//    {
+//        map<double, ImageFrame>::iterator frame_it;
+//        Vector3d sum_g;
+//        for (frame_it = all_image_frame.begin(), frame_it++; frame_it != all_image_frame.end(); frame_it++)
+//        {
+//            double dt = frame_it->second.pre_integration->sum_dt;
+//            Vector3d tmp_g = frame_it->second.pre_integration->delta_v / dt;
+//            sum_g += tmp_g;
+//        }
+//        Vector3d aver_g;
+//        aver_g = sum_g * 1.0 / ((int)all_image_frame.size() - 1);
+//        double var = 0;
+//        for (frame_it = all_image_frame.begin(), frame_it++; frame_it != all_image_frame.end(); frame_it++)
+//        {
+//            double dt = frame_it->second.pre_integration->sum_dt;
+//            Vector3d tmp_g = frame_it->second.pre_integration->delta_v / dt;
+//            var += (tmp_g - aver_g).transpose() * (tmp_g - aver_g);
+//            //cout << "frame g " << tmp_g.transpose() << endl;
+//        }
+//        var = sqrt(var / ((int)all_image_frame.size() - 1));
+//        //ROS_WARN("IMU variation %f!", var);
+//        if(var < 0.25)
+//        {
+//            ROS_INFO("IMU excitation not enouth!");
+//            //return false;
+//        }
+//    }
+//    // global sfm
+//    Quaterniond Q[frame_count + 1];
+//    Vector3d T[frame_count + 1];
+//    map<int, Vector3d> sfm_tracked_points;
+//    vector<SFMFeature> sfm_f;
+//    for (auto &it_per_id : f_manager.feature)
+//    {
+//        int imu_j = it_per_id.start_frame - 1;
+//        SFMFeature tmp_feature;
+//        tmp_feature.state = false;
+//        tmp_feature.id = it_per_id.feature_id;
+//        for (auto &it_per_frame : it_per_id.feature_per_frame)
+//        {
+//            imu_j++;
+//            Vector3d pts_j = it_per_frame.point;
+//            tmp_feature.observation.push_back(make_pair(imu_j, Eigen::Vector2d{pts_j.x(), pts_j.y()}));
+//        }
+//        sfm_f.push_back(tmp_feature);
+//    }
+//    Matrix3d relative_R;
+//    Vector3d relative_T;
+//    int l;
+//    if (!relativePose(relative_R, relative_T, l))
+//    {
+//        ROS_INFO("Not enough features or parallax; Move device around");
+//        return false;
+//    }
+//    GlobalSFM sfm;
+//    if(!sfm.construct(frame_count + 1, Q, T, l,
+//              relative_R, relative_T,
+//              sfm_f, sfm_tracked_points))
+//    {
+//        ROS_DEBUG("global SFM failed!");
+//        marginalization_flag = MARGIN_OLD;
+//        return false;
+//    }
+//
+//    //solve pnp for all frame
+//    map<double, ImageFrame>::iterator frame_it;
+//    map<int, Vector3d>::iterator it;
+//    frame_it = all_image_frame.begin( );
+//    for (int i = 0; frame_it != all_image_frame.end( ); frame_it++)
+//    {
+//        // provide initial guess
+//        cv::Mat r, rvec, t, D, tmp_r;
+//        if((frame_it->first) == Headers[i])
+//        {
+//            frame_it->second.is_key_frame = true;
+//            frame_it->second.R = Q[i].toRotationMatrix() * RIC[0].transpose();
+//            frame_it->second.T = T[i];
+//            i++;
+//            continue;
+//        }
+//        if((frame_it->first) > Headers[i])
+//        {
+//            i++;
+//        }
+//        Matrix3d R_inital = (Q[i].inverse()).toRotationMatrix();
+//        Vector3d P_inital = - R_inital * T[i];
+//        cv::eigen2cv(R_inital, tmp_r);
+//        cv::Rodrigues(tmp_r, rvec);
+//        cv::eigen2cv(P_inital, t);
+//
+//        frame_it->second.is_key_frame = false;
+//        vector<cv::Point3f> pts_3_vector;
+//        vector<cv::Point2f> pts_2_vector;
+//        for (auto &id_pts : frame_it->second.points)
+//        {
+//            int feature_id = id_pts.first;
+//            for (auto &i_p : id_pts.second)
+//            {
+//                it = sfm_tracked_points.find(feature_id);
+//                if(it != sfm_tracked_points.end())
+//                {
+//                    Vector3d world_pts = it->second;
+//                    cv::Point3f pts_3(world_pts(0), world_pts(1), world_pts(2));
+//                    pts_3_vector.push_back(pts_3);
+//                    Vector2d img_pts = i_p.second.head<2>();
+//                    cv::Point2f pts_2(img_pts(0), img_pts(1));
+//                    pts_2_vector.push_back(pts_2);
+//                }
+//            }
+//        }
+//        cv::Mat K = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+//        if(pts_3_vector.size() < 6)
+//        {
+//            cout << "pts_3_vector size " << pts_3_vector.size() << endl;
+//            ROS_DEBUG("Not enough points for solve pnp !");
+//            return false;
+//        }
+//        if (! cv::solvePnP(pts_3_vector, pts_2_vector, K, D, rvec, t, 1))
+//        {
+//            ROS_DEBUG("solve pnp fail!");
+//            return false;
+//        }
+//        cv::Rodrigues(rvec, r);
+//        MatrixXd R_pnp,tmp_R_pnp;
+//        cv::cv2eigen(r, tmp_R_pnp);
+//        R_pnp = tmp_R_pnp.transpose();
+//        MatrixXd T_pnp;
+//        cv::cv2eigen(t, T_pnp);
+//        T_pnp = R_pnp * (-T_pnp);
+//        frame_it->second.R = R_pnp * RIC[0].transpose();
+//        frame_it->second.T = T_pnp;
+//    }
+//    if (visualInitialAlign())
+//        return true;
+//    else
+//    {
+//        ROS_INFO("misalign visual structure with IMU");
+//        return false;
+//    }
+//
+//}
+//
+//bool Estimator::visualInitialAlign()
+//{
+//    TicToc t_g;
 
-    //solve pnp for all frame
-    map<double, ImageFrame>::iterator frame_it;
-    map<int, Vector3d>::iterator it;
-    frame_it = all_image_frame.begin( );
-    for (int i = 0; frame_it != all_image_frame.end( ); frame_it++)
-    {
-        // provide initial guess
-        cv::Mat r, rvec, t, D, tmp_r;
-        if((frame_it->first) == Headers[i])
-        {
-            frame_it->second.is_key_frame = true;
-            frame_it->second.R = Q[i].toRotationMatrix() * RIC[0].transpose();
-            frame_it->second.T = T[i];
-            i++;
-            continue;
-        }
-        if((frame_it->first) > Headers[i])
-        {
-            i++;
-        }
-        Matrix3d R_inital = (Q[i].inverse()).toRotationMatrix();
-        Vector3d P_inital = - R_inital * T[i];
-        cv::eigen2cv(R_inital, tmp_r);
-        cv::Rodrigues(tmp_r, rvec);
-        cv::eigen2cv(P_inital, t);
-
-        frame_it->second.is_key_frame = false;
-        vector<cv::Point3f> pts_3_vector;
-        vector<cv::Point2f> pts_2_vector;
-        for (auto &id_pts : frame_it->second.points)
-        {
-            int feature_id = id_pts.first;
-            for (auto &i_p : id_pts.second)
-            {
-                it = sfm_tracked_points.find(feature_id);
-                if(it != sfm_tracked_points.end())
-                {
-                    Vector3d world_pts = it->second;
-                    cv::Point3f pts_3(world_pts(0), world_pts(1), world_pts(2));
-                    pts_3_vector.push_back(pts_3);
-                    Vector2d img_pts = i_p.second.head<2>();
-                    cv::Point2f pts_2(img_pts(0), img_pts(1));
-                    pts_2_vector.push_back(pts_2);
-                }
-            }
-        }
-        cv::Mat K = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-        if(pts_3_vector.size() < 6)
-        {
-            cout << "pts_3_vector size " << pts_3_vector.size() << endl;
-            ROS_DEBUG("Not enough points for solve pnp !");
-            return false;
-        }
-        if (! cv::solvePnP(pts_3_vector, pts_2_vector, K, D, rvec, t, 1))
-        {
-            ROS_DEBUG("solve pnp fail!");
-            return false;
-        }
-        cv::Rodrigues(rvec, r);
-        MatrixXd R_pnp,tmp_R_pnp;
-        cv::cv2eigen(r, tmp_R_pnp);
-        R_pnp = tmp_R_pnp.transpose();
-        MatrixXd T_pnp;
-        cv::cv2eigen(t, T_pnp);
-        T_pnp = R_pnp * (-T_pnp);
-        frame_it->second.R = R_pnp * RIC[0].transpose();
-        frame_it->second.T = T_pnp;
-    }
-    if (visualInitialAlign())
-        return true;
-    else
-    {
-        ROS_INFO("misalign visual structure with IMU");
-        return false;
-    }
-
-}
-
-bool Estimator::visualInitialAlign()
-{
-    TicToc t_g;
-    VectorXd x;
-    //solve scale
-    bool result = VisualIMUAlignment(all_image_frame, Bgs, g, x);
-    if(!result)
-    {
-        ROS_DEBUG("solve g failed!");
-        return false;
-    }
-
-    // change state
-    for (int i = 0; i <= frame_count; i++)
-    {
-        Matrix3d Ri = all_image_frame[Headers[i]].R;
-        Vector3d Pi = all_image_frame[Headers[i]].T;
-        Ps[i] = Pi;
-        Rs[i] = Ri;
-        all_image_frame[Headers[i]].is_key_frame = true;
-    }
-
-    double s = (x.tail<1>())(0);
-    for (int i = 0; i <= WINDOW_SIZE; i++)
-    {
-        pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]);
-    }
-    for (int i = frame_count; i >= 0; i--)
-        Ps[i] = s * Ps[i] - Rs[i] * TIC[0] - (s * Ps[0] - Rs[0] * TIC[0]);
-    int kv = -1;
-    map<double, ImageFrame>::iterator frame_i;
-    for (frame_i = all_image_frame.begin(); frame_i != all_image_frame.end(); frame_i++)
-    {
-        if(frame_i->second.is_key_frame)
-        {
-            kv++;
-            Vs[kv] = frame_i->second.R * x.segment<3>(kv * 3);
-        }
-    }
-
-    Matrix3d R0 = Utility::g2R(g);
-    double yaw = Utility::R2ypr(R0 * Rs[0]).x();
-    R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
-    g = R0 * g;
-    //Matrix3d rot_diff = R0 * Rs[0].transpose();
-    Matrix3d rot_diff = R0;
-    for (int i = 0; i <= frame_count; i++)
-    {
-        Ps[i] = rot_diff * Ps[i];
-        Rs[i] = rot_diff * Rs[i];
-        Vs[i] = rot_diff * Vs[i];
-    }
-    ROS_DEBUG_STREAM("g0     " << g.transpose());
-    ROS_DEBUG_STREAM("my R0  " << Utility::R2ypr(Rs[0]).transpose()); 
-
-    f_manager.clearDepth();
-    f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
-
-    return true;
-}
-
-bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
-{
-    // find previous frame which contians enough correspondance and parallex with newest frame
-    for (int i = 0; i < WINDOW_SIZE; i++)
-    {
-        vector<pair<Vector3d, Vector3d>> corres;
-        corres = f_manager.getCorresponding(i, WINDOW_SIZE);
-        if (corres.size() > 20)
-        {
-            double sum_parallax = 0;
-            double average_parallax;
-            for (int j = 0; j < int(corres.size()); j++)
-            {
-                Vector2d pts_0(corres[j].first(0), corres[j].first(1));
-                Vector2d pts_1(corres[j].second(0), corres[j].second(1));
-                double parallax = (pts_0 - pts_1).norm();
-                sum_parallax = sum_parallax + parallax;
-
-            }
-            average_parallax = 1.0 * sum_parallax / int(corres.size());
-            if(average_parallax * 460 > 30 && m_estimator.solveRelativeRT(corres, relative_R, relative_T))
-            {
-                l = i;
-                ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * 460, l);
-                return true;
-            }
-        }
-    }
-    return false;
-}
+//    VectorXd x;
+//    //solve scale
+//    bool result = VisualIMUAlignment(all_image_frame, Bgs, g, x);
+//    if(!result)
+//    {
+//        ROS_DEBUG("solve g failed!");
+//        return false;
+//    }
+//
+//    // change state
+//    for (int i = 0; i <= frame_count; i++)
+//    {
+//        Matrix3d Ri = all_image_frame[Headers[i]].R;
+//        Vector3d Pi = all_image_frame[Headers[i]].T;
+//        Ps[i] = Pi;
+//        Rs[i] = Ri;
+//        all_image_frame[Headers[i]].is_key_frame = true;
+//    }
+//
+//    double s = (x.tail<1>())(0);
+//    for (int i = 0; i <= WINDOW_SIZE; i++)
+//    {
+//        pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]);
+//    }
+//    for (int i = frame_count; i >= 0; i--)
+//        Ps[i] = s * Ps[i] - Rs[i] * TIC[0] - (s * Ps[0] - Rs[0] * TIC[0]);
+//    int kv = -1;
+//    map<double, ImageFrame>::iterator frame_i;
+//    for (frame_i = all_image_frame.begin(); frame_i != all_image_frame.end(); frame_i++)
+//    {
+//        if(frame_i->second.is_key_frame)
+//        {
+//            kv++;
+//            Vs[kv] = frame_i->second.R * x.segment<3>(kv * 3);
+//        }
+//    }
+//
+//    Matrix3d R0 = Utility::g2R(g);
+//    double yaw = Utility::R2ypr(R0 * Rs[0]).x();
+//    R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
+//    g = R0 * g;
+//    //Matrix3d rot_diff = R0 * Rs[0].transpose();
+//    Matrix3d rot_diff = R0;
+//    for (int i = 0; i <= frame_count; i++)
+//    {
+//        Ps[i] = rot_diff * Ps[i];
+//        Rs[i] = rot_diff * Rs[i];
+//        Vs[i] = rot_diff * Vs[i];
+//    }
+//    ROS_DEBUG_STREAM("g0     " << g.transpose());
+//    ROS_DEBUG_STREAM("my R0  " << Utility::R2ypr(Rs[0]).transpose());
+//
+//    f_manager.clearDepth();
+//    f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
+//
+//    return true;
+//}
+//
+//bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
+//{
+//    // find previous frame which contians enough correspondance and parallex with newest frame
+//    for (int i = 0; i < WINDOW_SIZE; i++)
+//    {
+//        vector<pair<Vector3d, Vector3d>> corres;
+//        corres = f_manager.getCorresponding(i, WINDOW_SIZE);
+//        if (corres.size() > 20)
+//        {
+//            double sum_parallax = 0;
+//            double average_parallax;
+//            for (int j = 0; j < int(corres.size()); j++)
+//            {
+//                Vector2d pts_0(corres[j].first(0), corres[j].first(1));
+//                Vector2d pts_1(corres[j].second(0), corres[j].second(1));
+//                double parallax = (pts_0 - pts_1).norm();
+//                sum_parallax = sum_parallax + parallax;
+//
+//            }
+//            average_parallax = 1.0 * sum_parallax / int(corres.size());
+//            if(average_parallax * 460 > 30 && m_estimator.solveRelativeRT(corres, relative_R, relative_T))
+//            {
+//                l = i;
+//                ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * 460, l);
+//                return true;
+//            }
+//        }
+//    }
+//    return false;
+//}
 
 void Estimator::vector2double()
 {
@@ -1187,6 +1166,24 @@ void Estimator::vector2double()
             para_SpeedBias[i][6] = Bgs[i].x();
             para_SpeedBias[i][7] = Bgs[i].y();
             para_SpeedBias[i][8] = Bgs[i].z();
+        }
+        if (USE_LEG)
+        {
+            para_LegBias[i][0] = Rho1[i].x();
+            para_LegBias[i][1] = Rho1[i].y();
+            para_LegBias[i][2] = Rho1[i].z();
+
+            para_LegBias[i][3] = Rho2[i].x();
+            para_LegBias[i][4] = Rho2[i].y();
+            para_LegBias[i][5] = Rho2[i].z();
+
+            para_LegBias[i][6] = Rho3[i].x();
+            para_LegBias[i][7] = Rho3[i].y();
+            para_LegBias[i][8] = Rho3[i].z();
+
+            para_LegBias[i][9] = Rho4[i].x();
+            para_LegBias[i][10] = Rho4[i].y();
+            para_LegBias[i][11] = Rho4[i].z();
         }
     }
 
@@ -1288,6 +1285,27 @@ void Estimator::double2vector()
         }
     }
 
+    if (USE_LEG)
+    {
+        for (int i = 0; i <= WINDOW_SIZE; i++) {
+            Rho1[i] = Vector3d(para_LegBias[i][0],
+                               para_LegBias[i][1],
+                               para_LegBias[i][2]);
+
+            Rho2[i] = Vector3d(para_LegBias[i][3],
+                               para_LegBias[i][4],
+                               para_LegBias[i][5]);
+
+            Rho3[i] = Vector3d(para_LegBias[i][6],
+                               para_LegBias[i][7],
+                               para_LegBias[i][8]);
+
+            Rho4[i] = Vector3d(para_LegBias[i][9],
+                               para_LegBias[i][10],
+                               para_LegBias[i][11]);
+        }
+    }
+
     VectorXd dep = f_manager.getDepthVector();
     for (int i = 0; i < f_manager.getFeatureCount(); i++)
         dep(i) = para_Feature[i][0];
@@ -1364,6 +1382,8 @@ void Estimator::optimization()
         problem.AddParameterBlock(para_Pose[i], SIZE_POSE, local_parameterization);
         if(USE_IMU)
             problem.AddParameterBlock(para_SpeedBias[i], SIZE_SPEEDBIAS);
+        if(USE_LEG)
+            problem.AddParameterBlock(para_LegBias[i], SIZE_LEG_BIAS);
     }
     if(!USE_IMU)
         problem.SetParameterBlockConstant(para_Pose[0]);
@@ -1395,16 +1415,60 @@ void Estimator::optimization()
         problem.AddResidualBlock(marginalization_factor, NULL,
                                  last_marginalization_parameter_blocks);
     }
-    if(USE_IMU)
+    if (USE_LEG && USE_IMU) {
+        for (int i = 0; i < frame_count; i++)
+        {
+            int j = i + 1;
+            if (il_pre_integrations[j]->sum_dt > 10.0)
+                continue;
+
+            // for testing:
+            // evaluate residual
+            Vector12d rhoi; rhoi.setZero();
+            rhoi.segment<3>(0) = Rho1[i];
+            rhoi.segment<3>(3) = Rho2[i];
+            rhoi.segment<3>(6) = Rho3[i];
+            rhoi.segment<3>(9) = Rho4[i];
+            Vector12d rhoj; rhoi.setZero();
+            rhoj.segment<3>(0) = Rho1[j];
+            rhoj.segment<3>(3) = Rho2[j];
+            rhoj.segment<3>(6) = Rho3[j];
+            rhoj.segment<3>(9) = Rho4[j];
+            Eigen::Matrix<double, 39, 1> residual = il_pre_integrations[j]->evaluate(Ps[i], Quaterniond(Rs[i]), Vs[i], Bas[i], Bgs[i], rhoi,
+                                                        Ps[j], Quaterniond(Rs[j]), Vs[j], Bas[j], Bgs[j], rhoj);
+
+
+            IMULegFactor* imu_leg_factor = new IMULegFactor(il_pre_integrations[j]);
+            problem.AddResidualBlock(imu_leg_factor, NULL, para_Pose[i], para_SpeedBias[i], para_LegBias[i],
+                                               para_Pose[j], para_SpeedBias[j], para_LegBias[j]);
+
+
+            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
+                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
+//            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
+//            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
+//            double **raw_jacobians = new double *[block_sizes.size()];
+//            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
+//            jacobians.resize(block_sizes.size());
+//            for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
+//            {
+//                jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
+//                raw_jacobians[xx] = jacobians[xx].data();
+//                //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
+//            }
+//            imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
+//            imu_leg_factor -> checkJacobian(parameter_blocks.data());
+
+        }
+
+    }
+    else if (USE_IMU)
     {
         for (int i = 0; i < frame_count; i++)
         {
             int j = i + 1;
             if (pre_integrations[j]->sum_dt > 10.0)
                 continue;
-
-            // for testing:
-            // add a new IMU-leg factor, evaluate residual
 
             IMUFactor* imu_factor = new IMUFactor(pre_integrations[j]);
             problem.AddResidualBlock(imu_factor, NULL, para_Pose[i], para_SpeedBias[i], para_Pose[j], para_SpeedBias[j]);
@@ -1498,7 +1562,8 @@ void Estimator::optimization()
             for (int i = 0; i < static_cast<int>(last_marginalization_parameter_blocks.size()); i++)
             {
                 if (last_marginalization_parameter_blocks[i] == para_Pose[0] ||
-                    last_marginalization_parameter_blocks[i] == para_SpeedBias[0])
+                    last_marginalization_parameter_blocks[i] == para_SpeedBias[0]||
+                    last_marginalization_parameter_blocks[i] == para_LegBias[0])
                     drop_set.push_back(i);
             }
             // construct new marginlization_factor
@@ -1509,7 +1574,19 @@ void Estimator::optimization()
             marginalization_info->addResidualBlockInfo(residual_block_info);
         }
 
-        if(USE_IMU)
+        if (USE_LEG && USE_IMU) {
+            if (il_pre_integrations[1]->sum_dt < 10.0)
+            {
+                IMULegFactor* imu_leg_factor = new IMULegFactor(il_pre_integrations[1]);
+                ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(imu_leg_factor, NULL,
+                                                                               vector<double *>{para_Pose[0], para_SpeedBias[0], para_LegBias[0],
+                                                                                                para_Pose[1], para_SpeedBias[1], para_LegBias[1]},
+                                                                               vector<int>{0, 1, 2});
+                marginalization_info->addResidualBlockInfo(residual_block_info);
+            }
+
+        }
+        else if(USE_IMU)
         {
             if (pre_integrations[1]->sum_dt < 10.0)
             {
@@ -1588,8 +1665,8 @@ void Estimator::optimization()
         for (int i = 1; i <= WINDOW_SIZE; i++)
         {
             addr_shift[reinterpret_cast<long>(para_Pose[i])] = para_Pose[i - 1];
-            if(USE_IMU)
-                addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i - 1];
+            addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i - 1];
+            addr_shift[reinterpret_cast<long>(para_LegBias[i])] = para_LegBias[i - 1];
         }
         for (int i = 0; i < NUM_OF_CAM; i++)
             addr_shift[reinterpret_cast<long>(para_Ex_Pose[i])] = para_Ex_Pose[i];
@@ -1648,14 +1725,23 @@ void Estimator::optimization()
                 else if (i == WINDOW_SIZE)
                 {
                     addr_shift[reinterpret_cast<long>(para_Pose[i])] = para_Pose[i - 1];
-                    if(USE_IMU)
+                    if(USE_IMU) {
                         addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i - 1];
+                    }
+                    if (USE_LEG) {
+                        addr_shift[reinterpret_cast<long>(para_LegBias[i])] = para_LegBias[i - 1];
+                    }
                 }
                 else
                 {
                     addr_shift[reinterpret_cast<long>(para_Pose[i])] = para_Pose[i];
-                    if(USE_IMU)
+                    if(USE_IMU) {
                         addr_shift[reinterpret_cast<long>(para_SpeedBias[i])] = para_SpeedBias[i];
+                    }
+
+                    if (USE_LEG) {
+                        addr_shift[reinterpret_cast<long>(para_LegBias[i])] = para_LegBias[i];
+                    }
                 }
             }
             for (int i = 0; i < NUM_OF_CAM; i++)
@@ -1691,7 +1777,28 @@ void Estimator::slideWindow()
                 Headers[i] = Headers[i + 1];
                 Rs[i].swap(Rs[i + 1]);
                 Ps[i].swap(Ps[i + 1]);
-                if(USE_IMU)
+
+                if (USE_LEG && USE_IMU) {
+                    std::swap(pre_integrations[i], pre_integrations[i + 1]);
+                    std::swap(il_pre_integrations[i], il_pre_integrations[i + 1]);
+
+                    dt_buf[i].swap(dt_buf[i + 1]);
+                    linear_acceleration_buf[i].swap(linear_acceleration_buf[i + 1]);
+                    angular_velocity_buf[i].swap(angular_velocity_buf[i + 1]);
+                    joint_angle_buf[i].swap(joint_angle_buf[i + 1]);
+                    joint_velocity_buf[i].swap(joint_velocity_buf[i + 1]);
+                    foot_contact_buf[i].swap(foot_contact_buf[i + 1]);
+
+                    Vs[i].swap(Vs[i + 1]);
+                    Bas[i].swap(Bas[i + 1]);
+                    Bgs[i].swap(Bgs[i + 1]);
+                    Rho1[i].swap(Rho1[i + 1]);
+                    Rho2[i].swap(Rho2[i + 1]);
+                    Rho3[i].swap(Rho3[i + 1]);
+                    Rho4[i].swap(Rho4[i + 1]);
+                }
+
+                else if(USE_IMU)
                 {
                     std::swap(pre_integrations[i], pre_integrations[i + 1]);
 
@@ -1708,7 +1815,37 @@ void Estimator::slideWindow()
             Ps[WINDOW_SIZE] = Ps[WINDOW_SIZE - 1];
             Rs[WINDOW_SIZE] = Rs[WINDOW_SIZE - 1];
 
-            if(USE_IMU)
+
+            if (USE_LEG && USE_IMU) {
+                Vs[WINDOW_SIZE] = Vs[WINDOW_SIZE - 1];
+                Bas[WINDOW_SIZE] = Bas[WINDOW_SIZE - 1];
+                Bgs[WINDOW_SIZE] = Bgs[WINDOW_SIZE - 1];
+                Rho1[WINDOW_SIZE].swap(Rho1[WINDOW_SIZE - 1]);
+                Rho2[WINDOW_SIZE].swap(Rho2[WINDOW_SIZE - 1]);
+                Rho3[WINDOW_SIZE].swap(Rho3[WINDOW_SIZE - 1]);
+                Rho4[WINDOW_SIZE].swap(Rho4[WINDOW_SIZE - 1]);
+
+                delete pre_integrations[WINDOW_SIZE];
+                pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
+
+                delete il_pre_integrations[WINDOW_SIZE];
+                Vector12d tmp;
+                tmp.segment<3>(0) = Rho1[WINDOW_SIZE];
+                tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
+                tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
+                tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
+                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
+
+                dt_buf[WINDOW_SIZE].clear();
+                linear_acceleration_buf[WINDOW_SIZE].clear();
+                angular_velocity_buf[WINDOW_SIZE].clear();
+                joint_angle_buf[WINDOW_SIZE].clear();
+                joint_velocity_buf[WINDOW_SIZE].clear();
+                foot_contact_buf[WINDOW_SIZE].clear();
+
+            }
+            else if(USE_IMU)
             {
                 Vs[WINDOW_SIZE] = Vs[WINDOW_SIZE - 1];
                 Bas[WINDOW_SIZE] = Bas[WINDOW_SIZE - 1];
@@ -1726,7 +1863,7 @@ void Estimator::slideWindow()
             {
                 map<double, ImageFrame>::iterator it_0;
                 it_0 = all_image_frame.find(t_0);
-                delete it_0->second.pre_integration;
+                delete it_0->second.il_pre_integration;
                 all_image_frame.erase(all_image_frame.begin(), it_0);
             }
             slideWindowOld();
@@ -1740,7 +1877,57 @@ void Estimator::slideWindow()
             Ps[frame_count - 1] = Ps[frame_count];
             Rs[frame_count - 1] = Rs[frame_count];
 
-            if(USE_IMU)
+            if (USE_LEG && USE_IMU)
+            {
+                for (unsigned int i = 0; i < dt_buf[frame_count].size(); i++)
+                {
+                    double tmp_dt = dt_buf[frame_count][i];
+                    Vector3d tmp_linear_acceleration = linear_acceleration_buf[frame_count][i];
+                    Vector3d tmp_angular_velocity = angular_velocity_buf[frame_count][i];
+                    Vector12d tmp_joint_angle = joint_angle_buf[frame_count][i];
+                    Vector12d tmp_joint_velocity = joint_velocity_buf[frame_count][i];
+                    Vector12d tmp_foot_contact = foot_contact_buf[frame_count][i];
+
+                    pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration, tmp_angular_velocity);
+                    il_pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration, tmp_angular_velocity,
+                                                                    tmp_joint_angle, tmp_joint_velocity, tmp_foot_contact);
+
+                    dt_buf[frame_count - 1].push_back(tmp_dt);
+                    linear_acceleration_buf[frame_count - 1].push_back(tmp_linear_acceleration);
+                    angular_velocity_buf[frame_count - 1].push_back(tmp_angular_velocity);
+                    joint_angle_buf[frame_count - 1].push_back(tmp_joint_angle);
+                    joint_velocity_buf[frame_count - 1].push_back(tmp_joint_velocity);
+                    foot_contact_buf[frame_count - 1].push_back(tmp_foot_contact);
+                }
+
+                Vs[frame_count - 1] = Vs[frame_count];
+                Bas[frame_count - 1] = Bas[frame_count];
+                Bgs[frame_count - 1] = Bgs[frame_count];
+                Rho1[frame_count - 1].swap(Rho1[frame_count]);
+                Rho2[frame_count - 1].swap(Rho2[frame_count]);
+                Rho3[frame_count - 1].swap(Rho3[frame_count]);
+                Rho4[frame_count - 1].swap(Rho4[frame_count]);
+
+                delete pre_integrations[WINDOW_SIZE];
+                pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
+
+                delete il_pre_integrations[WINDOW_SIZE];
+                Vector12d tmp;
+                tmp.segment<3>(0) = Rho1[WINDOW_SIZE];
+                tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
+                tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
+                tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
+                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
+
+                dt_buf[WINDOW_SIZE].clear();
+                linear_acceleration_buf[WINDOW_SIZE].clear();
+                angular_velocity_buf[WINDOW_SIZE].clear();
+                joint_angle_buf[WINDOW_SIZE].clear();
+                joint_velocity_buf[WINDOW_SIZE].clear();
+                foot_contact_buf[WINDOW_SIZE].clear();
+            }
+            else if(USE_IMU)
             {
                 for (unsigned int i = 0; i < dt_buf[frame_count].size(); i++)
                 {

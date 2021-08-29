@@ -63,7 +63,7 @@ public:
 
     // state size
     const static int RESIDUAL_STATE_SIZE = 39;
-    const static int NOISE_SIZE = 45;
+    const static int NOISE_SIZE = 54;
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> jacobian, covariance;
     double sum_dt;
     Eigen::Vector3d delta_p;  // alpha
@@ -74,6 +74,7 @@ public:
     // the output of optimization,
     Eigen::Vector3d linearized_ba, linearized_bg;
     Vector12d linearized_rho;
+
 private:
     double dt;
     Eigen::Vector3d acc_0, gyr_0;

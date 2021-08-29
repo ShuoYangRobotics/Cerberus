@@ -37,9 +37,9 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
     noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
     // temporarily write some parameters here
-    const double PHI_N = 0.001;
-    const double DPHI_N = 0.005;
-    const double V_N = 0.01;  //This should links to foot contact force;
+    const double PHI_N = 0.01;
+    const double DPHI_N = 0.01;
+    const double V_N = 0.1;  //This should links to foot contact force;
     const double RHO_N = 0.01;
     noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
@@ -50,6 +50,9 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
     noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
 
     // the fixed kinematics parameter
     rho_fix_list = _rho_fix_list;
@@ -308,12 +311,13 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             V.block<3, 3>(9+3*j, 30+3*j) = - MatrixXd::Identity(3,3) * _dt;
         }
 
-        V.block<3, 3>(21, 12) = Matrix3d::Identity();
-        V.block<3, 3>(24, 15) = Matrix3d::Identity();
-        V.block<3, 3>(27, 42) = Matrix3d::Identity();
-        V.block<3, 3>(30, 42) = Matrix3d::Identity();
-        V.block<3, 3>(33, 42) = Matrix3d::Identity();
-        V.block<3, 3>(36, 42) = Matrix3d::Identity();
+        V.block<3, 3>(21, 12) = -MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(24, 15) = -MatrixXd::Identity(3,3) * _dt;
+
+        V.block<3, 3>(27, 42) = -MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(30, 45) = -MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(33, 48) = -MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(36, 51) = -MatrixXd::Identity(3,3) * _dt;
 
         jacobian = F * jacobian;
         // change noise
@@ -329,11 +333,16 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             // https://www.desmos.com/calculator
             //       force  -10    0    20    30   40   60  80  100    120    150
             // uncertainty  1200  1000  100   50   30   20  1   0.04   0.01   0.001
-            double uncertainty = 101539464.774746358*exp(-0.000119309*pow(force_mag+315.337294101,2));
+            double uncertainty = 5*exp(-0.0003*pow(force_mag+20.1,2));
             noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * Eigen::Matrix3d::Identity();
         }
+//        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
+//        auto tmp = V * noise * V.transpose();
+//        covariance = F * covariance * F.transpose() + tmp;
         covariance = F * covariance * F.transpose() + V * noise * V.transpose();
-
+//        SelfAdjointEigenSolver<Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>> eigensolver(tmp);
+//        std::cout << "The determinant of V * noise * V.transpose() is " << tmp.determinant() << std::endl;
+//        std::cout << eigensolver.eigenvalues().transpose() << std::endl;
         step_jacobian = F;
         step_V = V;
     }
@@ -738,21 +747,32 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     Eigen::Vector3d dba = Bai - linearized_ba; // Bai is the new optimization result
     Eigen::Vector3d dbg = Bgi - linearized_bg;
 
-    Vector12d drho = rhoi - linearized_rho;
+//    Vector12d rhoi_rand = 0.003*Eigen::Matrix<double,12,1>::Random();
+    Vector12d drho = rhoi  - linearized_rho;
 
     Eigen::Quaterniond corrected_delta_q = delta_q * Utility::deltaQ(dq_dbg * dbg);
     Eigen::Vector3d corrected_delta_v = delta_v + dv_dba * dba + dv_dbg * dbg;
     Eigen::Vector3d corrected_delta_p = delta_p + dp_dba * dba + dp_dbg * dbg;
 
     std::vector<Eigen::Vector3d> corrected_delta_epsilon;
+    corrected_delta_epsilon.resize(4);
     corrected_delta_epsilon[0] = delta_epsilon[0] + dep1_dbg * dbg + dep1_drho1 * drho.segment<3>(0);
     corrected_delta_epsilon[1] = delta_epsilon[1] + dep2_dbg * dbg + dep2_drho2 * drho.segment<3>(3);
     corrected_delta_epsilon[2] = delta_epsilon[2] + dep3_dbg * dbg + dep3_drho3 * drho.segment<3>(6);
     corrected_delta_epsilon[3] = delta_epsilon[3] + dep4_dbg * dbg + dep4_drho4 * drho.segment<3>(9);
 
-    // TODO: compare them with repropogarated result
+    // Test: compare them with repropogarated result
 //    repropagate()
 //    compare delta_q, delta_v,delta_p, delta_epsilon[j] now with
+//    repropagate(Bai, Bgi, linearized_rho + rhoi_rand);
+//    std::cout << corrected_delta_q.coeffs() << std::endl;
+//    std::cout << delta_q.coeffs() << std::endl;
+//    std::cout << corrected_delta_epsilon[0] << std::endl;
+//    std::cout << delta_epsilon[0] << std::endl;
+//    std::cout << corrected_delta_epsilon[1] << std::endl;
+//    std::cout << delta_epsilon[1] << std::endl;
+//    std::cout << corrected_delta_epsilon[2] << std::endl;
+//    std::cout << delta_epsilon[2] << std::endl;
 
     residuals.block<3, 1>(ILO_P, 0) = Qi.inverse() * (0.5 * G * sum_dt * sum_dt + Pj - Pi - Vi * sum_dt) - corrected_delta_p;
     residuals.block<3, 1>(ILO_R, 0) = 2 * (corrected_delta_q.inverse() * (Qi.inverse() * Qj)).vec();
