@@ -39,4 +39,5 @@ class ImageFrame
         bool is_key_frame;
 };
 void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs);
+void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, Vector3d* Rho1, Vector3d* Rho2, Vector3d* Rho3,Vector3d* Rho4);
 bool VisualIMUAlignment(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, Vector3d &g, VectorXd &x);

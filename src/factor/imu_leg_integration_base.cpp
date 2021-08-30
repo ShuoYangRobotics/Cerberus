@@ -39,7 +39,7 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
     // temporarily write some parameters here
     const double PHI_N = 0.01;
     const double DPHI_N = 0.01;
-    const double V_N = 0.1;  //This should links to foot contact force;
+    const double V_N = 0.1;  //This should link to foot contact force;
     const double RHO_N = 0.01;
     noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();

@@ -85,13 +85,13 @@ Eigen::Matrix<double, 12, 3> Utility::lerpLegSensors(double t, int &starting_idx
         t2 = jointAngVector[idx2].first;
         Eigen::Matrix<double, 12, 1> vec1 = jointAngVector[idx1].second;
         Eigen::Matrix<double, 12, 1> vec2 = jointAngVector[idx2].second;
-        out.col(0) = vec1 + (t-t1)*(vec2-vec1)/(t2-t);
+        out.col(0) = vec1 + (t-t1)*(vec2-vec1)/(t2-t1);
         vec1 = jointAngVelVector[idx1].second;
         vec2 = jointAngVelVector[idx2].second;
-        out.col(1) = vec1 + (t-t1)*(vec2-vec1)/(t2-t);
+        out.col(1) = vec1 + (t-t1)*(vec2-vec1)/(t2-t1);
         vec1 = footForceVector[idx1].second;
         vec2 = footForceVector[idx2].second;
-        out.col(2) = vec1 + (t-t1)*(vec2-vec1)/(t2-t);
+        out.col(2) = vec1 + (t-t1)*(vec2-vec1)/(t2-t1);
 
         starting_idx = idx1;
         return out;

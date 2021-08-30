@@ -52,10 +52,10 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i].setZero(); Rho1[i] = 1e-5*Eigen::Vector3d::Random();
-        Rho2[i].setZero(); Rho2[i] = 1e-5*Eigen::Vector3d::Random();
-        Rho3[i].setZero(); Rho3[i] = 1e-5*Eigen::Vector3d::Random();
-        Rho4[i].setZero(); Rho4[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho1[i].setZero();
+        Rho2[i].setZero();
+        Rho3[i].setZero();
+        Rho4[i].setZero();
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -264,6 +264,7 @@ void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngle
     legAngBufList.push_back(make_pair(t, jointAngles));
     legAngVelBufList.push_back(make_pair(t, jointVels));
     footForceBufList.push_back(make_pair(t, footForces));
+//    std::cout << "input foot force" << footForces.transpose() << std::endl;
 //    printf("input leg joint state and foot force with time %f \n", t);
     mBuf.unlock();
 }
@@ -349,6 +350,12 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
             accBuf.pop();
             gyrBuf.pop();
         }
+        while (legAngBufList.front().first <= t0)
+        {
+            legAngBufList.pop_front();
+            legAngVelBufList.pop_front();
+            footForceBufList.pop_front();
+        }
         int starting_idx = 0; // this is used to speed up lerpLegSensors
         Eigen::Matrix<double, 12, 3> lerpMtx;
         while (accBuf.front().first < t1)
@@ -364,12 +371,12 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
             // angle - only push once, push a 12d vector
             starting_idx = 0;
             lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
-            if (starting_idx > 0)
-            {
-                legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
-                legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
-                footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
-            }
+//            if (starting_idx > 0)
+//            {
+//                legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
+//                legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
+//                footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
+//            }
 
             jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
             jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
@@ -381,12 +388,7 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
         double leg_search_time = accBuf.front().first;
         starting_idx = 0;
         lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
-        if (starting_idx > 0)
-        {
-            legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
-            legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
-            footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
-        }
+
         jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
         jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
         footForceVector.push_back(make_pair(leg_search_time, lerpMtx.col(2)));
@@ -397,10 +399,8 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
         printf("wait for imu\n");
         return false;
     }
-    if (legAngBufList.size() > 100) {
-        legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+50-1);
-    }
-//    std::cout << " leg buff size "<< legAngBufList.size() << std::endl;
+
+    std::cout << " leg buff size "<< legAngBufList.size() << std::endl;
     return true;
 }
 
@@ -687,6 +687,9 @@ void Estimator::processIMULeg(double t, double dt,
 
     if (frame_count != 0)
     {
+//        std::cout << "input leg data: \n" << joint_angle.transpose() << std::endl;
+//        std::cout << joint_velocity.transpose() << std::endl;
+//        std::cout << foot_contact.transpose() << std::endl;
 //        pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);
         il_pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity, joint_angle, joint_velocity, foot_contact);
         //if(solver_flag != NON_LINEAR)
@@ -810,11 +813,15 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                     frame_it->second.T = Ps[i];
                     i++;
                 }
-                solveGyroscopeBias(all_image_frame, Bgs);
+                //  initialize the leg bias too
+                solveGyroLegBias(all_image_frame, Bgs, Rho1, Rho2, Rho3, Rho4);
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
-                    // TODO: maybe better initialize the leg bias
                     Vector12d tmp; tmp.setZero();
+                    tmp.segment<3>(0) = Rho1[i];
+                    tmp.segment<3>(3) = Rho2[i];
+                    tmp.segment<3>(6) = Rho3[i];
+                    tmp.segment<3>(9) = Rho4[i];
                     il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], tmp);
                 }
                 optimization();
@@ -1424,18 +1431,18 @@ void Estimator::optimization()
 
             // for testing:
             // evaluate residual
-            Vector12d rhoi; rhoi.setZero();
-            rhoi.segment<3>(0) = Rho1[i];
-            rhoi.segment<3>(3) = Rho2[i];
-            rhoi.segment<3>(6) = Rho3[i];
-            rhoi.segment<3>(9) = Rho4[i];
-            Vector12d rhoj; rhoi.setZero();
-            rhoj.segment<3>(0) = Rho1[j];
-            rhoj.segment<3>(3) = Rho2[j];
-            rhoj.segment<3>(6) = Rho3[j];
-            rhoj.segment<3>(9) = Rho4[j];
-            Eigen::Matrix<double, 39, 1> residual = il_pre_integrations[j]->evaluate(Ps[i], Quaterniond(Rs[i]), Vs[i], Bas[i], Bgs[i], rhoi,
-                                                        Ps[j], Quaterniond(Rs[j]), Vs[j], Bas[j], Bgs[j], rhoj);
+//            Vector12d rhoi; rhoi.setZero();
+//            rhoi.segment<3>(0) = Rho1[i];
+//            rhoi.segment<3>(3) = Rho2[i];
+//            rhoi.segment<3>(6) = Rho3[i];
+//            rhoi.segment<3>(9) = Rho4[i];
+//            Vector12d rhoj; rhoi.setZero();
+//            rhoj.segment<3>(0) = Rho1[j];
+//            rhoj.segment<3>(3) = Rho2[j];
+//            rhoj.segment<3>(6) = Rho3[j];
+//            rhoj.segment<3>(9) = Rho4[j];
+//            Eigen::Matrix<double, 39, 1> residual = il_pre_integrations[j]->evaluate(Ps[i], Quaterniond(Rs[i]), Vs[i], Bas[i], Bgs[i], rhoi,
+//                                                        Ps[j], Quaterniond(Rs[j]), Vs[j], Bas[j], Bgs[j], rhoj);
 
 
             IMULegFactor* imu_leg_factor = new IMULegFactor(il_pre_integrations[j]);
@@ -1443,8 +1450,8 @@ void Estimator::optimization()
                                                para_Pose[j], para_SpeedBias[j], para_LegBias[j]);
 
 
-            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
-                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
+//            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
+//                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
 //            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
 //            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
 //            double **raw_jacobians = new double *[block_sizes.size()];
@@ -1820,13 +1827,13 @@ void Estimator::slideWindow()
                 Vs[WINDOW_SIZE] = Vs[WINDOW_SIZE - 1];
                 Bas[WINDOW_SIZE] = Bas[WINDOW_SIZE - 1];
                 Bgs[WINDOW_SIZE] = Bgs[WINDOW_SIZE - 1];
-                Rho1[WINDOW_SIZE].swap(Rho1[WINDOW_SIZE - 1]);
-                Rho2[WINDOW_SIZE].swap(Rho2[WINDOW_SIZE - 1]);
-                Rho3[WINDOW_SIZE].swap(Rho3[WINDOW_SIZE - 1]);
-                Rho4[WINDOW_SIZE].swap(Rho4[WINDOW_SIZE - 1]);
+                Rho1[WINDOW_SIZE] = Rho1[WINDOW_SIZE - 1];
+                Rho2[WINDOW_SIZE] = Rho2[WINDOW_SIZE - 1];
+                Rho3[WINDOW_SIZE] = Rho3[WINDOW_SIZE - 1];
+                Rho4[WINDOW_SIZE] = Rho4[WINDOW_SIZE - 1];
 
-                delete pre_integrations[WINDOW_SIZE];
-                pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
+//                delete pre_integrations[WINDOW_SIZE];
+//                pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
 
                 delete il_pre_integrations[WINDOW_SIZE];
                 Vector12d tmp;
@@ -1888,7 +1895,7 @@ void Estimator::slideWindow()
                     Vector12d tmp_joint_velocity = joint_velocity_buf[frame_count][i];
                     Vector12d tmp_foot_contact = foot_contact_buf[frame_count][i];
 
-                    pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration, tmp_angular_velocity);
+//                    pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration, tmp_angular_velocity);
                     il_pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration, tmp_angular_velocity,
                                                                     tmp_joint_angle, tmp_joint_velocity, tmp_foot_contact);
 
@@ -1903,10 +1910,10 @@ void Estimator::slideWindow()
                 Vs[frame_count - 1] = Vs[frame_count];
                 Bas[frame_count - 1] = Bas[frame_count];
                 Bgs[frame_count - 1] = Bgs[frame_count];
-                Rho1[frame_count - 1].swap(Rho1[frame_count]);
-                Rho2[frame_count - 1].swap(Rho2[frame_count]);
-                Rho3[frame_count - 1].swap(Rho3[frame_count]);
-                Rho4[frame_count - 1].swap(Rho4[frame_count]);
+                Rho1[frame_count - 1] = Rho1[frame_count];
+                Rho2[frame_count - 1] = Rho2[frame_count];
+                Rho3[frame_count - 1] = Rho3[frame_count];
+                Rho4[frame_count - 1] = Rho4[frame_count];
 
                 delete pre_integrations[WINDOW_SIZE];
                 pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
