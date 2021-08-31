@@ -55,6 +55,17 @@ extern int USE_IMU;
 extern std::string LEG_TOPIC;
 extern int NUM_OF_LEG;
 extern int USE_LEG;
+extern int OPTIMIZE_LEG_BIAS;
+// temporarily write some parameters here
+extern double PHI_N;
+extern double DPHI_N;
+extern double V_N;
+extern double RHO_N;
+extern double FOOT_CONTACT_RANGE_MIN[4];
+extern double FOOT_CONTACT_RANGE_MAX[4];
+extern double FOOT_CONTACT_FUNC_C1[4];
+extern double FOOT_CONTACT_FUNC_C2[4];
+
 extern int MULTIPLE_THREAD;
 // pts_gt for debug purpose;
 extern map<int, Eigen::Vector3d> pts_gt;

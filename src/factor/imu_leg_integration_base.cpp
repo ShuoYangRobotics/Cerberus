@@ -36,11 +36,7 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
     noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
-    // temporarily write some parameters here
-    const double PHI_N = 0.01;
-    const double DPHI_N = 0.01;
-    const double V_N = 0.1;  //This should link to foot contact force;
-    const double RHO_N = 0.01;
+
     noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
     noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
@@ -326,15 +322,16 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             // force within -50 - 150
             Eigen::Vector3d average_c = 0.5 * (_c_0.segment<3>(3*j) + _c_1.segment<3>(3*j));
             double force_mag = average_c.norm();
-            force_mag = std::max(force_mag, -10.0);
-            force_mag = std::min(force_mag, 150.0);
+            force_mag = std::max(force_mag, FOOT_CONTACT_RANGE_MIN[j]);
+            force_mag = std::min(force_mag, FOOT_CONTACT_RANGE_MAX[j]);
 
             // a function maps contact force to noise
             // https://elsenaju.eu/Calculator/online-curve-fit.htm
             // https://www.desmos.com/calculator
             //       force  -10    0    20    30   40   60  80  100    120    150
             // uncertainty  1200  1000  100   50   30   20  1   0.04   0.01   0.001
-            double uncertainty = 5*exp(-0.0003*pow(force_mag+20.1,2));
+//            double uncertainty = 5*exp(-0.0003*pow(force_mag+20.1,2));
+            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j]*exp(FOOT_CONTACT_FUNC_C2[j]*force_mag);
             noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * Eigen::Matrix3d::Identity();
         }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
