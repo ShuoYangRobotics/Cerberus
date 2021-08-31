@@ -52,10 +52,10 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i].setZero();
-        Rho2[i].setZero();
-        Rho3[i].setZero();
-        Rho4[i].setZero();
+        Rho1[i].setZero(); Rho1[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho2[i].setZero(); Rho2[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho3[i].setZero(); Rho3[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho4[i].setZero(); Rho4[i] = 1e-5*Eigen::Vector3d::Random();
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -335,7 +335,13 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
                                      vector<pair<double, Vector12d>> &jointVelVector,
                                      vector<pair<double, Vector12d>> &footForceVector)
 {
-    if(accBuf.empty())
+    // debug
+//    std::cout << std::setprecision(20) << "times: " << t0 << "  ---  " << t1 << std::endl;
+//
+//    std::cout << "before change " << std::endl;
+//    std::cout << std::setprecision(20) << "acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
+//    std::cout << std::setprecision(20) << "lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
+    if (accBuf.empty())
     {
         printf("not receive imu\n");
         return false;
@@ -371,12 +377,12 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
             // angle - only push once, push a 12d vector
             starting_idx = 0;
             lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
-//            if (starting_idx > 0)
-//            {
-//                legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
-//                legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
-//                footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
-//            }
+            if (starting_idx > 0)
+            {
+                legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
+                legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
+                footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
+            }
 
             jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
             jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
@@ -400,7 +406,17 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
         return false;
     }
 
-    std::cout << " leg buff size "<< legAngBufList.size() << std::endl;
+//    std::cout << "after change " << std::endl;
+//
+//    std::cout << std::setprecision(20) << "time of acc vectors : " << jointAngVector.front().first  << "  ---  " << jointAngVector.back().first << std::endl;
+//
+//    std::cout << std::setprecision(20) << "time of leg vectors : " << jointAngVector.front().first  << "  ---  " << jointAngVector.back().first << std::endl;
+//
+//    std::cout << std::setprecision(20) << "rest acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
+//    std::cout << std::setprecision(20) << "rest lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
+//
+//    std::cout << " rest acc buff size "<< accBuf.size() << std::endl;
+//    std::cout << " rest leg buff size "<< legAngBufList.size() << std::endl;
     return true;
 }
 
@@ -814,7 +830,9 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                     i++;
                 }
                 //  initialize the leg bias too
-                solveGyroLegBias(all_image_frame, Bgs, Rho1, Rho2, Rho3, Rho4);
+                // debug: check il_pre_integrations at this point
+                solveGyroscopeBias(all_image_frame, Bgs);
+//                solveGyroLegBias(all_image_frame, Bgs, Rho1, Rho2, Rho3, Rho4);
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
                     Vector12d tmp; tmp.setZero();

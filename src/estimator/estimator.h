@@ -6,6 +6,7 @@
 #define VILENS_ESTIMATOR_H
 #pragma once
 #include <thread>
+#include <iomanip>
 #include <mutex>
 #include <algorithm>
 #include <std_msgs/Header.h>

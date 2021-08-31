@@ -201,7 +201,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         vip1.push_back( -R_br*Jip1[j]*_dphi_1.segment<3>(3*j) - R_w_1_x*(p_br + R_br*fip1[j]) );
 
         result_delta_epsilon[j] = delta_epsilon[j] + 0.5 * (delta_q*vi[j] + result_delta_q*vip1[j]) * _dt;
-        result_linearized_rho[j] = linearized_rho[j];
+        result_linearized_rho.segment<3>(3*j) = linearized_rho.segment<3>(3*j);
     }
 
 
@@ -321,6 +321,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
         jacobian = F * jacobian;
         // change noise
+        // TODO: check if all legs on the ground
         for (int j = 0; j < NUM_OF_LEG; j++) {
             // force within -50 - 150
             Eigen::Vector3d average_c = 0.5 * (_c_0.segment<3>(3*j) + _c_1.segment<3>(3*j));
