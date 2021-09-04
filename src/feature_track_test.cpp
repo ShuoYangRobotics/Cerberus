@@ -255,6 +255,21 @@ void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
     return;
 }
 
+// ground truth call back
+void mocap_callback(const geometry_msgs::PoseStampedConstPtr &gt_msg) {
+    Eigen::Vector3d position(gt_msg->pose.position.x,
+                             gt_msg->pose.position.y,
+                             gt_msg->pose.position.z);
+    Eigen::Quaterniond orientation(gt_msg->pose.orientation.w,
+                                   gt_msg->pose.orientation.x,
+                                   gt_msg->pose.orientation.y,
+                                   gt_msg->pose.orientation.z);
+    Eigen::Vector3d velocity(0,
+                             0,
+                             0);
+    estimator.receiveGroundTruthData(position, orientation, velocity);
+
+}
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vileom");
@@ -295,6 +310,9 @@ int main(int argc, char **argv)
 
     // the robot must publish a message with type sensor_msgs::JointState
     ros::Subscriber sub_leg_msg = n.subscribe(LEG_TOPIC, 100, leg_state_callback);
+
+    // receive mocap pose
+    ros::Subscriber sub_mocap_msg = n.subscribe("/mocap_node/mocap/pose", 100, mocap_callback);
 
     std::thread sync_thread{sync_process};
     ros::spin();

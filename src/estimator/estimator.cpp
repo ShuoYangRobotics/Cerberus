@@ -2174,3 +2174,10 @@ void Estimator::updateLatestStates()
     }
     mPropagate.unlock();
 }
+
+void Estimator::receiveGroundTruthData(Vector3d &P, Quaterniond &Q, Vector3d &V) {
+
+    gt_position = P;
+    gt_orientation = Q;
+    gt_velocity = V;
+}

@@ -97,6 +97,9 @@ public:
     bool IMUAvailable(double t);
     void initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVector);
 
+    // get ground truth data
+    void receiveGroundTruthData(Vector3d &P, Quaterniond &Q, Vector3d &V);
+
     enum SolverFlag
     {
         INITIAL,
@@ -227,6 +230,10 @@ public:
     std::vector<Eigen::VectorXd> rho_opt_list;
     A1Kinematics a1_kin;
 
+    // add ground truth pose and orientation
+    Vector3d gt_position;
+    Quaterniond gt_orientation;
+    Vector3d gt_velocity;
 };
 
 
