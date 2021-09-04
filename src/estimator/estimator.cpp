@@ -146,7 +146,7 @@ void Estimator::setParameter()
     leg_offset_y[0] = 0.077;  leg_offset_y[1] = -0.077;  leg_offset_y[2] = 0.077;   leg_offset_y[3] = -0.077;
     motor_offset[0] = 0.0838; motor_offset[1] = -0.0838; motor_offset[2] = 0.0838;  motor_offset[3] = -0.0838;
     upper_leg_length[0] = upper_leg_length[1] = upper_leg_length[2] = upper_leg_length[3] = 0.2;
-    lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = 0.22;
+    lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = LOWER_LEG_LENGTH;
 
     for (int i = 0; i < NUM_OF_LEG; i++) {
         Eigen::VectorXd rho_fix(5); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i],lower_leg_length[i];

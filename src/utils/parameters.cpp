@@ -53,6 +53,7 @@ double FOOT_CONTACT_RANGE_MIN[4];
 double FOOT_CONTACT_RANGE_MAX[4];
 double FOOT_CONTACT_FUNC_C1[4];
 double FOOT_CONTACT_FUNC_C2[4];
+double LOWER_LEG_LENGTH;
 
 int MAX_CNT;
 int MIN_DIST;
@@ -132,6 +133,8 @@ void readParameters(std::string config_file)
         DPHI_N = fsSettings["joint_velocity_n"];
         V_N = fsSettings["foot_velocity_n"];
         RHO_N = fsSettings["leg_bias_n"];
+
+        LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];
 
         FOOT_CONTACT_RANGE_MIN[0] = fsSettings["foot1_contact_range_min"];
         FOOT_CONTACT_RANGE_MAX[0] = fsSettings["foot1_contact_range_max"];

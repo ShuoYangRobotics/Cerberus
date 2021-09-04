@@ -65,6 +65,7 @@ extern double FOOT_CONTACT_RANGE_MIN[4];
 extern double FOOT_CONTACT_RANGE_MAX[4];
 extern double FOOT_CONTACT_FUNC_C1[4];
 extern double FOOT_CONTACT_FUNC_C2[4];
+extern double LOWER_LEG_LENGTH;
 
 extern int MULTIPLE_THREAD;
 // pts_gt for debug purpose;
