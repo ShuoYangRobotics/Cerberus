@@ -1,4 +1,4 @@
-folder = '/home/shuoy/ICRA22_data/dataset2_0908/';
+folder = '/home/biorobotics/tightly-coupled-visual-inertial-leg-odometry/output/dataset2_0908/';
 % name convention
 %  vio - vins-fushion
 %  vilo - wob      vilo no bias correction
@@ -143,17 +143,23 @@ vio_wb_vel_z = movmean(vio_wb_vel_z,2,1);
 
 
 %% plot all z pos
+
+fontsize = 18
 figure(1);clf;hold on;
+set(gca,'FontSize',fontsize)
 plot(ref_time, gt_pos_z,'LineWidth',2);
 plot(ref_time, vio_pos_z,'LineWidth',2);
 plot(ref_time, vio_wob_pos_z,'LineWidth',2);
 plot(ref_time, vio_wb_pos_z,'LineWidth',2);
 legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','southeast')
+xlabel('Time (s)')
+ylabel('Z Position (m)')
 hold off;
 set(gcf, 'Position', [214 1703 550 420])
 
 %% plot all trajectory 
 figure(2);clf;
+set(gca,'FontSize',fontsize)
 plot3(gt_pos_x, gt_pos_y, gt_pos_z,'LineWidth',2);hold on;
 plot3(vio_pos_x, vio_pos_y, vio_pos_z,'LineWidth',2);hold on;
 plot3(vio_wob_pos_x, vio_wob_pos_y, vio_wob_pos_z,'LineWidth',2);hold on;
@@ -170,23 +176,29 @@ plot(ref_time(1:end-1), gt_vel_x,'LineWidth',2);hold on;
 plot(ref_time(1:end-1), vio_vel_x,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wob_vel_x,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wb_vel_x,'LineWidth',2);
-xlabel('Time')
-title('X Velocity')
-legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest')
+ax = gca;ax.XLim = [20 35];
+set(gca,'FontSize',fontsize)
+xlabel('Time (s)')
+ylabel('X Velocity (m/s)')
+legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
 subplot(3,1,2)
 plot(ref_time(1:end-1), gt_vel_y,'LineWidth',2);hold on;
 plot(ref_time(1:end-1), vio_vel_y,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wob_vel_y,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wb_vel_y,'LineWidth',2);
-xlabel('Time')
-title('Y Velocity')
-legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest')
+set(gca,'FontSize',fontsize)
+ax = gca;ax.XLim = [20 35];
+xlabel('Time (s)')
+ylabel('Y Velocity (m/s)')
+legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
 subplot(3,1,3)
 plot(ref_time(1:end-1), gt_vel_z,'LineWidth',2);hold on;
 plot(ref_time(1:end-1), vio_vel_z,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wob_vel_z,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wb_vel_z,'LineWidth',2);
-xlabel('Time')
-title('Z Velocity')
-legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest')
+set(gca,'FontSize',fontsize)
+ax = gca;ax.XLim = [20 35];
+xlabel('Time (s)')
+ylabel('Z Velocity (m/s)')
+legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
 set(gcf, 'Position', [20 27 1567 1038])
