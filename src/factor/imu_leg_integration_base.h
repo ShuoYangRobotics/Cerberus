@@ -13,6 +13,9 @@
 #include <ceres/ceres.h>
 using namespace Eigen;
 
+#define RESIDUAL_STATE_SIZE 39
+#define NOISE_SIZE 54
+
 class IMULegIntegrationBase {
 public:
     IMULegIntegrationBase() = delete;
@@ -62,8 +65,7 @@ public:
                   const Ref<const Vector12d> &linearized_rho);
 
     // state size
-    const static int RESIDUAL_STATE_SIZE = 39;
-    const static int NOISE_SIZE = 54;
+
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> jacobian, covariance;
     double sum_dt;
     Eigen::Vector3d delta_p;  // alpha

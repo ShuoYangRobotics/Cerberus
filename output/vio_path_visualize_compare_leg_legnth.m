@@ -1,4 +1,4 @@
-folder = 'I:\research4year\tightly-coupled-visual-inertial-leg-odometry\output\';
+folder = '/home/shuoy/nv_work/unitree_ws/src/tightly-coupled-visual-inertial-leg-odometry/output/';
 % read vio
 file = strcat(folder,'vio_with_leg_without_bias_estimation015.csv');
 T = readtable(file);

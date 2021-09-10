@@ -208,24 +208,24 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             dfdrhoi.push_back( a1_kin.dfk_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
             dfdrhoip1.push_back( a1_kin.dfk_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
             // calculate g
-            Eigen::MatrixXd dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
-            Eigen::MatrixXd kron_dphi0(3,9); kron_dphi0.setZero();
+            Eigen::Matrix<double, 9, 3> dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 3, 9> kron_dphi0; kron_dphi0.setZero();
             kron_dphi0(0,0) = kron_dphi0(1,1) = kron_dphi0(2,2) = _dphi_0(0+3*j);
             kron_dphi0(0,3) = kron_dphi0(1,4) = kron_dphi0(2,5) = _dphi_0(1+3*j);
             kron_dphi0(0,6) = kron_dphi0(1,7) = kron_dphi0(2,8) = _dphi_0(2+3*j);
             gi.push_back( -delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdrho0 + R_w_0_x*R_br*dfdrhoi[j]) );
 
-            Eigen::MatrixXd dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
-            Eigen::MatrixXd kron_dphi1(3,9); kron_dphi1.setZero();
+            Eigen::Matrix<double, 9, 3> dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 3, 9> kron_dphi1; kron_dphi1.setZero();
             kron_dphi1(0,0) = kron_dphi1(1,1) = kron_dphi1(2,2) = _dphi_1(0+3*j);
             kron_dphi1(0,3) = kron_dphi1(1,4) = kron_dphi1(2,5) = _dphi_1(1+3*j);
             kron_dphi1(0,6) = kron_dphi1(1,7) = kron_dphi1(2,8) = _dphi_1(2+3*j);
             gip1.push_back( -result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdrho1+ R_w_1_x*R_br*dfdrhoip1[j]) );
 
             // calculate h
-            Eigen::MatrixXd dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
             hi.push_back( delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdphi0 + R_w_0_x*R_br*Ji[j]) );
-            Eigen::MatrixXd dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
             hip1.push_back( result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdphi1 + R_w_1_x*R_br*Jip1[j]) );
         }
         Vector3d w_x = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
@@ -244,19 +244,19 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
                 -a_1_x(1), a_1_x(0), 0;
         Eigen::Matrix3d kappa_7 = (Matrix3d::Identity() - R_w_x * _dt);
         // change to sparse matrix later otherwise they are too large
-        MatrixXd F = MatrixXd::Zero(RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE);
+        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> F; F.setZero();
         // F row 1
         F.block<3, 3>(0, 0) = Matrix3d::Identity();
         Eigen::Matrix3d kappa_1 = -0.5 * delta_q.toRotationMatrix() * R_a_0_x * _dt +
                                   -0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * kappa_7 * _dt;
         F.block<3, 3>(0, 3) = 0.5 * _dt * kappa_1;
-        F.block<3, 3>(0, 6) = MatrixXd::Identity(3,3) * _dt;
+        F.block<3, 3>(0, 6) = Matrix3d::Identity() * _dt;
         // 9 12 15 18 are 0
         F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
         F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
         // F row 2
         F.block<3, 3>(3, 3) = kappa_7;
-        F.block<3, 3>(3, 24) = -1.0 * MatrixXd::Identity(3,3) * _dt;
+        F.block<3, 3>(3, 24) = -1.0 * Matrix3d::Identity() * _dt;
         // F row 3
         F.block<3, 3>(6, 3) = kappa_1;
         F.block<3, 3>(6, 6) = Matrix3d::Identity();
@@ -281,13 +281,14 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         F.block<3, 3>(36, 36) = Matrix3d::Identity();
 
         // get V
-        MatrixXd V = MatrixXd::Zero(RESIDUAL_STATE_SIZE, NOISE_SIZE);
+
+        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> V; V.setZero();
         V.block<3, 3>(0, 0) =  0.25 * delta_q.toRotationMatrix() * _dt * _dt;
         V.block<3, 3>(0, 3) =  0.25 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * _dt * 0.5 * _dt;
         V.block<3, 3>(0, 6) =  0.25 * result_delta_q.toRotationMatrix() * _dt * _dt;
         V.block<3, 3>(0, 9) =  V.block<3, 3>(0, 3);
-        V.block<3, 3>(3, 3) =  0.5 * MatrixXd::Identity(3,3) * _dt;
-        V.block<3, 3>(3, 9) =  0.5 * MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(3, 3) =  0.5 * Matrix3d::Identity() * _dt;
+        V.block<3, 3>(3, 9) =  0.5 * Matrix3d::Identity() * _dt;
         V.block<3, 3>(6, 0) =  0.5 * delta_q.toRotationMatrix() * _dt;
         V.block<3, 3>(6, 3) =  0.5 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * 0.5 * _dt;
         V.block<3, 3>(6, 6) =  0.5 * result_delta_q.toRotationMatrix() * _dt;
@@ -304,16 +305,16 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
             V.block<3, 3>(9+3*j, 24) = - 0.5 * _dt * delta_q.toRotationMatrix() * R_br * Ji[j];
             V.block<3, 3>(9+3*j, 27) = - 0.5 * _dt * result_delta_q.toRotationMatrix() * R_br * Jip1[j];
-            V.block<3, 3>(9+3*j, 30+3*j) = - MatrixXd::Identity(3,3) * _dt;
+            V.block<3, 3>(9+3*j, 30+3*j) = - Matrix3d::Identity() * _dt;
         }
 
-        V.block<3, 3>(21, 12) = -MatrixXd::Identity(3,3) * _dt;
-        V.block<3, 3>(24, 15) = -MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(21, 12) = -Matrix3d::Identity() * _dt;
+        V.block<3, 3>(24, 15) = -Matrix3d::Identity() * _dt;
 
-        V.block<3, 3>(27, 42) = -MatrixXd::Identity(3,3) * _dt;
-        V.block<3, 3>(30, 45) = -MatrixXd::Identity(3,3) * _dt;
-        V.block<3, 3>(33, 48) = -MatrixXd::Identity(3,3) * _dt;
-        V.block<3, 3>(36, 51) = -MatrixXd::Identity(3,3) * _dt;
+        V.block<3, 3>(27, 42) = -Matrix3d::Identity() * _dt;
+        V.block<3, 3>(30, 45) = -Matrix3d::Identity() * _dt;
+        V.block<3, 3>(33, 48) = -Matrix3d::Identity() * _dt;
+        V.block<3, 3>(36, 51) = -Matrix3d::Identity() * _dt;
 
         jacobian = F * jacobian;
         // change noise
@@ -332,7 +333,26 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             // uncertainty  1200  1000  100   50   30   20  1   0.04   0.01   0.001
 //            double uncertainty = 5*exp(-0.0003*pow(force_mag+20.1,2));
             double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j]*exp(FOOT_CONTACT_FUNC_C2[j]*force_mag);
-            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * Eigen::Matrix3d::Identity();
+//            if (average_c.norm() > 3*FOOT_CONTACT_RANGE_MAX[j])
+//                uncertainty = 50;
+            Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity(); coeff(0,0) = 5;
+            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
+
+
+
+            //       force  0         5       10      20       40      60     80    100
+            // uncertainty  0.0001   0.001   0.001    0.001   0.001  0.001    0.1        0.4
+            double uncertainty2 = RHO_N + 0.001*0.000605914*exp(0.030831513*force_mag);  // exponential function
+//            double uncertainty2 = 1e-5;
+//            if (average_c.norm() < FOOT_CONTACT_RANGE_MIN[j])
+//                uncertainty2 = 1e-6;
+//            else if (average_c.norm() > 2.5*FOOT_CONTACT_RANGE_MAX[j])
+//                uncertainty2 = 1e-6;
+//            else {
+//                uncertainty2 = 0.02*0.000605914*exp(0.030831513*force_mag);
+//            }
+
+            noise.block<3, 3>(42+3*j, 42+3*j) = (uncertainty2 * uncertainty2) * Eigen::Matrix3d::Identity();
         }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();

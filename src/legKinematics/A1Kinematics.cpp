@@ -22,14 +22,14 @@ Eigen::Matrix3d A1Kinematics::dfk_drho(Eigen::Vector3d q, Eigen::VectorXd rho_op
     return mtx;
 }
 
-Eigen::MatrixXd A1Kinematics::dJ_dq(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
-    Eigen::MatrixXd mtx(9,3);
+Eigen::Matrix<double, 9, 3> A1Kinematics::dJ_dq(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
+    Eigen::Matrix<double, 9, 3> mtx;
     autoFunc_dJ_dq(q.data(), rho_opt.data(), rho_fix.data(), mtx.data());
     return mtx;
 }
 
-Eigen::MatrixXd A1Kinematics::dJ_drho(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
-    Eigen::MatrixXd mtx(9,3);
+Eigen::Matrix<double, 9, 3> A1Kinematics::dJ_drho(Eigen::Vector3d q, Eigen::VectorXd rho_opt, Eigen::VectorXd rho_fix) {
+    Eigen::Matrix<double, 9, 3> mtx;
     autoFunc_dJ_dpho(q.data(), rho_opt.data(), rho_fix.data(), mtx.data());
     return mtx;
 }

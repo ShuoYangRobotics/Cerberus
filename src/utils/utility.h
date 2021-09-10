@@ -16,6 +16,9 @@
 #include <cassert>
 #include <cstring>
 #include <eigen3/Eigen/Dense>
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 typedef Eigen::Matrix<double, 12, 1> Vector12d;
 
@@ -155,4 +158,15 @@ class Utility
         return angle_degrees +
             two_pi * std::floor((-angle_degrees + T(180)) / two_pi);
     };
+
+
+    static std::string GetCurrentTimeForFileName()
+    {
+        auto time = std::time(nullptr);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time), "%F_%T"); // ISO 8601 without timezone information.
+        auto s = ss.str();
+        std::replace(s.begin(), s.end(), ':', '-');
+        return s;
+    }
 };
