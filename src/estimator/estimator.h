@@ -121,6 +121,7 @@ public:
     deque<pair<double, Vector12d>> legAngBufList;
     deque<pair<double, Vector12d>> legAngVelBufList;
     deque<pair<double, Vector12d>> footForceBufList;
+    Vector12d footForceFilter;
 
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
     double prevTime, curTime;

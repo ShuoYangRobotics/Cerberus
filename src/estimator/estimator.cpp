@@ -109,6 +109,7 @@ void Estimator::clearState() {
     f_manager.clearState();
 
     failure_occur = 0;
+    footForceFilter.setZero();
 
     mProcess.unlock();
 }
@@ -263,6 +264,8 @@ void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngle
     mBuf.lock();
     legAngBufList.push_back(make_pair(t, jointAngles));
     legAngVelBufList.push_back(make_pair(t, jointVels));
+
+//    footForceFilter = footForceFilter*0.8 + footForces*0.2;
     footForceBufList.push_back(make_pair(t, footForces));
 //    std::cout << "input foot force" << footForces.transpose() << std::endl;
 //    printf("input leg joint state and foot force with time %f \n", t);

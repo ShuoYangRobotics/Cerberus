@@ -335,14 +335,14 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j]*exp(FOOT_CONTACT_FUNC_C2[j]*force_mag);
 //            if (average_c.norm() > 3*FOOT_CONTACT_RANGE_MAX[j])
 //                uncertainty = 50;
-            Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity(); coeff(0,0) = 5;
+            Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity();
             noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
 
 
 
             //       force  0         5       10      20       40      60     80    100
             // uncertainty  0.0001   0.001   0.001    0.001   0.001  0.001    0.1        0.4
-            double uncertainty2 = RHO_N + 0.001*0.000605914*exp(0.030831513*force_mag);  // exponential function
+//            double uncertainty2 = RHO_N + 0.001*0.000605914*exp(0.030831513*force_mag);  // exponential function
 //            double uncertainty2 = 1e-5;
 //            if (average_c.norm() < FOOT_CONTACT_RANGE_MIN[j])
 //                uncertainty2 = 1e-6;
@@ -352,7 +352,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //                uncertainty2 = 0.02*0.000605914*exp(0.030831513*force_mag);
 //            }
 
-            noise.block<3, 3>(42+3*j, 42+3*j) = (uncertainty2 * uncertainty2) * Eigen::Matrix3d::Identity();
+//            noise.block<3, 3>(42+3*j, 42+3*j) = (uncertainty2 * uncertainty2) * Eigen::Matrix3d::Identity();
         }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();

@@ -6,9 +6,9 @@ folder = '/home/biorobotics/tightly-coupled-visual-inertial-leg-odometry/output/
 %  vilo - wb2      vilo with baseline bias correction
 
 % read vio, vilo wob,  vilo wb,
-vio_file = strcat(folder,'vio_0903_forward_reidx_with_gt2.csv');
-vio_wob_file = strcat(folder,'vio_wlwb_0903_forward_reidx_with_gt2_best.csv');
-vio_wb_file = strcat(folder,'vilo_with_leg_bias_0907_best2.csv');
+vio_file = strcat(folder,'vio');
+vio_wob_file = strcat(folder,'vilo_wlwob_forward_backward');
+vio_wb_file = strcat(folder,'vilo_wlwb_forward_backward');
 
 % read table 
 vio_Tab = readtable(vio_file);
