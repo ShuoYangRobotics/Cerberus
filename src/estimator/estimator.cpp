@@ -553,6 +553,59 @@ void Estimator::processMeasurements()
                     processIMULeg(accVector[i].first, dt, accVector[i].second, gyrVector[i].second,
                                   jointAngVector[i].second, jointVelVector[i].second, footForceVector[i].second);
                 }
+
+                // calculate leg odometry as a comparison to ground truth
+                std::vector<Eigen::Vector3d> fi,fi_correct;
+                std::vector<Eigen::Matrix3d> Ji,Ji_correct;
+                std::vector<Eigen::Vector3d> vi,vi_correct;
+                std::vector<double> vel_weight;
+                Vector3d w_0_x = gyrVector[0].second - Bgs[frame_count];
+                Matrix3d R_w_0_x;
+                R_w_0_x<<0, -w_0_x(2), w_0_x(1),
+                        w_0_x(2), 0, -w_0_x(0),
+                        -w_0_x(1), w_0_x(0), 0;
+                for (int j = 0; j < NUM_OF_LEG; j++) {
+                    fi.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(3 * j), Eigen::Vector3d::Zero(),
+                                           rho_fix_list[j]));
+                    // calculate jacobian of each leg
+                    Ji.push_back(
+                            a1_kin.jac(jointAngVector[0].second.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
+
+                    // calculate vm
+                    vi.push_back(-R_br * Ji[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
+                    vel_weight.push_back(1/(1+exp(-10*footForceVector[0].second.segment<3>(3*j).norm()+1500)));
+                }
+                double total_vel_weight = 0;
+                for (int j = 0; j < NUM_OF_LEG; j++) total_vel_weight += vel_weight[j];
+                lo_velocity.setZero();
+                for (int j = 0; j < NUM_OF_LEG; j++) lo_velocity += vel_weight[j]*vi[j];
+                lo_velocity /= total_vel_weight;
+
+
+                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(0), Rho1[frame_count],
+                                               rho_fix_list[0]));
+                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(3), Rho2[frame_count],
+                                               rho_fix_list[1]));
+                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(6), Rho3[frame_count],
+                                               rho_fix_list[2]));
+                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(9), Rho4[frame_count],
+                                               rho_fix_list[3]));
+                Ji_correct.push_back(
+                        a1_kin.jac(jointAngVector[0].second.segment<3>(0), Rho1[frame_count], rho_fix_list[0]));
+                Ji_correct.push_back(
+                        a1_kin.jac(jointAngVector[0].second.segment<3>(3), Rho2[frame_count], rho_fix_list[1]));
+                Ji_correct.push_back(
+                        a1_kin.jac(jointAngVector[0].second.segment<3>(6), Rho3[frame_count], rho_fix_list[2]));
+                Ji_correct.push_back(
+                        a1_kin.jac(jointAngVector[0].second.segment<3>(9), Rho4[frame_count], rho_fix_list[3]));
+
+                lo_velocity_with_bias.setZero();
+                for (int j = 0; j < NUM_OF_LEG; j++) {
+
+                    vi_correct.push_back(-R_br * Ji_correct[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi_correct[j]));
+                    lo_velocity_with_bias += vel_weight[j]*vi_correct[j];
+                }
+                lo_velocity_with_bias /= total_vel_weight;
             }
             else if(USE_IMU)
             {

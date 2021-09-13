@@ -174,6 +174,12 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
               << estimator.gt_velocity.x() << ","
               << estimator.gt_velocity.y() << ","
               << estimator.gt_velocity.z() << ","
+              << estimator.lo_velocity.x() << ","
+              << estimator.lo_velocity.y() << ","
+              << estimator.lo_velocity.z() << ","
+               << estimator.lo_velocity_with_bias.x() << ","
+               << estimator.lo_velocity_with_bias.y() << ","
+               << estimator.lo_velocity_with_bias.z() << ","
               << endl;
         foutC.close();
         Eigen::Vector3d tmp_T = estimator.Ps[WINDOW_SIZE];

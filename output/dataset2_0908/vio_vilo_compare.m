@@ -1,4 +1,4 @@
-folder = '/home/biorobotics/tightly-coupled-visual-inertial-leg-odometry/output/dataset2_0908/';
+folder = '/home/shuoy/nv_work/unitree_ws/src/tightly-coupled-visual-inertial-leg-odometry/output/dataset2_0908/';
 % name convention
 %  vio - vins-fushion
 %  vilo - wob      vilo no bias correction
@@ -8,7 +8,7 @@ folder = '/home/biorobotics/tightly-coupled-visual-inertial-leg-odometry/output/
 % read vio, vilo wob,  vilo wb,
 vio_file = strcat(folder,'vio_0908_forward_stop');
 vio_wob_file = strcat(folder,'vilo_0908_forward_stop_redix_no_bias_correction');
-vio_wb_file = strcat(folder,'vilo2021-09-09_11-06-58');
+vio_wb_file = strcat(folder,'vilo2021-09-10_16-42-26');
 
 % read table 
 vio_Tab = readtable(vio_file);
@@ -44,6 +44,12 @@ gt_vel_z = movmean(gt_vel_z,2,1);
 gt_vel_x = [0; gt_vel_x(1:end-1)];
 gt_vel_y = [0; gt_vel_y(1:end-1)];
 gt_vel_z = [0; gt_vel_z(1:end-1)];
+
+% lo velocity
+
+lo_vel_x = interp1(vio_wb_time,vio_wb_Tab.Var18,ref_time);
+lo_vel_y = interp1(vio_wb_time,vio_wb_Tab.Var19,ref_time);
+lo_vel_z = interp1(vio_wb_time,vio_wb_Tab.Var20,ref_time);
 
 
 %% read vio pos
@@ -123,7 +129,7 @@ vio_wb_pos_x = rotated(1,:)';
 vio_wb_pos_y = rotated(2,:)';
 vio_wb_pos_z = rotated(3,:)';
 
-angle = 0/180*pi;
+angle = 3.9/180*pi;
 R = [cos(angle)  0  -sin(angle) ;
     0  1  0  ;
     sin(angle)           0        cos(angle)];
@@ -173,34 +179,37 @@ set(gcf, 'Position', [12 1150 1581 464])
 figure(3);clf;
 subplot(3,1,1)
 plot(ref_time(1:end-1), gt_vel_x,'LineWidth',2);hold on;
+plot(ref_time(1:end-1), lo_vel_x(1:end-1),'LineWidth',2);
 plot(ref_time(1:end-1), vio_vel_x,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wob_vel_x,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wb_vel_x,'LineWidth',2);
-ax = gca;ax.XLim = [20 35];
+ax = gca;ax.XLim = [20 35];ax.YLim = [-0.2 0.5];
 set(gca,'FontSize',fontsize)
 xlabel('Time (s)')
 ylabel('X Velocity (m/s)')
-legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
+legend('Ground Truth', 'LO', 'VIO',  "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
 subplot(3,1,2)
 plot(ref_time(1:end-1), gt_vel_y,'LineWidth',2);hold on;
+plot(ref_time(1:end-1), lo_vel_y(1:end-1),'LineWidth',2);
 plot(ref_time(1:end-1), vio_vel_y,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wob_vel_y,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wb_vel_y,'LineWidth',2);
 set(gca,'FontSize',fontsize)
-ax = gca;ax.XLim = [20 35];
+ax = gca;ax.XLim = [20 35];ax.YLim = [-0.5 0.5];
 xlabel('Time (s)')
 ylabel('Y Velocity (m/s)')
-legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
+legend('Ground Truth', 'LO', 'VIO',  "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
 subplot(3,1,3)
 plot(ref_time(1:end-1), gt_vel_z,'LineWidth',2);hold on;
+plot(ref_time(1:end-1), lo_vel_z(1:end-1),'LineWidth',2);
 plot(ref_time(1:end-1), vio_vel_z,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wob_vel_z,'LineWidth',2);
 plot(ref_time(1:end-1), vio_wb_vel_z,'LineWidth',2);
 set(gca,'FontSize',fontsize)
-ax = gca;ax.XLim = [20 35];
-xlabel('Time (s)')
+ax = gca;ax.XLim = [20 35]; ax.YLim = [-0.3 0.3];
+xlabel('Time (s)') 
 ylabel('Z Velocity (m/s)')
-legend('Ground Truth', 'VIO', "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
+legend('Ground Truth', 'LO', 'VIO',  "VILO+NoBiasCorrect", "VILO+BiasCorrect", 'Location','northwest', 'FontSize', 14)
 set(gcf, 'Position', [20 27 1567 1038])
 
 %%
@@ -230,37 +239,49 @@ set(gcf, 'Position', [20 27 1567 1038])
 
 
 display('------x------')
+k = abs(gt_vel_x - lo_vel_x(1:end-1));
+k(isnan(k))=0;
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_x - vio_vel_x);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 
 k = abs(gt_vel_x - vio_wob_vel_x);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_x - vio_wb_vel_x);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 
 display('------y------')
+k = abs(gt_vel_y - lo_vel_y(1:end-1));
+k(isnan(k))=0;
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_y - vio_vel_y);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_y - vio_wob_vel_y);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_y - vio_wb_vel_y);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 
 
 display('------z------')
+k = abs(gt_vel_z - lo_vel_z(1:end-1));
+k(isnan(k))=0;
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_z - vio_vel_z);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_z - vio_wob_vel_z);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 k = abs(gt_vel_z - vio_wb_vel_z);
-max(k)
-sum(k)/size(k,1)
+% max(k)
+sqrt(sum(k'*k)/size(k,1))
 

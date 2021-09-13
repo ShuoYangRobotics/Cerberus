@@ -235,6 +235,8 @@ public:
     Vector3d gt_position;
     Quaterniond gt_orientation;
     Vector3d gt_velocity;
+    Vector3d lo_velocity;
+    Vector3d lo_velocity_with_bias;
 };
 
 
