@@ -573,7 +573,11 @@ void Estimator::processMeasurements()
 
                     // calculate vm
                     vi.push_back(-R_br * Ji[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
-                    vel_weight.push_back(1/(1+exp(-10*footForceVector[0].second.segment<3>(3*j).norm()+1500)));
+                    vel_weight.push_back(
+                                1/(
+                                        V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(footForceVector[0].second.segment<3>(3*j).norm()-FOOT_CONTACT_RANGE_MAX[j])))
+                                        )
+                            );
                 }
                 double total_vel_weight = 0;
                 for (int j = 0; j < NUM_OF_LEG; j++) total_vel_weight += vel_weight[j];

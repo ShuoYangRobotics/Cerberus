@@ -165,6 +165,8 @@ void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
         joint_positions(3*i+0) = a1_state -> position[3*i+0];
         joint_positions(3*i+1) = a1_state -> position[3*i+1];
         joint_positions(3*i+2) = a1_state -> position[3*i+2];
+        // the joint velocity from Isaac Sim is very wrong
+
         joint_velocities(3*i+0) = a1_state -> velocity[3*i+0];
         joint_velocities(3*i+1) = a1_state -> velocity[3*i+1];
         joint_velocities(3*i+2) = a1_state -> velocity[3*i+2];
@@ -270,6 +272,21 @@ void mocap_callback(const geometry_msgs::PoseStampedConstPtr &gt_msg) {
     estimator.receiveGroundTruthData(position, orientation, velocity);
 
 }
+
+void gt_callback(const nav_msgs::OdometryConstPtr &gt_msg) {
+    Eigen::Vector3d position(gt_msg->pose.pose.position.x,
+                             gt_msg->pose.pose.position.y,
+                             gt_msg->pose.pose.position.z);
+    Eigen::Quaterniond orientation(gt_msg->pose.pose.orientation.w,
+                                   gt_msg->pose.pose.orientation.x,
+                                   gt_msg->pose.pose.orientation.y,
+                                   gt_msg->pose.pose.orientation.z);
+    Eigen::Vector3d velocity(0,
+                             0,
+                             0);
+    estimator.receiveGroundTruthData(position, orientation, velocity);
+
+}
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vileom");
@@ -313,6 +330,7 @@ int main(int argc, char **argv)
 
     // receive mocap pose
     ros::Subscriber sub_mocap_msg = n.subscribe("/mocap_node/mocap/pose", 100, mocap_callback);
+    ros::Subscriber sub_isaac_gt_msg = n.subscribe("/isaac_a1/gt_body_pose", 100, gt_callback);
 
     std::thread sync_thread{sync_process};
     ros::spin();

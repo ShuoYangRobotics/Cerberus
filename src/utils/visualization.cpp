@@ -131,16 +131,24 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
         odometry.child_frame_id = "world";
         Quaterniond tmp_Q;
         tmp_Q = Quaterniond(estimator.Rs[WINDOW_SIZE]);
-        odometry.pose.pose.position.x = estimator.Ps[WINDOW_SIZE].x();
-        odometry.pose.pose.position.y = estimator.Ps[WINDOW_SIZE].y();
-        odometry.pose.pose.position.z = estimator.Ps[WINDOW_SIZE].z();
-        odometry.pose.pose.orientation.x = tmp_Q.x();
+        // convert IMU position to robot body position
+        Eigen::Vector3d p_wb(estimator.Ps[WINDOW_SIZE].x(), estimator.Ps[WINDOW_SIZE].y(), estimator.Ps[WINDOW_SIZE].z());
+        Eigen::Vector3d v_wb(estimator.Vs[WINDOW_SIZE].x(), estimator.Vs[WINDOW_SIZE].y(), estimator.Vs[WINDOW_SIZE].z());
+        Eigen::Vector3d omega = estimator.latest_gyr_0 - estimator.latest_Bg;
+        Eigen::Vector3d p_wr = p_wb + tmp_Q.toRotationMatrix()*estimator.R_br*estimator.p_br;
+
+        Eigen::Vector3d v_wr = v_wb + tmp_Q.toRotationMatrix()*Utility::skewSymmetric(omega)*estimator.R_br*estimator.p_br;
+
+        odometry.pose.pose.position.x = p_wr.x();
+        odometry.pose.pose.position.y = p_wr.y();
+        odometry.pose.pose.position.z = p_wr.z();
+        odometry.pose.pose.orientation.x = tmp_Q.x();  // assume we know R_br is identity
         odometry.pose.pose.orientation.y = tmp_Q.y();
         odometry.pose.pose.orientation.z = tmp_Q.z();
         odometry.pose.pose.orientation.w = tmp_Q.w();
-        odometry.twist.twist.linear.x = estimator.Vs[WINDOW_SIZE].x();
-        odometry.twist.twist.linear.y = estimator.Vs[WINDOW_SIZE].y();
-        odometry.twist.twist.linear.z = estimator.Vs[WINDOW_SIZE].z();
+        odometry.twist.twist.linear.x = v_wr.x();
+        odometry.twist.twist.linear.y = v_wr.y();
+        odometry.twist.twist.linear.z = v_wr.z();
         pub_odometry.publish(odometry);
 
         geometry_msgs::PoseStamped pose_stamped;
@@ -158,16 +166,18 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
         foutC.precision(0);
         foutC << header.stamp.toSec() * 1e9 << ",";
         foutC.precision(5);
-        foutC << estimator.Ps[WINDOW_SIZE].x() << ","
-              << estimator.Ps[WINDOW_SIZE].y() << ","
-              << estimator.Ps[WINDOW_SIZE].z() << ","
+
+
+        foutC << p_wr.x() << ","
+              << p_wr.y() << ","
+              << p_wr.z() << ","
               << tmp_Q.w() << ","
               << tmp_Q.x() << ","
               << tmp_Q.y() << ","
               << tmp_Q.z() << ","
-              << estimator.Vs[WINDOW_SIZE].x() << ","
-              << estimator.Vs[WINDOW_SIZE].y() << ","
-              << estimator.Vs[WINDOW_SIZE].z() << ","
+              << v_wr.x() << ","
+              << v_wr.y() << ","
+              << v_wr.z() << ","
               << estimator.gt_position.x() << ","
               << estimator.gt_position.y() << ","
               << estimator.gt_position.z() << ","

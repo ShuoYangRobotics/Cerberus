@@ -320,21 +320,19 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         // change noise
         // TODO: check if all legs on the ground
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            // force within -50 - 150
             Eigen::Vector3d average_c = 0.5 * (_c_0.segment<3>(3*j) + _c_1.segment<3>(3*j));
-            double force_mag = average_c.norm();
-            force_mag = std::max(force_mag, FOOT_CONTACT_RANGE_MIN[j]);
-            force_mag = std::min(force_mag, FOOT_CONTACT_RANGE_MAX[j]);
 
-            // a function maps contact force to noise
-            // https://elsenaju.eu/Calculator/online-curve-fit.htm
-            // https://www.desmos.com/calculator
-            //       force  -10    0    20    30   40   60  80  100    120    150
-            // uncertainty  1200  1000  100   50   30   20  1   0.04   0.01   0.001
-//            double uncertainty = 5*exp(-0.0003*pow(force_mag+20.1,2));
-            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j]*exp(FOOT_CONTACT_FUNC_C2[j]*force_mag);
-//            if (average_c.norm() > 3*FOOT_CONTACT_RANGE_MAX[j])
-//                uncertainty = 50;
+            Eigen::Vector3d diff_c = (_c_1.segment<3>(3*j) - _c_0.segment<3>(3*j)) / _dt;
+
+
+            double force_mag = average_c.norm();
+            double diff_c_mag = diff_c.norm();
+            // logistic regression
+            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
+            uncertainty *= (1.0f + 0.0002*diff_c_mag);
+            if (uncertainty < V_N)  uncertainty = V_N;
+
+
             Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity();
             noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
 
