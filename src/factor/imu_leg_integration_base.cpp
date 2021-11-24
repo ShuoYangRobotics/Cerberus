@@ -244,77 +244,168 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
                 -a_1_x(1), a_1_x(0), 0;
         Eigen::Matrix3d kappa_7 = (Matrix3d::Identity() - R_w_x * _dt);
         // change to sparse matrix later otherwise they are too large
-        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> F; F.setZero();
+//        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> F; F.setZero();
+        Eigen::SparseMatrix<double> F(RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE);
+        std::vector<Trip> trp;
+        Eigen::Matrix3d tmp33;
         // F row 1
-        F.block<3, 3>(0, 0) = Matrix3d::Identity();
+//        F.block<3, 3>(0, 0) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,0+s_i,1));
         Eigen::Matrix3d kappa_1 = -0.5 * delta_q.toRotationMatrix() * R_a_0_x * _dt +
                                   -0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * kappa_7 * _dt;
-        F.block<3, 3>(0, 3) = 0.5 * _dt * kappa_1;
-        F.block<3, 3>(0, 6) = Matrix3d::Identity() * _dt;
-        // 9 12 15 18 are 0
-        F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
-        F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
-        // F row 2
-        F.block<3, 3>(3, 3) = kappa_7;
-        F.block<3, 3>(3, 24) = -1.0 * Matrix3d::Identity() * _dt;
-        // F row 3
-        F.block<3, 3>(6, 3) = kappa_1;
-        F.block<3, 3>(6, 6) = Matrix3d::Identity();
-        F.block<3, 3>(6, 21) = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
-        F.block<3, 3>(6, 24) = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+        tmp33 = 0.5 * _dt * kappa_1;
+//        F.block<3, 3>(0, 3) = 0.5 * _dt * kappa_1;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,3+s_j,tmp33(s_i,s_j)));
+//        F.block<3, 3>(0, 6) = Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,6+s_i,_dt));
+//        // 9 12 15 18 are 0
+//        F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
+        Eigen::Matrix3d kappa_2 = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,21+s_j,kappa_2(s_i,s_j)));
+//        F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
+        Eigen::Matrix3d kappa_3 = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,24+s_j,kappa_3(s_i,s_j)));
 
-        // F row 4 5 6 7
+//        // F row 2
+//        F.block<3, 3>(3, 3) = kappa_7;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(3+s_i,3+s_j,kappa_7(s_i,s_j)));
+//        F.block<3, 3>(3, 24) = -1.0 * Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,24+s_i,-_dt));
+//        // F row 3
+//        F.block<3, 3>(6, 3) = kappa_1;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,3+s_j,kappa_1(s_i,s_j)));
+//        F.block<3, 3>(6, 6) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(6+s_i,6+s_i,1));
+//        F.block<3, 3>(6, 21) = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
+        Eigen::Matrix3d kappa_4 = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,21+s_j,kappa_4(s_i,s_j)));
+
+//        F.block<3, 3>(6, 24) = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+        Eigen::Matrix3d kappa_5 = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,24+s_j,kappa_5(s_i,s_j)));
+//
+//        // F row 4 5 6 7
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            F.block<3, 3>(9+3*j, 3) = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
+//            F.block<3, 3>(9+3*j, 3) = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
+//                                      0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
+            tmp33 = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
                                       0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
-            F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
-            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
-                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
-                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5
-            F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
-        }
-        F.block<3, 3>(21, 21) = Matrix3d::Identity();
-        F.block<3, 3>(24, 24) = Matrix3d::Identity();
-        F.block<3, 3>(27, 27) = Matrix3d::Identity();
-        F.block<3, 3>(30, 30) = Matrix3d::Identity();
-        F.block<3, 3>(33, 33) = Matrix3d::Identity();
-        F.block<3, 3>(36, 36) = Matrix3d::Identity();
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,3+s_j,tmp33(s_i,s_j)));
 
+//            F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
+            for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(9+3*j+s_i,9+3*j+s_i,1));
+//            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+//                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
+//                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5
+            tmp33 = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
+                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5'
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,24+s_j,tmp33(s_i,s_j)));
+//            F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
+            tmp33 = 0.5 * _dt * (gi[j] + gip1[j]);
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,27+3*j+s_j,tmp33(s_i,s_j)));
+        }
+//        F.block<3, 3>(21, 21) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(21+s_i,21+s_i,1));
+//        F.block<3, 3>(24, 24) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(24+s_i,24+s_i,1));
+//        F.block<3, 3>(27, 27) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(27+s_i,27+s_i,1));
+//        F.block<3, 3>(30, 30) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(30+s_i,30+s_i,1));
+//        F.block<3, 3>(33, 33) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(33+s_i,33+s_i,1));
+//        F.block<3, 3>(36, 36) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(36+s_i,36+s_i,1));
+
+        F.setFromTriplets(trp.begin(),trp.end());
         // get V
 
         Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> V; V.setZero();
+//        Eigen::SparseMatrix<double> V(RESIDUAL_STATE_SIZE, NOISE_SIZE);
+        trp.clear();
+        trp.resize(0);
         V.block<3, 3>(0, 0) =  0.25 * delta_q.toRotationMatrix() * _dt * _dt;
+        tmp33 =  0.25 * delta_q.toRotationMatrix() * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,0+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(0, 3) =  0.25 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * _dt * 0.5 * _dt;
+        tmp33 =  0.25 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * _dt * 0.5 * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,3+s_j,tmp33(s_i,s_j)));
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,9+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(0, 6) =  0.25 * result_delta_q.toRotationMatrix() * _dt * _dt;
+        tmp33 =  0.25 * result_delta_q.toRotationMatrix() * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,6+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(0, 9) =  V.block<3, 3>(0, 3);
         V.block<3, 3>(3, 3) =  0.5 * Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,3+s_i,0.5*_dt));
         V.block<3, 3>(3, 9) =  0.5 * Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,9+s_i,0.5*_dt));
         V.block<3, 3>(6, 0) =  0.5 * delta_q.toRotationMatrix() * _dt;
+        tmp33 = 0.5 * delta_q.toRotationMatrix() * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,0+s_j,tmp33(s_i,s_j)));
+
         V.block<3, 3>(6, 3) =  0.5 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * 0.5 * _dt;
+        tmp33 = 0.5 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * 0.5 * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,3+s_j,tmp33(s_i,s_j)));
+
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,9+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(6, 6) =  0.5 * result_delta_q.toRotationMatrix() * _dt;
+        tmp33 = 0.5 * result_delta_q.toRotationMatrix() * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,6+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(6, 9) =  V.block<3, 3>(6, 3);
 
         // V row 4 5 6 7
         for (int j = 0; j < NUM_OF_LEG; j++) {
             V.block<3, 3>(9+3*j, 3) = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
                                                       + 0.5 * _dt * delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fi[j]);
+            tmp33 = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                    + 0.5 * _dt * delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fi[j]);
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,3+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 9) = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
                                                       + 0.5 * _dt * result_delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fip1[j]);
+            tmp33 = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                    + 0.5 * _dt * result_delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fip1[j]);
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,9+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 18) = - 0.5 * _dt * hi[j];
+            tmp33 =  - 0.5 * _dt * hi[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,18+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 21) = - 0.5 * _dt * hip1[j];
+            tmp33 =  - 0.5 * _dt * hip1[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,21+s_j,tmp33(s_i,s_j)));
 
             V.block<3, 3>(9+3*j, 24) = - 0.5 * _dt * delta_q.toRotationMatrix() * R_br * Ji[j];
+            tmp33 =  - 0.5 * _dt * delta_q.toRotationMatrix() * R_br * Ji[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,24+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 27) = - 0.5 * _dt * result_delta_q.toRotationMatrix() * R_br * Jip1[j];
+            tmp33 =  - 0.5 * _dt * result_delta_q.toRotationMatrix() * R_br * Jip1[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,27+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 30+3*j) = - Matrix3d::Identity() * _dt;
+            for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(9+3*j+s_i,30+3*j+s_i,-_dt));
         }
 
         V.block<3, 3>(21, 12) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(21+s_i,12+s_i,-1*_dt));
         V.block<3, 3>(24, 15) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(24+s_i,15+s_i,-1*_dt));
 
         V.block<3, 3>(27, 42) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(27+s_i,42+s_i,-1*_dt));
         V.block<3, 3>(30, 45) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(30+s_i,45+s_i,-1*_dt));
         V.block<3, 3>(33, 48) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(33+s_i,48+s_i,-1*_dt));
         V.block<3, 3>(36, 51) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(36+s_i,51+s_i,-1*_dt));
+
+//        Eigen::SparseMatrix<double> V2(RESIDUAL_STATE_SIZE, NOISE_SIZE);
+//        V2.setFromTriplets(trp.begin(),trp.end());
+//        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> ss = V2-V;
+//        double sum1 = ss.block<3,3>(6,3).sum();
+//        std::cout <<"----1-----" << sum1 << std::endl;
+//        double sum2 = ss.block<3,3>(6,6).sum();
+//        std::cout <<"-----2----" << sum2 << std::endl;
+//        double sum3 = ss.block<3,3>(6,9).sum();
+//        std::cout <<"-----3----" << sum3 << std::endl;
 
         jacobian = F * jacobian;
         // change noise

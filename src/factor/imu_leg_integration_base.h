@@ -6,6 +6,9 @@
 #define VILEOM_IMU_LEG_INTEGRATION_BASE_H
 #include<algorithm>
 #include<cmath>
+
+#include <Eigen/Sparse>
+
 #include "../utils/utility.h"
 #include "../utils/parameters.h"
 #include "../legKinematics/A1Kinematics.h"
@@ -15,6 +18,7 @@ using namespace Eigen;
 
 #define RESIDUAL_STATE_SIZE 39
 #define NOISE_SIZE 54
+typedef Eigen::Triplet<int> Trip;
 
 class IMULegIntegrationBase {
 public:
