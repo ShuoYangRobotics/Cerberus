@@ -327,10 +327,35 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
             double force_mag = average_c.norm();
             double diff_c_mag = diff_c.norm();
-            // logistic regression
-            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
-            uncertainty *= (1.0f + 0.0002*diff_c_mag);
-            if (uncertainty < V_N)  uncertainty = V_N;
+
+             // generate contact flag
+             // imcrease force envelope
+             if (force_mag < foot_force_min[j]) {
+                 foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
+             }
+            if (force_mag > foot_force_max[j]) {
+                foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
+            }
+            // exponential decay, max force decays faster
+            foot_force_min[j] *= 0.9991;
+            foot_force_max[j] = 0.997;
+
+            foot_force_contact_threshold[j] = foot_force_min[j] + 0.4*(foot_force_max[j]-foot_force_min[j]);
+
+            double uncertainty = 0.0;
+            if ( force_mag > foot_force_contact_threshold[j]) {
+                foot_contact_flag[j] = 1;
+                uncertainty = V_N;
+            } else {
+                foot_contact_flag[j] = 0;
+                uncertainty = 1e3*V_N;
+            }
+
+
+//            // logistic regression
+//            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
+//            uncertainty *= (1.0f + 0.0002*diff_c_mag);
+//            if (uncertainty < V_N)  uncertainty = V_N;
 
 
             Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity();

@@ -89,7 +89,11 @@ private:
     const Eigen::Vector3d linearized_acc, linearized_gyr;
     Vector12d linearized_phi, linearized_dphi, linearized_c;
 
-
+    // variables to filter the contact force to get the contact flag
+    Vector4d foot_force_min;
+    Vector4d foot_force_max;
+    Vector4d foot_force_contact_threshold;
+    Vector4i foot_contact_flag;
 
     Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> step_jacobian;

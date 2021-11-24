@@ -170,8 +170,8 @@ void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
         joint_velocities(3*i+0) = a1_state -> velocity[3*i+0];
         joint_velocities(3*i+1) = a1_state -> velocity[3*i+1];
         joint_velocities(3*i+2) = a1_state -> velocity[3*i+2];
-        foot_forces(3*i+0) = a1_state -> position[12+i];
-        foot_forces(3*i+1) = a1_state -> velocity[12+i];
+        foot_forces(3*i+0) = 0.0;
+        foot_forces(3*i+1) = 0.0;
         foot_forces(3*i+2) = a1_state -> effort[12+i];
     }
     estimator.inputLeg(t, joint_positions, joint_velocities, foot_forces);
