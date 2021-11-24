@@ -95,7 +95,8 @@ private:
 
 
 
-    Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
+//    Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
+    Eigen::DiagonalMatrix<double, NOISE_SIZE> noise_diag;
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> step_jacobian;
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> step_V;
 

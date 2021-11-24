@@ -29,28 +29,51 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
     for (int j = 0; j < NUM_OF_LEG; j++) {
         delta_epsilon.push_back(Eigen::Vector3d::Zero());
     }
-    noise.setZero();
-    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
+//    noise.setZero();
+//    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
+//
+//    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
 
-    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+    noise_diag.diagonal() <<
+            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
+            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
+            (ACC_W * ACC_W), (ACC_W * ACC_W), (ACC_W * ACC_W),
+            (GYR_W * GYR_W), (GYR_W * GYR_W), (GYR_W * GYR_W),
+            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
+            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
+            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
+            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N);
 
-    // the fixed kinematics parameter
+
+
+
+            // the fixed kinematics parameter
     rho_fix_list = _rho_fix_list;
     p_br = _p_br;
     R_br = _R_br;
@@ -425,13 +448,16 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
 
             Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity();
-            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
+//            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
+            noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
+            noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
+            noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
 
         }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();
 //        covariance = F * covariance * F.transpose() + tmp;
-        covariance = F * covariance * F.transpose() + V * noise * V.transpose();
+        covariance = F * covariance * F.transpose() + V * noise_diag * V.transpose();
 //        SelfAdjointEigenSolver<Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>> eigensolver(tmp);
 //        std::cout << "The determinant of V * noise * V.transpose() is " << tmp.determinant() << std::endl;
 //        std::cout << eigensolver.eigenvalues().transpose() << std::endl;
