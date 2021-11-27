@@ -26,31 +26,57 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
 
     linearized_rho = _linearized_rho;
 
+    foot_force_min.setZero();
+    foot_force_max.setZero();
+
     for (int j = 0; j < NUM_OF_LEG; j++) {
         delta_epsilon.push_back(Eigen::Vector3d::Zero());
     }
-    noise.setZero();
-    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
+//    noise.setZero();
+//    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
+//
+//    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
 
-    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+    noise_diag.diagonal() <<
+            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
+            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
+            (ACC_W * ACC_W), (ACC_W * ACC_W), (ACC_W * ACC_W),
+            (GYR_W * GYR_W), (GYR_W * GYR_W), (GYR_W * GYR_W),
+            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
+            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
+            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
+            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
+            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N);
 
-    // the fixed kinematics parameter
+
+
+
+            // the fixed kinematics parameter
     rho_fix_list = _rho_fix_list;
     p_br = _p_br;
     R_br = _R_br;
@@ -244,134 +270,231 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
                 -a_1_x(1), a_1_x(0), 0;
         Eigen::Matrix3d kappa_7 = (Matrix3d::Identity() - R_w_x * _dt);
         // change to sparse matrix later otherwise they are too large
-        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> F; F.setZero();
+//        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> F; F.setZero();
+        Eigen::SparseMatrix<double> F(RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE);
+        std::vector<Trip> trp;
+        Eigen::Matrix3d tmp33;
         // F row 1
-        F.block<3, 3>(0, 0) = Matrix3d::Identity();
+//        F.block<3, 3>(0, 0) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,0+s_i,1));
         Eigen::Matrix3d kappa_1 = -0.5 * delta_q.toRotationMatrix() * R_a_0_x * _dt +
                                   -0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * kappa_7 * _dt;
-        F.block<3, 3>(0, 3) = 0.5 * _dt * kappa_1;
-        F.block<3, 3>(0, 6) = Matrix3d::Identity() * _dt;
-        // 9 12 15 18 are 0
-        F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
-        F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
-        // F row 2
-        F.block<3, 3>(3, 3) = kappa_7;
-        F.block<3, 3>(3, 24) = -1.0 * Matrix3d::Identity() * _dt;
-        // F row 3
-        F.block<3, 3>(6, 3) = kappa_1;
-        F.block<3, 3>(6, 6) = Matrix3d::Identity();
-        F.block<3, 3>(6, 21) = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
-        F.block<3, 3>(6, 24) = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+        tmp33 = 0.5 * _dt * kappa_1;
+//        F.block<3, 3>(0, 3) = 0.5 * _dt * kappa_1;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,3+s_j,tmp33(s_i,s_j)));
+//        F.block<3, 3>(0, 6) = Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,6+s_i,_dt));
+//        // 9 12 15 18 are 0
+//        F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
+        Eigen::Matrix3d kappa_2 = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,21+s_j,kappa_2(s_i,s_j)));
+//        F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
+        Eigen::Matrix3d kappa_3 = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,24+s_j,kappa_3(s_i,s_j)));
 
-        // F row 4 5 6 7
+//        // F row 2
+//        F.block<3, 3>(3, 3) = kappa_7;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(3+s_i,3+s_j,kappa_7(s_i,s_j)));
+//        F.block<3, 3>(3, 24) = -1.0 * Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,24+s_i,-_dt));
+//        // F row 3
+//        F.block<3, 3>(6, 3) = kappa_1;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,3+s_j,kappa_1(s_i,s_j)));
+//        F.block<3, 3>(6, 6) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(6+s_i,6+s_i,1));
+//        F.block<3, 3>(6, 21) = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
+        Eigen::Matrix3d kappa_4 = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,21+s_j,kappa_4(s_i,s_j)));
+
+//        F.block<3, 3>(6, 24) = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+        Eigen::Matrix3d kappa_5 = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,24+s_j,kappa_5(s_i,s_j)));
+//
+//        // F row 4 5 6 7
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            F.block<3, 3>(9+3*j, 3) = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
+//            F.block<3, 3>(9+3*j, 3) = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
+//                                      0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
+            tmp33 = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
                                       0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
-            F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
-            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
-                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
-                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5
-            F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
-        }
-        F.block<3, 3>(21, 21) = Matrix3d::Identity();
-        F.block<3, 3>(24, 24) = Matrix3d::Identity();
-        F.block<3, 3>(27, 27) = Matrix3d::Identity();
-        F.block<3, 3>(30, 30) = Matrix3d::Identity();
-        F.block<3, 3>(33, 33) = Matrix3d::Identity();
-        F.block<3, 3>(36, 36) = Matrix3d::Identity();
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,3+s_j,tmp33(s_i,s_j)));
 
+//            F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
+            for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(9+3*j+s_i,9+3*j+s_i,1));
+//            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+//                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
+//                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5
+            tmp33 = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
+                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5'
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,24+s_j,tmp33(s_i,s_j)));
+//            F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
+            tmp33 = 0.5 * _dt * (gi[j] + gip1[j]);
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,27+3*j+s_j,tmp33(s_i,s_j)));
+        }
+//        F.block<3, 3>(21, 21) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(21+s_i,21+s_i,1));
+//        F.block<3, 3>(24, 24) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(24+s_i,24+s_i,1));
+//        F.block<3, 3>(27, 27) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(27+s_i,27+s_i,1));
+//        F.block<3, 3>(30, 30) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(30+s_i,30+s_i,1));
+//        F.block<3, 3>(33, 33) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(33+s_i,33+s_i,1));
+//        F.block<3, 3>(36, 36) = Matrix3d::Identity();
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(36+s_i,36+s_i,1));
+
+        F.setFromTriplets(trp.begin(),trp.end());
         // get V
 
         Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> V; V.setZero();
+//        Eigen::SparseMatrix<double> V(RESIDUAL_STATE_SIZE, NOISE_SIZE);
+        trp.clear();
+        trp.resize(0);
         V.block<3, 3>(0, 0) =  0.25 * delta_q.toRotationMatrix() * _dt * _dt;
+        tmp33 =  0.25 * delta_q.toRotationMatrix() * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,0+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(0, 3) =  0.25 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * _dt * 0.5 * _dt;
+        tmp33 =  0.25 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * _dt * 0.5 * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,3+s_j,tmp33(s_i,s_j)));
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,9+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(0, 6) =  0.25 * result_delta_q.toRotationMatrix() * _dt * _dt;
+        tmp33 =  0.25 * result_delta_q.toRotationMatrix() * _dt * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,6+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(0, 9) =  V.block<3, 3>(0, 3);
         V.block<3, 3>(3, 3) =  0.5 * Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,3+s_i,0.5*_dt));
         V.block<3, 3>(3, 9) =  0.5 * Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,9+s_i,0.5*_dt));
         V.block<3, 3>(6, 0) =  0.5 * delta_q.toRotationMatrix() * _dt;
+        tmp33 = 0.5 * delta_q.toRotationMatrix() * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,0+s_j,tmp33(s_i,s_j)));
+
         V.block<3, 3>(6, 3) =  0.5 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * 0.5 * _dt;
+        tmp33 = 0.5 * -result_delta_q.toRotationMatrix() * R_a_1_x  * _dt * 0.5 * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,3+s_j,tmp33(s_i,s_j)));
+
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,9+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(6, 6) =  0.5 * result_delta_q.toRotationMatrix() * _dt;
+        tmp33 = 0.5 * result_delta_q.toRotationMatrix() * _dt;
+        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,6+s_j,tmp33(s_i,s_j)));
         V.block<3, 3>(6, 9) =  V.block<3, 3>(6, 3);
 
         // V row 4 5 6 7
         for (int j = 0; j < NUM_OF_LEG; j++) {
             V.block<3, 3>(9+3*j, 3) = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
                                                       + 0.5 * _dt * delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fi[j]);
+            tmp33 = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                    + 0.5 * _dt * delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fi[j]);
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,3+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 9) = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
                                                       + 0.5 * _dt * result_delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fip1[j]);
+            tmp33 = - 0.25 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+                    + 0.5 * _dt * result_delta_q.toRotationMatrix()* Utility::skewSymmetric(p_br + R_br*fip1[j]);
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,9+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 18) = - 0.5 * _dt * hi[j];
+            tmp33 =  - 0.5 * _dt * hi[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,18+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 21) = - 0.5 * _dt * hip1[j];
+            tmp33 =  - 0.5 * _dt * hip1[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,21+s_j,tmp33(s_i,s_j)));
 
             V.block<3, 3>(9+3*j, 24) = - 0.5 * _dt * delta_q.toRotationMatrix() * R_br * Ji[j];
+            tmp33 =  - 0.5 * _dt * delta_q.toRotationMatrix() * R_br * Ji[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,24+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 27) = - 0.5 * _dt * result_delta_q.toRotationMatrix() * R_br * Jip1[j];
+            tmp33 =  - 0.5 * _dt * result_delta_q.toRotationMatrix() * R_br * Jip1[j];
+            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,27+s_j,tmp33(s_i,s_j)));
             V.block<3, 3>(9+3*j, 30+3*j) = - Matrix3d::Identity() * _dt;
+            for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(9+3*j+s_i,30+3*j+s_i,-_dt));
         }
 
         V.block<3, 3>(21, 12) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(21+s_i,12+s_i,-1*_dt));
         V.block<3, 3>(24, 15) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(24+s_i,15+s_i,-1*_dt));
 
         V.block<3, 3>(27, 42) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(27+s_i,42+s_i,-1*_dt));
         V.block<3, 3>(30, 45) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(30+s_i,45+s_i,-1*_dt));
         V.block<3, 3>(33, 48) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(33+s_i,48+s_i,-1*_dt));
         V.block<3, 3>(36, 51) = -Matrix3d::Identity() * _dt;
+        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(36+s_i,51+s_i,-1*_dt));
+
+//        Eigen::SparseMatrix<double> V2(RESIDUAL_STATE_SIZE, NOISE_SIZE);
+//        V2.setFromTriplets(trp.begin(),trp.end());
+//        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> ss = V2-V;
+//        double sum1 = ss.block<3,3>(6,3).sum();
+//        std::cout <<"----1-----" << sum1 << std::endl;
+//        double sum2 = ss.block<3,3>(6,6).sum();
+//        std::cout <<"-----2----" << sum2 << std::endl;
+//        double sum3 = ss.block<3,3>(6,9).sum();
+//        std::cout <<"-----3----" << sum3 << std::endl;
 
         jacobian = F * jacobian;
         // change noise
         // TODO: check if all legs on the ground
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            Eigen::Vector3d average_c = 0.5 * (_c_0.segment<3>(3*j) + _c_1.segment<3>(3*j));
+            // get z directional contact force ( contact foot sensor reading)
+            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
+            double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
 
-            Eigen::Vector3d diff_c = (_c_1.segment<3>(3*j) - _c_0.segment<3>(3*j)) / _dt;
-
-
-            double force_mag = average_c.norm();
-            double diff_c_mag = diff_c.norm();
-
-             // generate contact flag
-             // imcrease force envelope
-             if (force_mag < foot_force_min[j]) {
-                 foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
-             }
+            force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
+            if (force_mag < foot_force_min[j]) {
+                foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
+            }
             if (force_mag > foot_force_max[j]) {
                 foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
             }
             // exponential decay, max force decays faster
             foot_force_min[j] *= 0.9991;
-            foot_force_max[j] = 0.997;
-
-            foot_force_contact_threshold[j] = foot_force_min[j] + 0.4*(foot_force_max[j]-foot_force_min[j]);
-
+            foot_force_max[j] *= 0.997;
+            double diff_c_mag = diff_c;
+//            // logistic regression
+//            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
+//            uncertainty *= (1.0f + 0.0003*diff_c_mag);
+//            if (uncertainty < V_N)  uncertainty = V_N;
+            foot_force_contact_threshold[j] = foot_force_min[j] + 0.8*(foot_force_max[j]-foot_force_min[j]);
+            foot_force[j] = force_mag;
             double uncertainty = 0.0;
             if ( force_mag > foot_force_contact_threshold[j]) {
                 foot_contact_flag[j] = 1;
                 uncertainty = V_N;
             } else {
                 foot_contact_flag[j] = 0;
-                uncertainty = 1e3*V_N;
+                uncertainty = SWING_V_N;
             }
-
-
-//            // logistic regression
-//            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
-//            uncertainty *= (1.0f + 0.0002*diff_c_mag);
-//            if (uncertainty < V_N)  uncertainty = V_N;
-
+//            uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
+//            std:cout << uncertainty << endl;
+            uncertainty *= (1.0f + 0.0005*abs(diff_c_mag));
+            if (uncertainty < V_N)  uncertainty = V_N;
+            if (uncertainty > 100) uncertainty = 100.0; // limit the uncertainty
 
             Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity();
-            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
+//            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
+            noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
+            noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
+            noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
 
         }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();
 //        covariance = F * covariance * F.transpose() + tmp;
-        covariance = F * covariance * F.transpose() + V * noise * V.transpose();
+        covariance = F * covariance * F.transpose() + V * noise_diag * V.transpose();
 //        SelfAdjointEigenSolver<Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>> eigensolver(tmp);
 //        std::cout << "The determinant of V * noise * V.transpose() is " << tmp.determinant() << std::endl;
 //        std::cout << eigensolver.eigenvalues().transpose() << std::endl;
         step_jacobian = F;
         step_V = V;
     }
+//    std::cout << "foot_force" << foot_force.transpose() << std::endl;
+//    std::cout << "foot_force_min" << foot_force_min.transpose() << std::endl;
+//    std::cout << "foot_force_max" << foot_force_max.transpose() << std::endl;
+//    std::cout << "foot_contact_flag" << foot_contact_flag.transpose() << std::endl;
+//    std::cout << "foot_force_contact_threshold" << foot_force_contact_threshold.transpose() << std::endl;
+//    std::cout << "noise_diag" << noise_diag.diagonal().segment<12>(30).transpose() << std::endl;
 }
 
 void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,

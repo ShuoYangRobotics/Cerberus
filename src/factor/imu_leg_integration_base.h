@@ -6,6 +6,9 @@
 #define VILEOM_IMU_LEG_INTEGRATION_BASE_H
 #include<algorithm>
 #include<cmath>
+
+#include <Eigen/Sparse>
+
 #include "../utils/utility.h"
 #include "../utils/parameters.h"
 #include "../legKinematics/A1Kinematics.h"
@@ -15,6 +18,7 @@ using namespace Eigen;
 
 #define RESIDUAL_STATE_SIZE 39
 #define NOISE_SIZE 54
+typedef Eigen::Triplet<int> Trip;
 
 class IMULegIntegrationBase {
 public:
@@ -95,7 +99,15 @@ private:
     Vector4d foot_force_contact_threshold;
     Vector4i foot_contact_flag;
 
-    Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
+    // variables to filter the contact force to get the contact flag
+    Vector4d foot_force;
+    Vector4d foot_force_min;
+    Vector4d foot_force_max;
+    Vector4d foot_force_contact_threshold;
+    Vector4i foot_contact_flag;
+
+//    Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
+    Eigen::DiagonalMatrix<double, NOISE_SIZE> noise_diag;
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> step_jacobian;
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> step_V;
 

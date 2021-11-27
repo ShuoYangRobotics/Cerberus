@@ -289,8 +289,8 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
 //            std::cout << jacobian_speedbias_i << std::endl;
             jacobian_speedbias_i = sqrt_info * jacobian_speedbias_i;
 //            std::cout << fabs(jacobian_speedbias_i.maxCoeff()) << std::endl;
-            ROS_ASSERT(fabs(jacobian_speedbias_i.maxCoeff()) < 1e8);
-            ROS_ASSERT(fabs(jacobian_speedbias_i.minCoeff()) < 1e8);
+            ROS_ASSERT(fabs(jacobian_speedbias_i.maxCoeff()) < 1e10);
+            ROS_ASSERT(fabs(jacobian_speedbias_i.minCoeff()) < 1e10);
             if (jacobian_speedbias_i.maxCoeff() > 1e10 || jacobian_speedbias_i.minCoeff() < -1e10) {
                 ROS_WARN("numerical unstable in preintegration");
                 std::cout << sqrt_info << std::endl;
