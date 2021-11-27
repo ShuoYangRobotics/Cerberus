@@ -48,6 +48,7 @@ int OPTIMIZE_LEG_BIAS;
 double PHI_N;
 double DPHI_N;
 double V_N;
+double SWING_V_N;
 double RHO_N;
 double FOOT_CONTACT_RANGE_MIN[4];
 double FOOT_CONTACT_RANGE_MAX[4];
@@ -132,6 +133,7 @@ void readParameters(std::string config_file)
         PHI_N = fsSettings["joint_angle_n"];
         DPHI_N = fsSettings["joint_velocity_n"];
         V_N = fsSettings["foot_velocity_n"];
+        SWING_V_N = fsSettings["swing_foot_velocity_n"];
         RHO_N = fsSettings["leg_bias_n"];
 
         LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];

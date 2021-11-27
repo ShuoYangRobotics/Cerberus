@@ -60,6 +60,7 @@ extern int OPTIMIZE_LEG_BIAS;
 extern double PHI_N;
 extern double DPHI_N;
 extern double V_N;
+extern double SWING_V_N;
 extern double RHO_N;
 extern double FOOT_CONTACT_RANGE_MIN[4];
 extern double FOOT_CONTACT_RANGE_MAX[4];

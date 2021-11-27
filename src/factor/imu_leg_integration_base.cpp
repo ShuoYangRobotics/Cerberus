@@ -26,6 +26,9 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
 
     linearized_rho = _linearized_rho;
 
+    foot_force_min.setZero();
+    foot_force_max.setZero();
+
     for (int j = 0; j < NUM_OF_LEG; j++) {
         delta_epsilon.push_back(Eigen::Vector3d::Zero());
     }
@@ -434,18 +437,40 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         // change noise
         // TODO: check if all legs on the ground
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            Eigen::Vector3d average_c = 0.5 * (_c_0.segment<3>(3*j) + _c_1.segment<3>(3*j));
+            // get z directional contact force ( contact foot sensor reading)
+            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
+            double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
 
-            Eigen::Vector3d diff_c = (_c_1.segment<3>(3*j) - _c_0.segment<3>(3*j)) / _dt;
-
-
-            double force_mag = average_c.norm();
-            double diff_c_mag = diff_c.norm();
-            // logistic regression
-            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
-            uncertainty *= (1.0f + 0.0002*diff_c_mag);
+            force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
+            if (force_mag < foot_force_min[j]) {
+                foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
+            }
+            if (force_mag > foot_force_max[j]) {
+                foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
+            }
+            // exponential decay, max force decays faster
+            foot_force_min[j] *= 0.9991;
+            foot_force_max[j] *= 0.997;
+            double diff_c_mag = diff_c;
+//            // logistic regression
+//            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
+//            uncertainty *= (1.0f + 0.0003*diff_c_mag);
+//            if (uncertainty < V_N)  uncertainty = V_N;
+            foot_force_contact_threshold[j] = foot_force_min[j] + 0.8*(foot_force_max[j]-foot_force_min[j]);
+            foot_force[j] = force_mag;
+            double uncertainty = 0.0;
+            if ( force_mag > foot_force_contact_threshold[j]) {
+                foot_contact_flag[j] = 1;
+                uncertainty = V_N;
+            } else {
+                foot_contact_flag[j] = 0;
+                uncertainty = SWING_V_N;
+            }
+//            uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
+//            std:cout << uncertainty << endl;
+            uncertainty *= (1.0f + 0.0005*abs(diff_c_mag));
             if (uncertainty < V_N)  uncertainty = V_N;
-
+            if (uncertainty > 100) uncertainty = 100.0; // limit the uncertainty
 
             Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity();
 //            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
@@ -464,6 +489,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         step_jacobian = F;
         step_V = V;
     }
+//    std::cout << "foot_force" << foot_force.transpose() << std::endl;
+//    std::cout << "foot_force_min" << foot_force_min.transpose() << std::endl;
+//    std::cout << "foot_force_max" << foot_force_max.transpose() << std::endl;
+//    std::cout << "foot_contact_flag" << foot_contact_flag.transpose() << std::endl;
+//    std::cout << "foot_force_contact_threshold" << foot_force_contact_threshold.transpose() << std::endl;
+//    std::cout << "noise_diag" << noise_diag.diagonal().segment<12>(30).transpose() << std::endl;
 }
 
 void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
