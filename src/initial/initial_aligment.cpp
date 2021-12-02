@@ -28,8 +28,8 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
         VectorXd tmp_b(3);
         tmp_b.setZero();
         Eigen::Quaterniond q_ij(frame_i->second.R.transpose() * frame_j->second.R);
-        tmp_A = frame_j->second.pre_integration->jacobian.template block<3, 3>(O_R, O_BG);
-        tmp_b = 2 * (frame_j->second.pre_integration->delta_q.inverse() * q_ij).vec();
+        tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, 3>(ILO_R, ILO_BG);
+        tmp_b = 2 * (frame_j->second.il_pre_integration->delta_q.inverse() * q_ij).vec();
         A += tmp_A.transpose() * tmp_A;
         b += tmp_A.transpose() * tmp_b;
     }
@@ -42,7 +42,77 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
     for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end( ); frame_i++)
     {
         frame_j = next(frame_i);
-        frame_j->second.pre_integration->repropagate(Vector3d::Zero(), Bgs[0]);
+        Vector12d tmp; tmp.setZero();
+        frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], tmp);
+    }
+}
+
+void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, Vector3d* Rho1, Vector3d* Rho2, Vector3d* Rho3,Vector3d* Rho4)
+{
+    Matrix3d A;
+    Vector3d b;
+    Vector3d delta_bg;
+    A.setZero();
+    b.setZero();
+    map<double, ImageFrame>::iterator frame_i;
+    map<double, ImageFrame>::iterator frame_j;
+    for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
+    {
+        frame_j = next(frame_i);
+        Matrix3d tmp_A;
+        tmp_A.setZero();
+        Vector3d tmp_b;
+        tmp_b.setZero();
+        Eigen::Quaterniond q_ij(frame_i->second.R.transpose() * frame_j->second.R);
+        tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, 3>(ILO_R, ILO_BG);
+        tmp_b = 2 * (frame_j->second.il_pre_integration->delta_q.inverse() * q_ij).vec();
+        A += tmp_A.transpose() * tmp_A;
+        b += tmp_A.transpose() * tmp_b;
+    }
+    delta_bg = A.ldlt().solve(b);
+    ROS_WARN_STREAM("gyroscope bias initial calibration " << delta_bg.transpose());
+
+    Vector12d delta_rho;
+    for (int leg_idx = 0; leg_idx < NUM_OF_LEG; leg_idx ++) {
+        A.setZero(); b.setZero();
+        for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
+        {
+            frame_j = next(frame_i);
+            Matrix3d tmp_A;
+            tmp_A.setZero();
+            Vector3d tmp_b;
+            tmp_b.setZero();
+            tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, 3>(9+3*leg_idx, 27+3*leg_idx);
+            tmp_b =   frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T)
+                    - frame_j->second.il_pre_integration->delta_epsilon[leg_idx];
+            A += tmp_A.transpose() * tmp_A;
+            b += tmp_A.transpose() * tmp_b;
+
+//            Matrix3d tmp_ATA = tmp_A.transpose() * tmp_A;
+//            Vector3d tmp_solve = tmp_ATA.ldlt().solve(tmp_A.transpose() * tmp_b);
+//            std::cout << tmp_solve.transpose() << std::endl;
+        }
+        delta_rho.segment<3>(3*leg_idx) = A.ldlt().solve(b);
+    }
+    ROS_WARN_STREAM("leg bias initial calibration " << delta_rho.transpose());
+
+    for (int i = 0; i <= WINDOW_SIZE; i++) {
+        Bgs[i] += delta_bg;
+        Rho1[i] += delta_rho.segment<3>(0);
+        Rho2[i] += delta_rho.segment<3>(3);
+        Rho3[i] += delta_rho.segment<3>(6);
+        Rho4[i] += delta_rho.segment<3>(9);
+    }
+
+    for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end( ); frame_i++)
+    {
+        frame_j = next(frame_i);
+        Vector12d tmp; tmp.setZero();
+        tmp.segment<3>(0) = Rho1[0];
+        tmp.segment<3>(3) = Rho2[0];
+        tmp.segment<3>(6) = Rho3[0];
+        tmp.segment<3>(9) = Rho4[0];
+        frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], tmp);
     }
 }
 
@@ -91,18 +161,18 @@ void RefineGravity(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vector
             VectorXd tmp_b(6);
             tmp_b.setZero();
 
-            double dt = frame_j->second.pre_integration->sum_dt;
+            double dt = frame_j->second.il_pre_integration->sum_dt;
 
 
             tmp_A.block<3, 3>(0, 0) = -dt * Matrix3d::Identity();
             tmp_A.block<3, 2>(0, 6) = frame_i->second.R.transpose() * dt * dt / 2 * Matrix3d::Identity() * lxly;
             tmp_A.block<3, 1>(0, 8) = frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T) / 100.0;     
-            tmp_b.block<3, 1>(0, 0) = frame_j->second.pre_integration->delta_p + frame_i->second.R.transpose() * frame_j->second.R * TIC[0] - TIC[0] - frame_i->second.R.transpose() * dt * dt / 2 * g0;
+            tmp_b.block<3, 1>(0, 0) = frame_j->second.il_pre_integration->delta_p + frame_i->second.R.transpose() * frame_j->second.R * TIC[0] - TIC[0] - frame_i->second.R.transpose() * dt * dt / 2 * g0;
 
             tmp_A.block<3, 3>(3, 0) = -Matrix3d::Identity();
             tmp_A.block<3, 3>(3, 3) = frame_i->second.R.transpose() * frame_j->second.R;
             tmp_A.block<3, 2>(3, 6) = frame_i->second.R.transpose() * dt * Matrix3d::Identity() * lxly;
-            tmp_b.block<3, 1>(3, 0) = frame_j->second.pre_integration->delta_v - frame_i->second.R.transpose() * dt * Matrix3d::Identity() * g0;
+            tmp_b.block<3, 1>(3, 0) = frame_j->second.il_pre_integration->delta_v - frame_i->second.R.transpose() * dt * Matrix3d::Identity() * g0;
 
 
             Matrix<double, 6, 6> cov_inv = Matrix<double, 6, 6>::Zero();
@@ -154,17 +224,17 @@ bool LinearAlignment(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vect
         VectorXd tmp_b(6);
         tmp_b.setZero();
 
-        double dt = frame_j->second.pre_integration->sum_dt;
+        double dt = frame_j->second.il_pre_integration->sum_dt;
 
         tmp_A.block<3, 3>(0, 0) = -dt * Matrix3d::Identity();
         tmp_A.block<3, 3>(0, 6) = frame_i->second.R.transpose() * dt * dt / 2 * Matrix3d::Identity();
         tmp_A.block<3, 1>(0, 9) = frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T) / 100.0;     
-        tmp_b.block<3, 1>(0, 0) = frame_j->second.pre_integration->delta_p + frame_i->second.R.transpose() * frame_j->second.R * TIC[0] - TIC[0];
+        tmp_b.block<3, 1>(0, 0) = frame_j->second.il_pre_integration->delta_p + frame_i->second.R.transpose() * frame_j->second.R * TIC[0] - TIC[0];
         //cout << "delta_p   " << frame_j->second.pre_integration->delta_p.transpose() << endl;
         tmp_A.block<3, 3>(3, 0) = -Matrix3d::Identity();
         tmp_A.block<3, 3>(3, 3) = frame_i->second.R.transpose() * frame_j->second.R;
         tmp_A.block<3, 3>(3, 6) = frame_i->second.R.transpose() * dt * Matrix3d::Identity();
-        tmp_b.block<3, 1>(3, 0) = frame_j->second.pre_integration->delta_v;
+        tmp_b.block<3, 1>(3, 0) = frame_j->second.il_pre_integration->delta_v;
         //cout << "delta_v   " << frame_j->second.pre_integration->delta_v.transpose() << endl;
 
         Matrix<double, 6, 6> cov_inv = Matrix<double, 6, 6>::Zero();

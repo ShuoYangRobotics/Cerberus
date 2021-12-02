@@ -43,6 +43,19 @@ std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
 std::string LEG_TOPIC;
 int NUM_OF_LEG;
+int OPTIMIZE_LEG_BIAS;
+// temporarily write some parameters here
+double PHI_N;
+double DPHI_N;
+double V_N;
+double SWING_V_N;
+double RHO_N;
+double FOOT_CONTACT_RANGE_MIN[4];
+double FOOT_CONTACT_RANGE_MAX[4];
+double FOOT_CONTACT_FUNC_C1[4];
+double FOOT_CONTACT_FUNC_C2[4];
+double LOWER_LEG_LENGTH;
+
 int MAX_CNT;
 int MIN_DIST;
 double F_THRESHOLD;
@@ -113,6 +126,37 @@ void readParameters(std::string config_file)
         printf("leg number %d\n", NUM_OF_LEG);
         fsSettings["leg_topic"] >> LEG_TOPIC;
         printf("LEG_TOPIC: %s\n", LEG_TOPIC.c_str());
+
+        OPTIMIZE_LEG_BIAS = fsSettings["optimize_leg_bias"];
+        printf("leg optimize_leg_bias %d\n", OPTIMIZE_LEG_BIAS);
+
+        PHI_N = fsSettings["joint_angle_n"];
+        DPHI_N = fsSettings["joint_velocity_n"];
+        V_N = fsSettings["foot_velocity_n"];
+        SWING_V_N = fsSettings["swing_foot_velocity_n"];
+        RHO_N = fsSettings["leg_bias_n"];
+
+        LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];
+
+        FOOT_CONTACT_RANGE_MIN[0] = fsSettings["foot1_contact_range_min"];
+        FOOT_CONTACT_RANGE_MAX[0] = fsSettings["foot1_contact_range_max"];
+        FOOT_CONTACT_FUNC_C1[0]   = fsSettings["foot1_contact_func_coeffi1"];
+        FOOT_CONTACT_FUNC_C2[0]   = fsSettings["foot1_contact_func_coeffi2"];
+
+        FOOT_CONTACT_RANGE_MIN[1] = fsSettings["foot2_contact_range_min"];
+        FOOT_CONTACT_RANGE_MAX[1] = fsSettings["foot2_contact_range_max"];
+        FOOT_CONTACT_FUNC_C1[1]   = fsSettings["foot2_contact_func_coeffi1"];
+        FOOT_CONTACT_FUNC_C2[1]   = fsSettings["foot2_contact_func_coeffi2"];
+
+        FOOT_CONTACT_RANGE_MIN[2] = fsSettings["foot3_contact_range_min"];
+        FOOT_CONTACT_RANGE_MAX[2] = fsSettings["foot3_contact_range_max"];
+        FOOT_CONTACT_FUNC_C1[2]   = fsSettings["foot3_contact_func_coeffi1"];
+        FOOT_CONTACT_FUNC_C2[2]   = fsSettings["foot3_contact_func_coeffi2"];
+
+        FOOT_CONTACT_RANGE_MIN[3] = fsSettings["foot4_contact_range_min"];
+        FOOT_CONTACT_RANGE_MAX[3] = fsSettings["foot4_contact_range_max"];
+        FOOT_CONTACT_FUNC_C1[3]   = fsSettings["foot4_contact_func_coeffi1"];
+        FOOT_CONTACT_FUNC_C2[3]   = fsSettings["foot4_contact_func_coeffi2"];
     }
 
     SOLVER_TIME = fsSettings["max_solver_time"];
@@ -121,7 +165,11 @@ void readParameters(std::string config_file)
     MIN_PARALLAX = MIN_PARALLAX / FOCAL_LENGTH;
 
     fsSettings["output_path"] >> OUTPUT_FOLDER;
-    VINS_RESULT_PATH = OUTPUT_FOLDER + "/vio.csv";
+    if (OPTIMIZE_LEG_BIAS) {
+        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + ".csv";
+    } else {
+        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wob"+ Utility::GetCurrentTimeForFileName() + ".csv";
+    }
     std::cout << "result path " << VINS_RESULT_PATH << std::endl;
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);
     fout.close();

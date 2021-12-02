@@ -55,6 +55,19 @@ extern int USE_IMU;
 extern std::string LEG_TOPIC;
 extern int NUM_OF_LEG;
 extern int USE_LEG;
+extern int OPTIMIZE_LEG_BIAS;
+// temporarily write some parameters here
+extern double PHI_N;
+extern double DPHI_N;
+extern double V_N;
+extern double SWING_V_N;
+extern double RHO_N;
+extern double FOOT_CONTACT_RANGE_MIN[4];
+extern double FOOT_CONTACT_RANGE_MAX[4];
+extern double FOOT_CONTACT_FUNC_C1[4];
+extern double FOOT_CONTACT_FUNC_C2[4];
+extern double LOWER_LEG_LENGTH;
+
 extern int MULTIPLE_THREAD;
 // pts_gt for debug purpose;
 extern map<int, Eigen::Vector3d> pts_gt;
@@ -72,8 +85,10 @@ void readParameters(std::string config_file);
 
 enum SIZE_PARAMETERIZATION
 {
-    SIZE_POSE = 7,
+    SIZE_POSE = 7,       // p3, q4
     SIZE_SPEEDBIAS = 9,
+    SIZE_SPEED_LEG_BIAS = 21, // v 3, ba 3, bg 3, bv 3, rho1 3, rho2 3, rho3 3, rho 4 3
+    SIZE_LEG_BIAS = 12,
     SIZE_FEATURE = 1
 };
 
@@ -92,4 +107,21 @@ enum NoiseOrder
     O_GN = 3,
     O_AW = 6,
     O_GW = 9
+};
+
+enum ILStateOrder // error state, total is RESIDUAL_STATE_SIZE
+{
+    ILO_P = 0,
+    ILO_R = 3,
+    ILO_V = 6,
+    ILO_EPS1 = 9,
+    ILO_EPS2 = 12,
+    ILO_EPS3 = 15,
+    ILO_EPS4 = 18,
+    ILO_BA = 21,
+    ILO_BG = 24,
+    ILO_RHO1 = 27,
+    ILO_RHO2 = 30,
+    ILO_RHO3 = 33,
+    ILO_RHO4 = 36,
 };

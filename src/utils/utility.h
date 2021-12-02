@@ -16,6 +16,11 @@
 #include <cassert>
 #include <cstring>
 #include <eigen3/Eigen/Dense>
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
+
+typedef Eigen::Matrix<double, 12, 1> Vector12d;
 
 class Utility
 {
@@ -121,10 +126,10 @@ class Utility
 
     static Eigen::Matrix3d g2R(const Eigen::Vector3d &g);
     static Eigen::Vector3d lerpGyro(double t, std::vector<std::pair<double, Eigen::Vector3d>> gyroVector);
-    static Eigen::MatrixXd lerpLegSensors(double t, int &starting_idx,
-                                            std::deque<std::pair<double, Eigen::VectorXd>> jointAngVector,
-                                            std::deque<std::pair<double, Eigen::VectorXd>> jointAngVelVector,
-                                            std::deque<std::pair<double, Eigen::VectorXd>> footForceVector);
+    static Eigen::Matrix<double, 12, 3> lerpLegSensors(double t, int &starting_idx,
+                                            std::deque<std::pair<double, Vector12d>> jointAngVector,
+                                            std::deque<std::pair<double, Vector12d>> jointAngVelVector,
+                                            std::deque<std::pair<double, Vector12d>> footForceVector);
     template <size_t N>
     struct uint_
     {
@@ -153,4 +158,15 @@ class Utility
         return angle_degrees +
             two_pi * std::floor((-angle_degrees + T(180)) / two_pi);
     };
+
+
+    static std::string GetCurrentTimeForFileName()
+    {
+        auto time = std::time(nullptr);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&time), "%F_%T"); // ISO 8601 without timezone information.
+        auto s = ss.str();
+        std::replace(s.begin(), s.end(), ':', '-');
+        return s;
+    }
 };

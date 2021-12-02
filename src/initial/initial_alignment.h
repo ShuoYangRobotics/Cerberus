@@ -13,6 +13,7 @@
 #include <eigen3/Eigen/Dense>
 #include <iostream>
 #include "../factor/imu_factor.h"
+#include "../factor/imu_leg_factor.h"
 #include "../utils/utility.h"
 #include <ros/ros.h>
 #include <map>
@@ -34,7 +35,9 @@ class ImageFrame
         Matrix3d R;
         Vector3d T;
         IntegrationBase *pre_integration;
+        IMULegIntegrationBase *il_pre_integration;
         bool is_key_frame;
 };
 void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs);
+void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, Vector3d* Rho1, Vector3d* Rho2, Vector3d* Rho3,Vector3d* Rho4);
 bool VisualIMUAlignment(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, Vector3d &g, VectorXd &x);
