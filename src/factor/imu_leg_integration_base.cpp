@@ -468,7 +468,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             }
 //            uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
 //            std:cout << uncertainty << endl;
-            uncertainty *= (1.0f + 0.0005*abs(diff_c_mag));
+            uncertainty *= (1.0f + 0.0009*abs(diff_c_mag));
             if (uncertainty < V_N)  uncertainty = V_N;
             if (uncertainty > 100) uncertainty = 100.0; // limit the uncertainty
 

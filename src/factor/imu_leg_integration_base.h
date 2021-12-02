@@ -94,12 +94,6 @@ private:
     Vector12d linearized_phi, linearized_dphi, linearized_c;
 
     // variables to filter the contact force to get the contact flag
-    Vector4d foot_force_min;
-    Vector4d foot_force_max;
-    Vector4d foot_force_contact_threshold;
-    Vector4i foot_contact_flag;
-
-    // variables to filter the contact force to get the contact flag
     Vector4d foot_force;
     Vector4d foot_force_min;
     Vector4d foot_force_max;
