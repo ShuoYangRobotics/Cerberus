@@ -32,46 +32,7 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_acc_0, const Vecto
     for (int j = 0; j < NUM_OF_LEG; j++) {
         delta_epsilon.push_back(Eigen::Vector3d::Zero());
     }
-//    noise.setZero();
-//    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
-//
-//    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
 
-    noise_diag.diagonal() <<
-            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
-            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
-            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
-            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
-            (ACC_W * ACC_W), (ACC_W * ACC_W), (ACC_W * ACC_W),
-            (GYR_W * GYR_W), (GYR_W * GYR_W), (GYR_W * GYR_W),
-            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
-            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
-            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
-            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
-            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
-            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N),
-            (RHO_N * RHO_N), (RHO_N * RHO_N), (RHO_N * RHO_N);
 
 
 
@@ -226,7 +187,46 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         result_linearized_rho.segment<3>(3*j) = linearized_rho.segment<3>(3*j);
     }
 
+//    noise.setZero();
+//    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
+//
+//    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
+//    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
 
+    noise_diag.diagonal() <<
+                          (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
+            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
+            (ACC_W * ACC_W), (ACC_W * ACC_W), (ACC_W * ACC_W),
+            (GYR_W * GYR_W), (GYR_W * GYR_W), (GYR_W * GYR_W),
+            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
+            (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
+            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
+            (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
+            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
+            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
+            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N);
     if(update_jacobian)
     {
         for (int j = 0; j < NUM_OF_LEG; j++) {
@@ -434,7 +434,9 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //        std::cout <<"-----3----" << sum3 << std::endl;
 
         jacobian = F * jacobian;
-        // change noise
+
+        noise_diag.diagonal()(2) = (ACC_N * ACC_N);
+        noise_diag.diagonal()(8) = (ACC_N * ACC_N);
         // TODO: check if all legs on the ground
         for (int j = 0; j < NUM_OF_LEG; j++) {
             // get z directional contact force ( contact foot sensor reading)
@@ -456,27 +458,34 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
 //            uncertainty *= (1.0f + 0.0003*diff_c_mag);
 //            if (uncertainty < V_N)  uncertainty = V_N;
-            foot_force_contact_threshold[j] = foot_force_min[j] + 0.8*(foot_force_max[j]-foot_force_min[j]);
+            foot_force_contact_threshold[j] = foot_force_min[j] + 0.75*(foot_force_max[j]-foot_force_min[j]);
             foot_force[j] = force_mag;
             double uncertainty = 0.0;
             if ( force_mag > foot_force_contact_threshold[j]) {
                 foot_contact_flag[j] = 1;
-                uncertainty = V_N;
+                uncertainty = V_N* (1.0f + 0.0009*abs(diff_c_mag));
+                noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
+                noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
+                noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
             } else {
                 foot_contact_flag[j] = 0;
                 uncertainty = SWING_V_N;
+                uncertainty = SWING_V_N* (1.0f + 0.0009*abs(diff_c_mag));
+                if (uncertainty > 150) uncertainty = 150.0; // limit the uncertainty
+                noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
+                noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
+                noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
             }
 //            uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
 //            std:cout << uncertainty << endl;
-            uncertainty *= (1.0f + 0.0009*abs(diff_c_mag));
-            if (uncertainty < V_N)  uncertainty = V_N;
-            if (uncertainty > 100) uncertainty = 100.0; // limit the uncertainty
 
-            Eigen::Matrix3d coeff = Eigen::Matrix3d::Identity();
+//            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(2) *= (1.0f + 0.00001*abs(diff_c_mag));
+//            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(8) *= (1.0f + 0.00001*abs(diff_c_mag));
 //            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
-            noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
-            noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
-            noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
 
         }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;

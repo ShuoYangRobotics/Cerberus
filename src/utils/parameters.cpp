@@ -49,7 +49,8 @@ double PHI_N;
 double DPHI_N;
 double V_N;
 double SWING_V_N;
-double RHO_N;
+double RHO_XY_N;
+double RHO_Z_N;
 double FOOT_CONTACT_RANGE_MIN[4];
 double FOOT_CONTACT_RANGE_MAX[4];
 double FOOT_CONTACT_FUNC_C1[4];
@@ -134,7 +135,8 @@ void readParameters(std::string config_file)
         DPHI_N = fsSettings["joint_velocity_n"];
         V_N = fsSettings["foot_velocity_n"];
         SWING_V_N = fsSettings["swing_foot_velocity_n"];
-        RHO_N = fsSettings["leg_bias_n"];
+        RHO_XY_N = fsSettings["leg_bias_xy_n"];
+        RHO_Z_N = fsSettings["leg_bias_z_n"];
 
         LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];
 
