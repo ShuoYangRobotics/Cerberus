@@ -55,20 +55,25 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
     turb_residual = sqrt_info2 * turb_residual;
 
     Eigen::VectorXd tmp = turb_residual - (jacobians[0]* turb_vec + residual);
+    std::cout << "residual\t" << residual.transpose() << std::endl;
+    std::cout << "turb_residual\t" << turb_residual.transpose() << std::endl;
+    std::cout << "jac_residual\t" << (jacobians[0]* turb_vec + residual).transpose() << std::endl;
     std::cout << "perturb Pi\t" << tmp.maxCoeff() << std::endl;
 
     // perturb Qi
     turb_residual =
-            il_pre_integration->evaluate(Pi, Qi* Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2), Vi, Bai, Bgi, rhoi, Pj, Qj, Vj, Baj, Bgj, rhoj);
+            il_pre_integration->evaluate(Pi, Qi* Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2).normalized(), Vi, Bai, Bgi, rhoi, Pj, Qj, Vj, Baj, Bgj, rhoj);
     sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, 39, 39>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
 
     turb_vec.setZero(); turb_vec.segment<3>(3) = turb;
-    tmp = (jacobians[0]* turb_vec + residual);
 
-    tmp = turb_residual - tmp;
+    tmp = turb_residual - (jacobians[0]* turb_vec + residual);
+    std::cout << "residual\t" << residual.transpose() << std::endl;
+    std::cout << "turb_residual\t" << turb_residual.transpose() << std::endl;
+    std::cout << "jac_residual\t" << (jacobians[0]* turb_vec + residual).transpose() << std::endl;
     std::cout << "perturb Qi\t" << tmp.transpose() << std::endl;
 
     // perturb Vi
@@ -140,7 +145,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
 
     // perturb Qj
     turb_residual =
-            il_pre_integration->evaluate(Pi, Qi, Vi, Bai, Bgi, rhoi, Pj, Qj* Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2), Vj, Baj, Bgj, rhoj);
+            il_pre_integration->evaluate(Pi, Qi, Vi, Bai, Bgi, rhoi, Pj, Qj* Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2).normalized(), Vj, Baj, Bgj, rhoj);
     sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, 39, 39>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
@@ -226,8 +231,7 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_pose_i.setZero();
 
             jacobian_pose_i.block<3, 3>(ILO_P, 0) = -Qi.inverse().toRotationMatrix();
-            jacobian_pose_i.block<3, 3>(ILO_P, 3) = Utility::skewSymmetric(
-                    Qi.inverse() * (0.5 * G * sum_dt * sum_dt + Pj - Pi - Vi * sum_dt) );
+            jacobian_pose_i.block<3, 3>(ILO_P, 3) = Utility::skewSymmetric(Qi.inverse() * (0.5 * G * sum_dt * sum_dt + Pj - Pi - Vi * sum_dt));
 
             Eigen::Quaterniond corrected_delta_q = il_pre_integration->delta_q * Utility::deltaQ(
                     dq_dbg * (Bgi - il_pre_integration->linearized_bg));
@@ -240,10 +244,10 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_pose_i.block<3, 3>(ILO_EPS2, 0) = -Qi.inverse().toRotationMatrix();
             jacobian_pose_i.block<3, 3>(ILO_EPS3, 0) = -Qi.inverse().toRotationMatrix();
             jacobian_pose_i.block<3, 3>(ILO_EPS4, 0) = -Qi.inverse().toRotationMatrix();
-            jacobian_pose_i.block<3, 3>(ILO_EPS1, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
-            jacobian_pose_i.block<3, 3>(ILO_EPS2, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
-            jacobian_pose_i.block<3, 3>(ILO_EPS3, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
-            jacobian_pose_i.block<3, 3>(ILO_EPS4, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
+            jacobian_pose_i.block<3, 3>(ILO_EPS1, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
+            jacobian_pose_i.block<3, 3>(ILO_EPS2, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
+            jacobian_pose_i.block<3, 3>(ILO_EPS3, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
+            jacobian_pose_i.block<3, 3>(ILO_EPS4, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
 
 
             jacobian_pose_i = sqrt_info * jacobian_pose_i;

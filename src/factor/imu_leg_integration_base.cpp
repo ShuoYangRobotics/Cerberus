@@ -463,15 +463,15 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             double uncertainty = 0.0;
             if ( force_mag > foot_force_contact_threshold[j]) {
                 foot_contact_flag[j] = 1;
-                uncertainty = V_N* (1.0f + 0.0009*abs(diff_c_mag));
+                uncertainty = V_N;
                 noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
                 noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
                 noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
             } else {
                 foot_contact_flag[j] = 0;
                 uncertainty = SWING_V_N;
-                uncertainty = SWING_V_N* (1.0f + 0.0009*abs(diff_c_mag));
-                if (uncertainty > 150) uncertainty = 150.0; // limit the uncertainty
+                uncertainty = SWING_V_N* (1.0f + 0.001*abs(diff_c_mag));
+                if (uncertainty > 2000) uncertainty = 2000; // limit the uncertainty
                 noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
                 noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
                 noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
@@ -481,10 +481,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
 //            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
 //            noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
-//            noise_diag.diagonal()(2) *= (1.0f + 0.00001*abs(diff_c_mag));
+            noise_diag.diagonal()(2) *= (1.0f + 0.001*abs(diff_c_mag));
 //            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
 //            noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
-//            noise_diag.diagonal()(8) *= (1.0f + 0.00001*abs(diff_c_mag));
+            noise_diag.diagonal()(8) *= (1.0f + 0.001*abs(diff_c_mag));
 //            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
 
         }
@@ -935,10 +935,10 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     residuals.block<3, 1>(ILO_P, 0) = Qi.inverse() * (0.5 * G * sum_dt * sum_dt + Pj - Pi - Vi * sum_dt) - corrected_delta_p;
     residuals.block<3, 1>(ILO_R, 0) = 2 * (corrected_delta_q.inverse() * (Qi.inverse() * Qj)).vec();
     residuals.block<3, 1>(ILO_V, 0) = Qi.inverse() * (G * sum_dt + Vj - Vi) - corrected_delta_v;
-    residuals.block<3, 1>(ILO_EPS1, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[0];
-    residuals.block<3, 1>(ILO_EPS2, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[1];
-    residuals.block<3, 1>(ILO_EPS3, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[2];
-    residuals.block<3, 1>(ILO_EPS4, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[3];
+    residuals.block<3, 1>(ILO_EPS1, 0) = Qi.inverse() * (Pj - Pi)/sum_dt - corrected_delta_epsilon[0];
+    residuals.block<3, 1>(ILO_EPS2, 0) = Qi.inverse() * (Pj - Pi)/sum_dt - corrected_delta_epsilon[1];
+    residuals.block<3, 1>(ILO_EPS3, 0) = Qi.inverse() * (Pj - Pi)/sum_dt - corrected_delta_epsilon[2];
+    residuals.block<3, 1>(ILO_EPS4, 0) = Qi.inverse() * (Pj - Pi)/sum_dt - corrected_delta_epsilon[3];
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;
     residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - rhoi.segment<3>(0);

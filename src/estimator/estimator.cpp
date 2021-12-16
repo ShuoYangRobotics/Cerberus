@@ -52,10 +52,10 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i].setZero(); Rho1[i] = 1e-5*Eigen::Vector3d::Random();
-        Rho2[i].setZero(); Rho2[i] = 1e-5*Eigen::Vector3d::Random();
-        Rho3[i].setZero(); Rho3[i] = 1e-5*Eigen::Vector3d::Random();
-        Rho4[i].setZero(); Rho4[i] = 1e-5*Eigen::Vector3d::Random();
+        Rho1[i].setZero(); Rho1[i] = 1e-9*Eigen::Vector3d::Ones();
+        Rho2[i].setZero(); Rho2[i] = 1e-9*Eigen::Vector3d::Ones();
+        Rho3[i].setZero(); Rho3[i] = 1e-9*Eigen::Vector3d::Ones();
+        Rho4[i].setZero(); Rho4[i] = 1e-9*Eigen::Vector3d::Ones();
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -573,10 +573,9 @@ void Estimator::processMeasurements()
 
                     // calculate vm
                     vi.push_back(-R_br * Ji[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
+                    // see which leg is on the groud by looking at the foot contact flag calculated in il_pre_integrations[frame_count]
                     vel_weight.push_back(
-                                1/(
-                                        V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(footForceVector[0].second.segment<3>(3*j).norm()-FOOT_CONTACT_RANGE_MAX[j])))
-                                        )
+                                il_pre_integrations[frame_count]->foot_contact_flag[j]
                             );
                 }
                 double total_vel_weight = 0;
@@ -1531,20 +1530,22 @@ void Estimator::optimization()
                                                para_Pose[j], para_SpeedBias[j], para_LegBias[j]);
 
 
-//            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
-//                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
-//            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
-//            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
-//            double **raw_jacobians = new double *[block_sizes.size()];
-//            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
-//            jacobians.resize(block_sizes.size());
-//            for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
-//            {
-//                jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
-//                raw_jacobians[xx] = jacobians[xx].data();
-//                //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
-//            }
-//            imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
+            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
+                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
+            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
+            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
+            double **raw_jacobians = new double *[block_sizes.size()];
+            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
+            jacobians.resize(block_sizes.size());
+            for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
+            {
+                jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
+                raw_jacobians[xx] = jacobians[xx].data();
+                //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
+            }
+            imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
+//            std::cout << "residual between frame " << i << " and " << j << std::endl;
+//            std::cout << residuals.transpose() << std::endl;
 //            imu_leg_factor -> checkJacobian(parameter_blocks.data());
 
         }

@@ -80,6 +80,7 @@ public:
     // the output of optimization,
     Eigen::Vector3d linearized_ba, linearized_bg;
     Vector12d linearized_rho;
+    Vector4i foot_contact_flag;
 
 private:
     double dt;
@@ -98,7 +99,6 @@ private:
     Vector4d foot_force_min;
     Vector4d foot_force_max;
     Vector4d foot_force_contact_threshold;
-    Vector4i foot_contact_flag;
 
 //    Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
     Eigen::DiagonalMatrix<double, NOISE_SIZE> noise_diag;
