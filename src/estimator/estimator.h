@@ -236,7 +236,10 @@ public:
     Quaterniond gt_orientation;
     Vector3d gt_velocity;
     Vector3d lo_velocity;
+    Vector12d lo_velocity_each_leg;
     Vector3d lo_velocity_with_bias;
+    Vector12d lo_velocity_with_bias_each_leg;
+    Vector4d foot_contact_flag;
 };
 
 

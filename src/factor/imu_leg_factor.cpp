@@ -244,10 +244,10 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_pose_i.block<3, 3>(ILO_EPS2, 0) = -Qi.inverse().toRotationMatrix();
             jacobian_pose_i.block<3, 3>(ILO_EPS3, 0) = -Qi.inverse().toRotationMatrix();
             jacobian_pose_i.block<3, 3>(ILO_EPS4, 0) = -Qi.inverse().toRotationMatrix();
-            jacobian_pose_i.block<3, 3>(ILO_EPS1, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
-            jacobian_pose_i.block<3, 3>(ILO_EPS2, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
-            jacobian_pose_i.block<3, 3>(ILO_EPS3, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
-            jacobian_pose_i.block<3, 3>(ILO_EPS4, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi)/sum_dt);
+            jacobian_pose_i.block<3, 3>(ILO_EPS1, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
+            jacobian_pose_i.block<3, 3>(ILO_EPS2, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
+            jacobian_pose_i.block<3, 3>(ILO_EPS3, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
+            jacobian_pose_i.block<3, 3>(ILO_EPS4, 3) = Utility::skewSymmetric(Qi.inverse() * (Pj - Pi));
 
 
             jacobian_pose_i = sqrt_info * jacobian_pose_i;

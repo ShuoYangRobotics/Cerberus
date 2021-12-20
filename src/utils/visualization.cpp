@@ -164,33 +164,76 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
         ofstream foutC(VINS_RESULT_PATH, ios::app);
         foutC.setf(ios::fixed, ios::floatfield);
         foutC.precision(0);
-        foutC << header.stamp.toSec() * 1e9 << ",";
+        foutC << header.stamp.toSec() * 1e9 << ",";           // 1
         foutC.precision(5);
 
 
-        foutC << p_wr.x() << ","
-              << p_wr.y() << ","
-              << p_wr.z() << ","
-              << tmp_Q.w() << ","
-              << tmp_Q.x() << ","
-              << tmp_Q.y() << ","
-              << tmp_Q.z() << ","
-              << v_wr.x() << ","
-              << v_wr.y() << ","
-              << v_wr.z() << ","
-              << estimator.gt_position.x() << ","
-              << estimator.gt_position.y() << ","
-              << estimator.gt_position.z() << ","
-              << estimator.gt_velocity.x() << ","
-              << estimator.gt_velocity.y() << ","
-              << estimator.gt_velocity.z() << ","
-              << estimator.lo_velocity.x() << ","
-              << estimator.lo_velocity.y() << ","
-              << estimator.lo_velocity.z() << ","
-               << estimator.lo_velocity_with_bias.x() << ","
-               << estimator.lo_velocity_with_bias.y() << ","
-               << estimator.lo_velocity_with_bias.z() << ","
-              << endl;
+        foutC
+            << p_wr.x() << ","                                // 2
+            << p_wr.y() << ","                                // 3
+            << p_wr.z() << ","                                // 4
+            << tmp_Q.w() << ","                               // 5
+            << tmp_Q.x() << ","                               // 6
+            << tmp_Q.y() << ","                               // 7
+            << tmp_Q.z() << ","                               // 8
+            << v_wr.x() << ","                                // 9
+            << v_wr.y() << ","                                // 10
+            << v_wr.z() << ","                                // 11
+            << estimator.gt_position.x() << ","               // 12
+            << estimator.gt_position.y() << ","               // 13
+            << estimator.gt_position.z() << ","               // 14
+            << estimator.gt_velocity.x() << ","               // 15
+            << estimator.gt_velocity.y() << ","               // 16
+            << estimator.gt_velocity.z() << ","               // 17
+            << estimator.lo_velocity.x() << ","               // 18
+            << estimator.lo_velocity.y() << ","               // 19
+            << estimator.lo_velocity.z() << ","               // 20
+            << estimator.lo_velocity_with_bias.x() << ","     // 21
+            << estimator.lo_velocity_with_bias.y() << ","     // 22
+            << estimator.lo_velocity_with_bias.z() << ","     // 23
+            << estimator.Rho1[WINDOW_SIZE].x() << ","         // 24
+            << estimator.Rho1[WINDOW_SIZE].y() << ","         // 25
+            << estimator.Rho1[WINDOW_SIZE].z() << ","         // 26
+            << estimator.Rho2[WINDOW_SIZE].x() << ","         // 27
+            << estimator.Rho2[WINDOW_SIZE].y() << ","         // 28
+            << estimator.Rho2[WINDOW_SIZE].z() << ","         // 29
+            << estimator.Rho3[WINDOW_SIZE].x() << ","         // 30
+            << estimator.Rho3[WINDOW_SIZE].y() << ","         // 31
+            << estimator.Rho3[WINDOW_SIZE].z() << ","         // 32
+            << estimator.Rho4[WINDOW_SIZE].x() << ","         // 33
+            << estimator.Rho4[WINDOW_SIZE].y() << ","         // 34
+            << estimator.Rho4[WINDOW_SIZE].z() << ","         // 35
+            // lo velocity of each foot
+            << estimator.lo_velocity_each_leg(0) << "," // 36
+            << estimator.lo_velocity_each_leg(1) << "," // 37
+            << estimator.lo_velocity_each_leg(2) << "," // 38
+            << estimator.lo_velocity_each_leg(3) << "," // 39
+            << estimator.lo_velocity_each_leg(4) << "," // 40
+            << estimator.lo_velocity_each_leg(5) << "," // 41
+            << estimator.lo_velocity_each_leg(6) << "," // 42
+            << estimator.lo_velocity_each_leg(7) << "," // 43
+            << estimator.lo_velocity_each_leg(8) << "," // 44
+            << estimator.lo_velocity_each_leg(9) << "," // 45
+            << estimator.lo_velocity_each_leg(10) << "," // 46
+            << estimator.lo_velocity_each_leg(11) << "," // 47
+            // lo_velocity_with_bias_each_leg of each foot
+            << estimator.lo_velocity_with_bias_each_leg(0) << "," // 48
+            << estimator.lo_velocity_with_bias_each_leg(1) << "," // 49
+            << estimator.lo_velocity_with_bias_each_leg(2) << "," // 50
+            << estimator.lo_velocity_with_bias_each_leg(3) << "," // 51
+            << estimator.lo_velocity_with_bias_each_leg(4) << "," // 52
+            << estimator.lo_velocity_with_bias_each_leg(5) << "," // 53
+            << estimator.lo_velocity_with_bias_each_leg(6) << "," // 54
+            << estimator.lo_velocity_with_bias_each_leg(7) << "," // 55
+            << estimator.lo_velocity_with_bias_each_leg(8) << "," // 56
+            << estimator.lo_velocity_with_bias_each_leg(9) << "," // 57
+            << estimator.lo_velocity_with_bias_each_leg(10) << "," // 58
+            << estimator.lo_velocity_with_bias_each_leg(11) << "," // 59
+            << estimator.foot_contact_flag(0) << "," // 60
+            << estimator.foot_contact_flag(1) << "," // 61
+            << estimator.foot_contact_flag(2) << "," // 62
+            << estimator.foot_contact_flag(3) << "," // 63
+            << endl;
         foutC.close();
         Eigen::Vector3d tmp_T = estimator.Ps[WINDOW_SIZE];
         printf("time: %f, t: %f %f %f q: %f %f %f %f \n", header.stamp.toSec(), tmp_T.x(), tmp_T.y(), tmp_T.z(),

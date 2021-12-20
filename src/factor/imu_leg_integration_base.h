@@ -23,7 +23,7 @@ typedef Eigen::Triplet<int> Trip;
 class IMULegIntegrationBase {
 public:
     IMULegIntegrationBase() = delete;
-    IMULegIntegrationBase(const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
+    IMULegIntegrationBase(const Eigen::Vector3d &_base_v, const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
                           const Ref<const Vector12d>& _phi_0, const Ref<const Vector12d>& _dphi_0, const Ref<const Vector12d>& _c_0,
                           const Eigen::Vector3d &_linearized_ba, const Eigen::Vector3d &_linearized_bg, const Ref<const Vector12d>& _linearized_rho,
                           std::vector<Eigen::VectorXd> _rho_fix_list,  const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br);
@@ -50,11 +50,11 @@ public:
                              const Ref<const Vector12d> &_c_0, const Ref<const Vector12d> &_phi_1,
                              const Ref<const Vector12d> &_dphi_1, const Ref<const Vector12d> &_c_1,
                              const Vector3d &delta_p, const Quaterniond &delta_q,
-                             const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
+                             const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon, Vector3d &sum_delta_epsilon,
                              const Vector3d &linearized_ba, const Vector3d &linearized_bg,
                              const Ref<const Vector12d> &linearized_rho, Vector3d &result_delta_p,
                              Quaterniond &result_delta_q, Vector3d &result_delta_v,
-                             vector<Eigen::Vector3d> &result_delta_epsilon,
+                             vector<Eigen::Vector3d> &result_delta_epsilon, Vector3d &result_sum_delta_epsilon,
                              Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
                              Vector12d &result_linearized_rho, bool update_jacobian);
 
@@ -75,7 +75,8 @@ public:
     Eigen::Vector3d delta_p;  // alpha
     Eigen::Quaterniond delta_q;  // gamma
     Eigen::Vector3d delta_v;     // beta
-    std::vector<Eigen::Vector3d> delta_epsilon;     // epsilon
+    std::vector<Eigen::Vector3d> delta_epsilon;     // epsilon, displacement calculated from each leg
+    Vector3d sum_delta_epsilon;                     // sum of epsilon, consider foot contact
 
     // the output of optimization,
     Eigen::Vector3d linearized_ba, linearized_bg;
@@ -105,6 +106,9 @@ private:
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> step_jacobian;
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> step_V;
 
+    // added Dec-19, the base velocity of the robot when the factor is initially created.
+    // we use this value to help determine which leg lo velocity we should trust
+    Eigen::Vector3d base_v;
 
     std::vector<double> dt_buf;
     std::vector<Eigen::Vector3d> acc_buf;

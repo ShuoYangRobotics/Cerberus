@@ -63,7 +63,7 @@ add_library(vileom_lib
         src/factor/imu_leg_factor.cpp src/factor/imu_leg_factor.h src/factor/imu_leg_integration_base.cpp src/factor/imu_leg_integration_base.h)
 target_link_libraries(vileom_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
 
-
+# this is actually the main function, not just the test...
 add_executable(vileom_feature_track_test src/feature_track_test.cpp )
 target_link_libraries(vileom_feature_track_test vileom_lib)
 

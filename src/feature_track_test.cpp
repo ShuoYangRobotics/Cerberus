@@ -152,11 +152,16 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 
 // the construction of this function should depends on the format of the input topic
 // here we use A1 robot from unitree so the message here is a unitree_legged_msgs
+double prev_t = -1.0;
+Vector12d prev_joint_positions;
+
 void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
 {
 //     ROS_INFO("received");
 //     TODO: is this time stamp enough? should another "td" be used here to compensate
     double t = a1_state -> header.stamp.toSec();
+
+
     Vector12d joint_positions;
     Vector12d joint_velocities;
     Vector12d foot_forces;
@@ -167,14 +172,26 @@ void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
         joint_positions(3*i+2) = a1_state -> position[3*i+2];
         // the joint velocity from Isaac Sim is very wrong
 
-        joint_velocities(3*i+0) = a1_state -> velocity[3*i+0];
-        joint_velocities(3*i+1) = a1_state -> velocity[3*i+1];
-        joint_velocities(3*i+2) = a1_state -> velocity[3*i+2];
+        //get dt
+        double dt = 0;
+        if (prev_t == -1) {
+            joint_velocities(3*i+0) = 0.0;
+            joint_velocities(3*i+1) = 0.0;
+            joint_velocities(3*i+2) = 0.0;
+
+        } else {
+            dt = t-prev_t;
+            joint_velocities(3*i+0) = (joint_positions(3*i+0) - prev_joint_positions(3*i+0))/dt;
+            joint_velocities(3*i+1) = (joint_positions(3*i+1) - prev_joint_positions(3*i+1))/dt;
+            joint_velocities(3*i+2) = (joint_positions(3*i+2) - prev_joint_positions(3*i+2))/dt;
+        }
         foot_forces(3*i+0) = 0.0;
         foot_forces(3*i+1) = 0.0;
         foot_forces(3*i+2) = a1_state -> effort[12+i];
     }
     estimator.inputLeg(t, joint_positions, joint_velocities, foot_forces);
+    prev_t = t;
+    prev_joint_positions = joint_positions;
 }
 
 
