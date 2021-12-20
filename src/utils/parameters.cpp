@@ -47,14 +47,23 @@ int OPTIMIZE_LEG_BIAS;
 // temporarily write some parameters here
 double PHI_N;
 double DPHI_N;
-double V_N;
-double SWING_V_N;
 double RHO_XY_N;
 double RHO_Z_N;
-double FOOT_CONTACT_RANGE_MIN[4];
-double FOOT_CONTACT_RANGE_MAX[4];
-double FOOT_CONTACT_FUNC_C1[4];
-double FOOT_CONTACT_FUNC_C2[4];
+
+double V_N_FORCE_THRES_RATIO;
+double V_N_MIN;
+double V_N_MAX;
+double V_N_W1;
+double V_N_W2;
+double V_N_W3;
+double V_N_TERM1_STEEP;
+double V_N_TERM2_BOUND_FORCE;
+double V_N_TERM3_VEL_DIFF_XY;
+double V_N_TERM3_VEL_DIFF_Z;
+double V_N_TERM2_VAR_RESCALE;
+double V_N_TERM3_DISTANCE_RESCALE;
+double V_N_FINAL_RATIO;
+
 double LOWER_LEG_LENGTH;
 
 int MAX_CNT;
@@ -133,32 +142,24 @@ void readParameters(std::string config_file)
 
         PHI_N = fsSettings["joint_angle_n"];
         DPHI_N = fsSettings["joint_velocity_n"];
-        V_N = fsSettings["foot_velocity_n"];
-        SWING_V_N = fsSettings["swing_foot_velocity_n"];
         RHO_XY_N = fsSettings["leg_bias_xy_n"];
         RHO_Z_N = fsSettings["leg_bias_z_n"];
 
+        V_N_FORCE_THRES_RATIO = fsSettings["v_n_force_thres_ratio"];
+        V_N_MIN = fsSettings["v_n_min"];
+        V_N_MAX = fsSettings["v_n_max"];
+        V_N_W1 = fsSettings["v_n_w1"];
+        V_N_W2 = fsSettings["v_n_w2"];
+        V_N_W3 = fsSettings["v_n_w3"];
+        V_N_TERM1_STEEP = fsSettings["v_n_term1_steep"];
+        V_N_TERM2_BOUND_FORCE = fsSettings["v_n_term2_bound_force"];
+        V_N_TERM2_VAR_RESCALE = fsSettings["v_n_term2_var_rescale"];
+        V_N_TERM3_VEL_DIFF_XY = fsSettings["v_n_term3_vel_diff_xy"];
+        V_N_TERM3_VEL_DIFF_Z = fsSettings["v_n_term3_vel_diff_z"];
+        V_N_TERM3_DISTANCE_RESCALE = fsSettings["v_n_term3_distance_rescale"];
+        V_N_FINAL_RATIO = fsSettings["v_n_final_ratio"];
+
         LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];
-
-        FOOT_CONTACT_RANGE_MIN[0] = fsSettings["foot1_contact_range_min"];
-        FOOT_CONTACT_RANGE_MAX[0] = fsSettings["foot1_contact_range_max"];
-        FOOT_CONTACT_FUNC_C1[0]   = fsSettings["foot1_contact_func_coeffi1"];
-        FOOT_CONTACT_FUNC_C2[0]   = fsSettings["foot1_contact_func_coeffi2"];
-
-        FOOT_CONTACT_RANGE_MIN[1] = fsSettings["foot2_contact_range_min"];
-        FOOT_CONTACT_RANGE_MAX[1] = fsSettings["foot2_contact_range_max"];
-        FOOT_CONTACT_FUNC_C1[1]   = fsSettings["foot2_contact_func_coeffi1"];
-        FOOT_CONTACT_FUNC_C2[1]   = fsSettings["foot2_contact_func_coeffi2"];
-
-        FOOT_CONTACT_RANGE_MIN[2] = fsSettings["foot3_contact_range_min"];
-        FOOT_CONTACT_RANGE_MAX[2] = fsSettings["foot3_contact_range_max"];
-        FOOT_CONTACT_FUNC_C1[2]   = fsSettings["foot3_contact_func_coeffi1"];
-        FOOT_CONTACT_FUNC_C2[2]   = fsSettings["foot3_contact_func_coeffi2"];
-
-        FOOT_CONTACT_RANGE_MIN[3] = fsSettings["foot4_contact_range_min"];
-        FOOT_CONTACT_RANGE_MAX[3] = fsSettings["foot4_contact_range_max"];
-        FOOT_CONTACT_FUNC_C1[3]   = fsSettings["foot4_contact_func_coeffi1"];
-        FOOT_CONTACT_FUNC_C2[3]   = fsSettings["foot4_contact_func_coeffi2"];
     }
 
     SOLVER_TIME = fsSettings["max_solver_time"];

@@ -59,14 +59,22 @@ extern int OPTIMIZE_LEG_BIAS;
 // temporarily write some parameters here
 extern double PHI_N;
 extern double DPHI_N;
-extern double V_N;
-extern double SWING_V_N;
 extern double RHO_XY_N;
 extern double RHO_Z_N;
-extern double FOOT_CONTACT_RANGE_MIN[4];
-extern double FOOT_CONTACT_RANGE_MAX[4];
-extern double FOOT_CONTACT_FUNC_C1[4];
-extern double FOOT_CONTACT_FUNC_C2[4];
+extern double V_N_FORCE_THRES_RATIO;
+extern double V_N_MIN;
+extern double V_N_MAX;
+extern double V_N_W1;
+extern double V_N_W2;
+extern double V_N_W3;
+extern double V_N_TERM1_STEEP;
+extern double V_N_TERM2_BOUND_FORCE;
+extern double V_N_TERM3_VEL_DIFF_XY;
+extern double V_N_TERM3_VEL_DIFF_Z;
+extern double V_N_TERM2_VAR_RESCALE;
+extern double V_N_TERM3_DISTANCE_RESCALE;
+extern double V_N_FINAL_RATIO;
+
 extern double LOWER_LEG_LENGTH;
 
 extern int MULTIPLE_THREAD;

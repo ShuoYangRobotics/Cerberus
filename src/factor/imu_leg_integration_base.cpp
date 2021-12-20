@@ -190,7 +190,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         // exponential decay, max force decays faster
         foot_force_min[j] *= 0.9991;
         foot_force_max[j] *= 0.997;
-        foot_force_contact_threshold[j] = foot_force_min[j] + 0.75*(foot_force_max[j]-foot_force_min[j]);
+        foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
         if ( force_mag > foot_force_contact_threshold[j]) {
             foot_contact_flag[j] = 1;
         } else {
@@ -214,23 +214,63 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         result_linearized_rho.segment<3>(3 * j) = linearized_rho.segment<3>(3 * j);
     }
 
-    for (int j = 0; j < NUM_OF_LEG; j++) {
-        // compare the velocity measurement with base_v, update the foot_contact_flag
-        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
-        Eigen::Vector3d diff = lo_v - base_v;
-        if (diff.norm() < 0.5 * base_v.norm()) {
-            foot_contact_flag[j] = 1;
-        } else {
-            foot_contact_flag[j] = 0;
-        }
-    }
+//    // compare the velocity measurement with base_v, modify foot_contact_flag
+//    for (int j = 0; j < NUM_OF_LEG; j++) {
+//
+//        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
+//        Eigen::Vector3d diff = lo_v - base_v;
+//        if (diff.norm() < 0.5 * base_v.norm()) {
+//            foot_contact_flag[j] = 1;
+//        } else {
+//            foot_contact_flag[j] = 0;
+//        }
+//    }
 
+    // design a new uncertainty function
+    Vector12d uncertainties;
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
+        double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
+        double diff_c_mag = diff_c;
+        // term 1
+        double n1 = V_N_MAX*(1-1/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j]))))+V_N_MIN;
+
+        // term 2
+        diff_c_mag /= V_N_TERM2_BOUND_FORCE/_dt;
+        if (diff_c_mag > 0)
+            diff_c_mag = V_N_TERM2_VAR_RESCALE*diff_c_mag;
+        double n2 = std::fmax(0, sqrt(fabs(diff_c_mag))*V_N_MAX - 80)+V_N_MIN; //relu
+
+        // term 3
+        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
+        Eigen::Vector3d diff; diff.setZero();
+        Eigen::Vector3d n3 = V_N_MIN*Eigen::Vector3d::Ones();
+        // prevent abnormal base_v
+        if (base_v.norm()/3 < 5) {
+            diff = lo_v - base_v;
+            n3 = diff.array().square().sqrt();
+            n3 -= Eigen::Vector3d(V_N_TERM3_VEL_DIFF_XY*fabs(base_v(0)),
+                                  V_N_TERM3_VEL_DIFF_XY*fabs(base_v(1)),
+                                  V_N_TERM3_VEL_DIFF_Z*fabs(base_v(2)));
+            n3 = n3.cwiseMax(0);//relu
+            n3 = V_N_TERM3_DISTANCE_RESCALE*n3+V_N_MIN*Eigen::Vector3d::Ones();
+        }
+
+        Eigen::Vector3d n = V_N_FINAL_RATIO*(n1*Eigen::Vector3d::Ones() +
+                n2*Eigen::Vector3d::Ones() + n3
+                );
+        uncertainties.segment<3>(3*j) = n;
+    }
+//    std::cout << uncertainties.transpose() << std::endl;
+
+    // use uncertainty to combine LO velocity
     Vector3d average_delta_epsilon; average_delta_epsilon.setZero();
     double average_count = 0;
     for (int j = 0; j < NUM_OF_LEG; j++) {
+        double weight = 1.0/uncertainties.segment<3>(3*j).norm();
         Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
-        average_delta_epsilon += foot_contact_flag[j] * lo_v * _dt;
-        average_count += foot_contact_flag[j];
+        average_delta_epsilon += weight * lo_v * _dt;
+        average_count += weight;
     }
     if (fabs(average_count) < 1e-5 || average_delta_epsilon.norm() > 100) {
         average_delta_epsilon.setZero();
@@ -276,10 +316,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
-            (V_N * V_N), (V_N * V_N), (V_N * V_N),
+            (uncertainties(0) * uncertainties(0)), (uncertainties(1) * uncertainties(1)), (uncertainties(2) * uncertainties(2)),
+            (uncertainties(3) * uncertainties(3)), (uncertainties(4) * uncertainties(4)), (uncertainties(5) * uncertainties(5)),
+            (uncertainties(6) * uncertainties(6)), (uncertainties(7) * uncertainties(7)), (uncertainties(8) * uncertainties(8)),
+            (uncertainties(9) * uncertainties(9)), (uncertainties(10) * uncertainties(10)), (uncertainties(11) * uncertainties(11)),
             (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
             (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
             (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
@@ -494,46 +534,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
         noise_diag.diagonal()(2) = (ACC_N * ACC_N);
         noise_diag.diagonal()(8) = (ACC_N * ACC_N);
-        // TODO: check if all legs on the ground
+        // scale IMU noise using the diff of the foot contact
         for (int j = 0; j < NUM_OF_LEG; j++) {
             // get z directional contact force ( contact foot sensor reading)
 //            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
             double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
-
-//            force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
-//            if (force_mag < foot_force_min[j]) {
-//                foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
-//            }
-//            if (force_mag > foot_force_max[j]) {
-//                foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
-//            }
-//            // exponential decay, max force decays faster
-//            foot_force_min[j] *= 0.9991;
-//            foot_force_max[j] *= 0.997;
             double diff_c_mag = diff_c;
-//            // logistic regression
-//            double uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
-//            uncertainty *= (1.0f + 0.0003*diff_c_mag);
-//            if (uncertainty < V_N)  uncertainty = V_N;
-//            foot_force_contact_threshold[j] = foot_force_min[j] + 0.75*(foot_force_max[j]-foot_force_min[j]);
-//            foot_force[j] = force_mag;
-            double uncertainty = 0.0;
-            if (foot_contact_flag[j] == 1) {
-                uncertainty = V_N;
-                noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
-                noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
-                noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
-            } else {
-                uncertainty = SWING_V_N;
-                uncertainty = SWING_V_N* (1.0f + 0.001*abs(diff_c_mag));
-                if (uncertainty > 2000) uncertainty = 2000; // limit the uncertainty
-                noise_diag.diagonal()(30+3*j) = (uncertainty * uncertainty);
-                noise_diag.diagonal()(30+3*j+1) = (uncertainty * uncertainty);
-                noise_diag.diagonal()(30+3*j+2) = (uncertainty * uncertainty);
-            }
-//            uncertainty = V_N+FOOT_CONTACT_FUNC_C1[j] / ( 1+ exp(FOOT_CONTACT_FUNC_C2[j]*(force_mag-FOOT_CONTACT_RANGE_MAX[j])));
-//            std:cout << uncertainty << endl;
-
             noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
             noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
             noise_diag.diagonal()(2) *= (1.0f + 0.001*abs(diff_c_mag));
@@ -998,10 +1004,10 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     residuals.block<3, 1>(ILO_EPS4, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[3];
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;
-    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - rhoi.segment<3>(0);
-    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - rhoi.segment<3>(3);
-    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - rhoi.segment<3>(6);
-    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - rhoi.segment<3>(9);
+    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - 0.998*rhoi.segment<3>(0);
+    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - 0.998*rhoi.segment<3>(3);
+    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - 0.998*rhoi.segment<3>(6);
+    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - 0.998*rhoi.segment<3>(9);
 
     return residuals;
 }
