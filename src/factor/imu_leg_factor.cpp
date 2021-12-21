@@ -310,10 +310,10 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_legbias_i.block<3, 3>(ILO_EPS2, 3) = -dep2_drho2;
             jacobian_legbias_i.block<3, 3>(ILO_EPS3, 6) = -dep3_drho3;
             jacobian_legbias_i.block<3, 3>(ILO_EPS4, 9) = -dep4_drho4;
-            jacobian_legbias_i.block<3, 3>(ILO_RHO1, 0) = -0.998*Eigen::Matrix3d::Identity();
-            jacobian_legbias_i.block<3, 3>(ILO_RHO2, 3) = -0.998*Eigen::Matrix3d::Identity();
-            jacobian_legbias_i.block<3, 3>(ILO_RHO3, 6) = -0.998*Eigen::Matrix3d::Identity();
-            jacobian_legbias_i.block<3, 3>(ILO_RHO4, 9) = -0.998*Eigen::Matrix3d::Identity();
+            jacobian_legbias_i.block<3, 3>(ILO_RHO1, 0) = -0.995*Eigen::Matrix3d::Identity();
+            jacobian_legbias_i.block<3, 3>(ILO_RHO2, 3) = -0.995*Eigen::Matrix3d::Identity();
+            jacobian_legbias_i.block<3, 3>(ILO_RHO3, 6) = -0.995*Eigen::Matrix3d::Identity();
+            jacobian_legbias_i.block<3, 3>(ILO_RHO4, 9) = -0.995*Eigen::Matrix3d::Identity();
 
             jacobian_legbias_i = sqrt_info * jacobian_legbias_i;
 //            ROS_ASSERT(fabs(jacobian_legbias_i.maxCoeff()) < 1e8);

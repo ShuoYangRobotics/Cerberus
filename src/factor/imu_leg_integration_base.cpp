@@ -236,24 +236,31 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         double n1 = V_N_MAX*(1-1/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j]))))+V_N_MIN;
 
         // term 2
-        diff_c_mag /= V_N_TERM2_BOUND_FORCE/_dt;
-        if (diff_c_mag > 0)
-            diff_c_mag = V_N_TERM2_VAR_RESCALE*diff_c_mag;
+        if (force_mag>foot_force_contact_threshold[j]) {
+            diff_c_mag /= V_N_TERM2_BOUND_FORCE/_dt;
+            if (diff_c_mag > 0)
+                diff_c_mag = V_N_TERM2_VAR_RESCALE*diff_c_mag;
+        } else {
+            diff_c_mag = 0;
+        }
         double n2 = std::fmax(0, sqrt(fabs(diff_c_mag))*V_N_MAX - 80)+V_N_MIN; //relu
 
         // term 3
-        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
-        Eigen::Vector3d diff; diff.setZero();
         Eigen::Vector3d n3 = V_N_MIN*Eigen::Vector3d::Ones();
-        // prevent abnormal base_v
-        if (base_v.norm()/3 < 5) {
-            diff = lo_v - base_v;
-            n3 = diff.array().square().sqrt();
-            n3 -= Eigen::Vector3d(V_N_TERM3_VEL_DIFF_XY*fabs(base_v(0)),
-                                  V_N_TERM3_VEL_DIFF_XY*fabs(base_v(1)),
-                                  V_N_TERM3_VEL_DIFF_Z*fabs(base_v(2)));
-            n3 = n3.cwiseMax(0);//relu
-            n3 = V_N_TERM3_DISTANCE_RESCALE*n3+V_N_MIN*Eigen::Vector3d::Ones();
+        if (force_mag>foot_force_contact_threshold[j]) {
+            Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
+            Eigen::Vector3d diff;
+            diff.setZero();
+            // prevent abnormal base_v
+            if (base_v.norm() / 3 < 5) {
+                diff = lo_v - base_v;
+                n3 = diff.array().square().sqrt();
+                n3 -= Eigen::Vector3d(V_N_TERM3_VEL_DIFF_XY * fabs(base_v(0)),
+                                      V_N_TERM3_VEL_DIFF_XY * fabs(base_v(1)),
+                                      V_N_TERM3_VEL_DIFF_Z * fabs(base_v(2)));
+                n3 = n3.cwiseMax(0);//relu
+                n3 = V_N_TERM3_DISTANCE_RESCALE * n3 + V_N_MIN * Eigen::Vector3d::Ones();
+            }
         }
 
         Eigen::Vector3d n = V_N_FINAL_RATIO*(n1*Eigen::Vector3d::Ones() +
@@ -1004,10 +1011,10 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     residuals.block<3, 1>(ILO_EPS4, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[3];
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;
-    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - 0.998*rhoi.segment<3>(0);
-    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - 0.998*rhoi.segment<3>(3);
-    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - 0.998*rhoi.segment<3>(6);
-    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - 0.998*rhoi.segment<3>(9);
+    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - 0.995*rhoi.segment<3>(0);
+    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - 0.995*rhoi.segment<3>(3);
+    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - 0.995*rhoi.segment<3>(6);
+    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - 0.995*rhoi.segment<3>(9);
 
     return residuals;
 }
