@@ -7,10 +7,10 @@
 IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vector3d &_acc_0, const Vector3d &_gyr_0, const Ref<const Vector12d>& _phi_0,
                                              const Ref<const Vector12d>& _dphi_0, const Ref<const Vector12d>& _c_0,
                                              const Vector3d &_linearized_ba, const Vector3d &_linearized_bg,
-                                             const Ref<const Vector12d>& _linearized_rho,
+                                             const Vector3d &_linearized_bv,
                                              std::vector<Eigen::VectorXd> _rho_fix_list, const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br)
         : acc_0{_acc_0}, gyr_0{_gyr_0}, linearized_acc{_acc_0}, linearized_gyr{_gyr_0},
-          linearized_ba{_linearized_ba}, linearized_bg{_linearized_bg},
+          linearized_ba{_linearized_ba}, linearized_bg{_linearized_bg}, linearized_bv{_linearized_bv},
           sum_dt{0.0}, delta_p{Eigen::Vector3d::Zero()}, delta_q{Eigen::Quaterniond::Identity()}, delta_v{Eigen::Vector3d::Zero()}
 {
     jacobian.setIdentity();
@@ -26,8 +26,6 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
     linearized_dphi = _dphi_0;
     linearized_c = _c_0;
 
-    linearized_rho = _linearized_rho;
-
     foot_force_min.setZero();
     foot_force_max.setZero();
 
@@ -36,10 +34,7 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
     }
     sum_delta_epsilon.setZero();
 
-
-
-
-            // the fixed kinematics parameter
+    // the fixed kinematics parameter
     rho_fix_list = _rho_fix_list;
     p_br = _p_br;
     R_br = _R_br;
@@ -57,7 +52,9 @@ void IMULegIntegrationBase::push_back(double dt, const Eigen::Vector3d &acc, con
 }
 
 // repropagate uses new bias
-void IMULegIntegrationBase::repropagate(const Eigen::Vector3d &_linearized_ba, const Eigen::Vector3d &_linearized_bg, const Ref<const Vector12d> &_linearized_rho)
+void IMULegIntegrationBase::repropagate(const Eigen::Vector3d &_linearized_ba,
+                                        const Eigen::Vector3d &_linearized_bg,
+                                        const Eigen::Vector3d &_linearized_bv)
 {
     sum_dt = 0.0;
     acc_0 = linearized_acc;
@@ -75,7 +72,7 @@ void IMULegIntegrationBase::repropagate(const Eigen::Vector3d &_linearized_ba, c
     sum_delta_epsilon.setZero();
     linearized_ba = _linearized_ba;
     linearized_bg = _linearized_bg;
-    linearized_rho = _linearized_rho;
+    linearized_bv = _linearized_bv;
     jacobian.setIdentity();
     covariance.setZero();
     for (int i = 0; i < static_cast<int>(dt_buf.size()); i++)
@@ -99,14 +96,14 @@ void IMULegIntegrationBase::propagate(double _dt, const Vector3d &_acc_1, const 
     for (int j = 0; j < NUM_OF_LEG; j++) result_delta_epsilon.push_back(Eigen::Vector3d::Zero());
     Vector3d result_linearized_ba;
     Vector3d result_linearized_bg;
-    Vector12d result_linearized_rho;
+    Vector3d result_linearized_bv;
     // midPointIntegration
     midPointIntegration(_dt, acc_0, gyr_0, acc_1, gyr_1,
                         phi_0, dphi_0, c_0, phi_1, dphi_1, c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         result_delta_p, result_delta_q, result_delta_v, result_delta_epsilon, result_sum_delta_epsilon,
-                        result_linearized_ba, result_linearized_bg, result_linearized_rho, 1);
+                        result_linearized_ba, result_linearized_bg, result_linearized_bv, 1);
     // checkJacobian
 //    checkJacobian(_dt, acc_0, gyr_0, acc_1, gyr_1,
 //                        phi_0, dphi_0, c_0, phi_1, dphi_1, c_1,
@@ -120,7 +117,7 @@ void IMULegIntegrationBase::propagate(double _dt, const Vector3d &_acc_1, const 
     sum_delta_epsilon = result_sum_delta_epsilon;
     linearized_ba = result_linearized_ba;
     linearized_bg = result_linearized_bg;
-    linearized_rho = result_linearized_rho;
+    linearized_bv = result_linearized_bv;
     delta_q.normalize();
     sum_dt += dt;
     acc_0 = acc_1;
@@ -141,11 +138,11 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
                                                 const Vector3d &delta_p, const Quaterniond &delta_q,
                                                 const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon, Vector3d &sum_delta_epsilon,
                                                 const Vector3d &linearized_ba, const Vector3d &linearized_bg,
-                                                const Ref<const Vector12d> &linearized_rho, Vector3d &result_delta_p,
+                                                const Vector3d &linearized_bv, Vector3d &result_delta_p,
                                                 Quaterniond &result_delta_q, Vector3d &result_delta_v,
                                                 vector<Eigen::Vector3d> &result_delta_epsilon, Vector3d &result_sum_delta_epsilon,
                                                 Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
-                                                Vector12d &result_linearized_rho, bool update_jacobian) {
+                                                Vector3d &result_linearized_bv, bool update_jacobian) {
     Vector3d un_acc_0 = delta_q * (_acc_0 - linearized_ba);
     Vector3d un_gyr = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
     result_delta_q = delta_q * Quaterniond(1, un_gyr(0) * _dt / 2, un_gyr(1) * _dt / 2, un_gyr(2) * _dt / 2);
@@ -155,6 +152,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     result_delta_v = delta_v + un_acc * _dt;
     result_linearized_ba = linearized_ba;
     result_linearized_bg = linearized_bg;
+    result_linearized_bv = linearized_bv;
 
     // some helper structs
     Vector3d w_0_x = _gyr_0 - linearized_bg;
@@ -200,31 +198,18 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     // get velocity measurement
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // calculate fk of each leg
-        fi.push_back(a1_kin.fk(_phi_0.segment<3>(3 * j), linearized_rho.segment<3>(3 * j), rho_fix_list[j]));
-        fip1.push_back(a1_kin.fk(_phi_1.segment<3>(3 * j), linearized_rho.segment<3>(3 * j), rho_fix_list[j]));
+        fi.push_back(a1_kin.fk(_phi_0.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
+        fip1.push_back(a1_kin.fk(_phi_1.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
         // calculate jacobian of each leg
-        Ji.push_back(a1_kin.jac(_phi_0.segment<3>(3 * j), linearized_rho.segment<3>(3 * j), rho_fix_list[j]));
-        Jip1.push_back(a1_kin.jac(_phi_1.segment<3>(3 * j), linearized_rho.segment<3>(3 * j), rho_fix_list[j]));
+        Ji.push_back(a1_kin.jac(_phi_0.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
+        Jip1.push_back(a1_kin.jac(_phi_1.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
 
         // calculate vm
         vi.push_back(-R_br * Ji[j] * _dphi_0.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
         vip1.push_back(-R_br * Jip1[j] * _dphi_1.segment<3>(3 * j) - R_w_1_x * (p_br + R_br * fip1[j]));
 
-        result_delta_epsilon[j] = delta_epsilon[j] + 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]) * _dt;
-        result_linearized_rho.segment<3>(3 * j) = linearized_rho.segment<3>(3 * j);
+        result_delta_epsilon[j] = delta_epsilon[j] + 0.5 * (delta_q * (vi[j]-linearized_bv) + result_delta_q * (vip1[j]-linearized_bv)) * _dt;
     }
-
-//    // compare the velocity measurement with base_v, modify foot_contact_flag
-//    for (int j = 0; j < NUM_OF_LEG; j++) {
-//
-//        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
-//        Eigen::Vector3d diff = lo_v - base_v;
-//        if (diff.norm() < 0.5 * base_v.norm()) {
-//            foot_contact_flag[j] = 1;
-//        } else {
-//            foot_contact_flag[j] = 0;
-//        }
-//    }
 
     // design a new uncertainty function
     Vector12d uncertainties;
@@ -248,7 +233,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         // term 3
         Eigen::Vector3d n3 = V_N_MIN*Eigen::Vector3d::Ones();
         if (force_mag>foot_force_contact_threshold[j]) {
-            Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
+            Eigen::Vector3d lo_v = 0.5 * (delta_q * (vi[j]-linearized_bv) + result_delta_q * (vip1[j]-linearized_bv));
             Eigen::Vector3d diff;
             diff.setZero();
             // prevent abnormal base_v
@@ -275,7 +260,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     double average_count = 0;
     for (int j = 0; j < NUM_OF_LEG; j++) {
         double weight = 1.0/uncertainties.segment<3>(3*j).norm();
-        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
+        Eigen::Vector3d lo_v = 0.5 * (delta_q * (vi[j]-linearized_bv) + result_delta_q * (vip1[j]-linearized_bv));
         average_delta_epsilon += weight * lo_v * _dt;
         average_count += weight;
     }
@@ -291,26 +276,6 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
     }
 
-//    noise.setZero();
-//    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
-//
-//    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
 
     noise_diag.diagonal() <<
             (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
@@ -323,29 +288,24 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            (uncertainties(0) * uncertainties(0)), (uncertainties(1) * uncertainties(1)), (uncertainties(2) * uncertainties(2)),
-            (uncertainties(3) * uncertainties(3)), (uncertainties(4) * uncertainties(4)), (uncertainties(5) * uncertainties(5)),
-            (uncertainties(6) * uncertainties(6)), (uncertainties(7) * uncertainties(7)), (uncertainties(8) * uncertainties(8)),
-            (uncertainties(9) * uncertainties(9)), (uncertainties(10) * uncertainties(10)), (uncertainties(11) * uncertainties(11)),
             (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
             (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N);
+            (0.01 * 0.01), (0.01 * 0.01), (0.01 * 0.01);
     if(update_jacobian)
     {
         for (int j = 0; j < NUM_OF_LEG; j++) {
             // calculate derivative of fk wrt rho
-            dfdrhoi.push_back( a1_kin.dfk_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
-            dfdrhoip1.push_back( a1_kin.dfk_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]) );
+            dfdrhoi.push_back( a1_kin.dfk_drho(_phi_0.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]) );
+            dfdrhoip1.push_back( a1_kin.dfk_drho(_phi_1.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]) );
             // calculate g
-            Eigen::Matrix<double, 9, 3> dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]);
             Eigen::Matrix<double, 3, 9> kron_dphi0; kron_dphi0.setZero();
             kron_dphi0(0,0) = kron_dphi0(1,1) = kron_dphi0(2,2) = _dphi_0(0+3*j);
             kron_dphi0(0,3) = kron_dphi0(1,4) = kron_dphi0(2,5) = _dphi_0(1+3*j);
             kron_dphi0(0,6) = kron_dphi0(1,7) = kron_dphi0(2,8) = _dphi_0(2+3*j);
             gi.push_back( -delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdrho0 + R_w_0_x*R_br*dfdrhoi[j]) );
 
-            Eigen::Matrix<double, 9, 3> dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]);
             Eigen::Matrix<double, 3, 9> kron_dphi1; kron_dphi1.setZero();
             kron_dphi1(0,0) = kron_dphi1(1,1) = kron_dphi1(2,2) = _dphi_1(0+3*j);
             kron_dphi1(0,3) = kron_dphi1(1,4) = kron_dphi1(2,5) = _dphi_1(1+3*j);
@@ -353,9 +313,9 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             gip1.push_back( -result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdrho1+ R_w_1_x*R_br*dfdrhoip1[j]) );
 
             // calculate h
-            Eigen::Matrix<double, 9, 3> dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]);
             hi.push_back( delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdphi0 + R_w_0_x*R_br*Ji[j]) );
-            Eigen::Matrix<double, 9, 3> dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), linearized_rho.segment<3>(3*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]);
             hip1.push_back( result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdphi1 + R_w_1_x*R_br*Jip1[j]) );
         }
         Vector3d w_x = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
@@ -575,14 +535,14 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 }
 
 void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
-                                                const Vector3d &_acc_1, const Vector3d &_gyr_1,
-                                                const Ref<const Vector12d> &_phi_0, const Ref<const Vector12d> &_dphi_0,
-                                                const Ref<const Vector12d> &_c_0, const Ref<const Vector12d> &_phi_1,
-                                                const Ref<const Vector12d> &_dphi_1, const Ref<const Vector12d> &_c_1,
-                                                const Vector3d &delta_p, const Quaterniond &delta_q,
-                                                const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
-                                                const Vector3d &linearized_ba, const Vector3d &linearized_bg,
-                                                const Ref<const Vector12d> &linearized_rho) {
+                                          const Vector3d &_acc_1, const Vector3d &_gyr_1,
+                                          const Ref<const Vector12d> &_phi_0, const Ref<const Vector12d> &_dphi_0,
+                                          const Ref<const Vector12d> &_c_0, const Ref<const Vector12d> &_phi_1,
+                                          const Ref<const Vector12d> &_dphi_1, const Ref<const Vector12d> &_c_1,
+                                          const Vector3d &delta_p, const Quaterniond &delta_q,
+                                          const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
+                                          const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+                                          const Vector3d &linearized_bv) {
     Vector3d result_delta_p;
     Quaterniond result_delta_q;
     Vector3d result_delta_v;
@@ -592,19 +552,20 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     Vector3d sum_delta_epsilon;
     Vector3d result_sum_delta_epsilon;
     for (int j = 0; j < NUM_OF_LEG; j++) result_delta_epsilon.push_back(Eigen::Vector3d::Zero());
-    Vector12d result_linearized_rho;
+    Vector3d result_linearized_bv;
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         result_delta_p, result_delta_q, result_delta_v, result_delta_epsilon, result_sum_delta_epsilon,
-                        result_linearized_ba, result_linearized_bg, result_linearized_rho, 0);
+                        result_linearized_ba, result_linearized_bg, result_linearized_bv, 0);
 
     Vector3d turb_delta_p;
     Quaterniond turb_delta_q;
     Vector3d turb_delta_v;
     Vector3d turb_linearized_ba;
     Vector3d turb_linearized_bg;
+    Vector3d turb_linearized_bv;
     std::vector<Eigen::Vector3d> turb_delta_epsilon;
     for (int j = 0; j < NUM_OF_LEG; j++) turb_delta_epsilon.push_back(Eigen::Vector3d::Zero());
     Vector12d turb_linearized_rho;
@@ -614,9 +575,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p + turb, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "------------------- check jacobian --------------------" << endl;
     cout << "------------------- check jacobian --------------------" << endl;
     cout << "------------------- check jacobian --------------------" << endl;
@@ -635,9 +596,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q * Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2), delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb q-------F col 2--------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 3) * turb).transpose() << endl;
@@ -662,9 +623,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba + turb, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb ba-----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 21) * turb).transpose() << endl;
@@ -688,9 +649,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg + turb, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb bg-----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 24) * turb).transpose() << endl;
@@ -712,14 +673,14 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 24) * turb).transpose() << endl;
 
 
-    Vector12d input_turb_linearized_rho = linearized_rho;
-    input_turb_linearized_rho.segment<3>(0) += turb;
+    Vector3d input_turb_linearized_bv = linearized_bv;
+    input_turb_linearized_bv += turb;
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, input_turb_linearized_rho,
+                        linearized_ba, linearized_bg, input_turb_linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb rho1-----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 27) * turb).transpose() << endl;
@@ -740,42 +701,12 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     cout << "bg diff      " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
     cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 27) * turb).transpose() << endl;
 
-    input_turb_linearized_rho = linearized_rho;
-    input_turb_linearized_rho.segment<3>(6) += turb;
-    midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
-                        _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
-                        delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, input_turb_linearized_rho,
-                        turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
-    cout << "turb rho3-----------------------------------       " << endl;
-    cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
-    cout << "p jacob diff " << (step_jacobian.block<3, 3>(0, 33) * turb).transpose() << endl;
-    cout << "q diff       " << ((result_delta_q.inverse() * turb_delta_q).vec() * 2).transpose() << endl;
-    cout << "q jacob diff " << (step_jacobian.block<3, 3>(3, 33) * turb).transpose() << endl;
-    cout << "v diff       " << (turb_delta_v - result_delta_v).transpose() << endl;
-    cout << "v jacob diff " << (step_jacobian.block<3, 3>(6, 33) * turb).transpose() << endl;
-    cout << "epsilon1 diff       " << (turb_delta_epsilon[0] - result_delta_epsilon[0]).transpose() << endl;
-    cout << "epsilon1 jacob diff " << (step_jacobian.block<3, 3>(9, 33) * turb).transpose() << endl;
-    cout << "epsilon2 diff       " << (turb_delta_epsilon[1] - result_delta_epsilon[1]).transpose() << endl;
-    cout << "epsilon2 jacob diff " << (step_jacobian.block<3, 3>(12, 33) * turb).transpose() << endl;
-    cout << "epsilon3 diff       " << (turb_delta_epsilon[2] - result_delta_epsilon[2]).transpose() << endl;
-    cout << "epsilon3 jacob diff " << (step_jacobian.block<3, 3>(15, 33) * turb).transpose() << endl;
-    cout << "epsilon4 diff       " << (turb_delta_epsilon[3] - result_delta_epsilon[3]).transpose() << endl;
-    cout << "epsilon4 jacob diff " << (step_jacobian.block<3, 3>(18, 33) * turb).transpose() << endl;
-    cout << "ba diff      " << (turb_linearized_ba - result_linearized_ba).transpose() << endl;
-    cout << "ba jacob diff" << (step_jacobian.block<3, 3>(21, 33) * turb).transpose() << endl;
-    cout << "bg diff      " << (turb_linearized_bg - result_linearized_bg).transpose() << endl;
-    cout << "bg jacob diff" << (step_jacobian.block<3, 3>(24, 33) * turb).transpose() << endl;
-    cout << "rho jacob diff" << (step_jacobian.block<3, 3>(33, 33) * turb).transpose() << endl;
-
-
     midPointIntegration(_dt, _acc_0 + turb, _gyr_0, _acc_1, _gyr_1,
                         _phi_0, _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb acc_0-----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 0) * turb).transpose() << endl;
@@ -795,9 +726,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0 + turb, _acc_1, _gyr_1,
                         _phi_0 , _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb _gyr_0 -----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 3) * turb).transpose() << endl;
@@ -817,9 +748,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1 + turb, _gyr_1,
                         _phi_0 , _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb _acc_1 -----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 6) * turb).transpose() << endl;
@@ -839,9 +770,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1 + turb,
                         _phi_0 , _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb _gyr_1 -----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 9) * turb).transpose() << endl;
@@ -862,9 +793,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0 + turb.replicate<4,1>() , _dphi_0, _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb _phi_0 -----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 18) * turb).transpose() << endl;
@@ -884,9 +815,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0 , _dphi_0, _c_0, _phi_1 + turb.replicate<4,1>(), _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb _phi_1 -----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 21) * turb).transpose() << endl;
@@ -906,9 +837,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0 , _dphi_0 + turb.replicate<4,1>(), _c_0, _phi_1, _dphi_1, _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb _dphi_0 -----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 24) * turb).transpose() << endl;
@@ -928,9 +859,9 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
     midPointIntegration(_dt, _acc_0, _gyr_0, _acc_1, _gyr_1,
                         _phi_0 , _dphi_0, _c_0, _phi_1, _dphi_1 + turb.replicate<4,1>(), _c_1,
                         delta_p, delta_q, delta_v, delta_epsilon, sum_delta_epsilon,
-                        linearized_ba, linearized_bg, linearized_rho,
+                        linearized_ba, linearized_bg, linearized_bv,
                         turb_delta_p, turb_delta_q, turb_delta_v, turb_delta_epsilon, result_sum_delta_epsilon,
-                        turb_linearized_ba, turb_linearized_bg, turb_linearized_rho, 0);
+                        turb_linearized_ba, turb_linearized_bg, turb_linearized_bv, 0);
     cout << "turb _dphi_1 -----------------------------------       " << endl;
     cout << "p diff       " << (turb_delta_p - result_delta_p).transpose() << endl;
     cout << "p jacob diff " << (step_V.block<3, 3>(0, 27) * turb).transpose() << endl;
@@ -949,9 +880,12 @@ void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, co
 }
 
 Eigen::Matrix<double, 39, 1>
-IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const Vector3d &Vi, const Vector3d &Bai,
-                                const Vector3d &Bgi, const Vector12d &rhoi, const Vector3d &Pj, const Quaterniond &Qj,
-                                const Vector3d &Vj, const Vector3d &Baj, const Vector3d &Bgj, const Vector12d &rhoj) {
+IMULegIntegrationBase::evaluate(const Eigen::Vector3d &Pi, const Eigen::Quaterniond &Qi, const Eigen::Vector3d &Vi,
+                                const Eigen::Vector3d &Bai, const Eigen::Vector3d &Bgi,
+                                const Eigen::Vector3d &Bvi,
+                                const Eigen::Vector3d &Pj, const Eigen::Quaterniond &Qj, const Eigen::Vector3d &Vj,
+                                const Eigen::Vector3d &Baj, const Eigen::Vector3d &Bgj,
+                                const Eigen::Vector3d &Bvj) {
     Eigen::Matrix<double, 39, 1> residuals;
 
 
@@ -963,31 +897,20 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     Eigen::Matrix3d dv_dba = jacobian.block<3, 3>(ILO_V, ILO_BA);
     Eigen::Matrix3d dv_dbg = jacobian.block<3, 3>(ILO_V, ILO_BG);
 
-    Eigen::Matrix3d dep1_dbg = jacobian.block<3, 3>(ILO_EPS1, ILO_BG);
-    Eigen::Matrix3d dep1_drho1 = jacobian.block<3, 3>(ILO_EPS1, ILO_RHO1);
-    Eigen::Matrix3d dep2_dbg = jacobian.block<3, 3>(ILO_EPS2, ILO_BG);
-    Eigen::Matrix3d dep2_drho2 = jacobian.block<3, 3>(ILO_EPS2, ILO_RHO2);
-    Eigen::Matrix3d dep3_dbg = jacobian.block<3, 3>(ILO_EPS3, ILO_BG);
-    Eigen::Matrix3d dep3_drho3 = jacobian.block<3, 3>(ILO_EPS3, ILO_RHO3);
-    Eigen::Matrix3d dep4_dbg = jacobian.block<3, 3>(ILO_EPS4, ILO_BG);
-    Eigen::Matrix3d dep4_drho4 = jacobian.block<3, 3>(ILO_EPS4, ILO_RHO4);
+    Eigen::Matrix3d dep1_dbg = jacobian.block<3, 3>(ILO_EPS, ILO_BG);
+    Eigen::Matrix3d dep1_dbv = jacobian.block<3, 3>(ILO_EPS, ILO_BV);
 
     Eigen::Vector3d dba = Bai - linearized_ba; // Bai is the new optimization result
     Eigen::Vector3d dbg = Bgi - linearized_bg;
+    Eigen::Vector3d dbv = Bvi - linearized_bv;
 
-//    Vector12d rhoi_rand = 0.003*Eigen::Matrix<double,12,1>::Random();
-    Vector12d drho = rhoi  - linearized_rho;
 
     Eigen::Quaterniond corrected_delta_q = delta_q * Utility::deltaQ(dq_dbg * dbg);
     Eigen::Vector3d corrected_delta_v = delta_v + dv_dba * dba + dv_dbg * dbg;
     Eigen::Vector3d corrected_delta_p = delta_p + dp_dba * dba + dp_dbg * dbg;
 
-    std::vector<Eigen::Vector3d> corrected_delta_epsilon;
-    corrected_delta_epsilon.resize(4);
-    corrected_delta_epsilon[0] = delta_epsilon[0] + dep1_dbg * dbg + dep1_drho1 * drho.segment<3>(0);
-    corrected_delta_epsilon[1] = delta_epsilon[1] + dep2_dbg * dbg + dep2_drho2 * drho.segment<3>(3);
-    corrected_delta_epsilon[2] = delta_epsilon[2] + dep3_dbg * dbg + dep3_drho3 * drho.segment<3>(6);
-    corrected_delta_epsilon[3] = delta_epsilon[3] + dep4_dbg * dbg + dep4_drho4 * drho.segment<3>(9);
+    Eigen::Vector3d corrected_sum_delta_epsilon;
+    corrected_sum_delta_epsilon = sum_delta_epsilon + dep1_dbg * dbg + dep1_dbv * dbv;
 
     // Test: compare them with repropogarated result
 //    repropagate()
@@ -1005,16 +928,10 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     residuals.block<3, 1>(ILO_P, 0) = Qi.inverse() * (0.5 * G * sum_dt * sum_dt + Pj - Pi - Vi * sum_dt) - corrected_delta_p;
     residuals.block<3, 1>(ILO_R, 0) = 2 * (corrected_delta_q.inverse() * (Qi.inverse() * Qj)).vec();
     residuals.block<3, 1>(ILO_V, 0) = Qi.inverse() * (G * sum_dt + Vj - Vi) - corrected_delta_v;
-    residuals.block<3, 1>(ILO_EPS1, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[0];
-    residuals.block<3, 1>(ILO_EPS2, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[1];
-    residuals.block<3, 1>(ILO_EPS3, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[2];
-    residuals.block<3, 1>(ILO_EPS4, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[3];
+    residuals.block<3, 1>(ILO_EPS, 0) = Qi.inverse() * (Pj - Pi) - corrected_sum_delta_epsilon;
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;
-    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - 0.995*rhoi.segment<3>(0);
-    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - 0.995*rhoi.segment<3>(3);
-    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - 0.995*rhoi.segment<3>(6);
-    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - 0.995*rhoi.segment<3>(9);
+    residuals.block<3, 1>(ILO_BV, 0) = Bvj - Bvi;
 
     return residuals;
 }

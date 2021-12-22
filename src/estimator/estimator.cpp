@@ -52,10 +52,7 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i].setZero(); Rho1[i] = 1e-9*Eigen::Vector3d::Ones();
-        Rho2[i].setZero(); Rho2[i] = 1e-9*Eigen::Vector3d::Ones();
-        Rho3[i].setZero(); Rho3[i] = 1e-9*Eigen::Vector3d::Ones();
-        Rho4[i].setZero(); Rho4[i] = 1e-9*Eigen::Vector3d::Ones();
+        Bvs[i].setZero();
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -764,13 +761,8 @@ void Estimator::processIMULeg(double t, double dt,
 
     if (!il_pre_integrations[frame_count])
     {
-        Vector12d tmp;
-        tmp.segment<3>(0) = Rho1[frame_count];
-        tmp.segment<3>(3) = Rho2[frame_count];
-        tmp.segment<3>(6) = Rho3[frame_count];
-        tmp.segment<3>(9) = Rho4[frame_count];
         il_pre_integrations[frame_count] = new IMULegIntegrationBase{Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                     Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
+                                                                     Bas[frame_count], Bgs[frame_count], Bvs[frame_count], rho_fix_list, p_br, R_br};
     }
 
     if (frame_count != 0)
@@ -833,13 +825,8 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     all_image_frame.insert(make_pair(header, imageframe));
 //    tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
 
-    Vector12d tmp;
-    tmp.segment<3>(0) = Rho1[frame_count];
-    tmp.segment<3>(3) = Rho2[frame_count];
-    tmp.segment<3>(6) = Rho3[frame_count];
-    tmp.segment<3>(9) = Rho4[frame_count];
     tmp_il_pre_integration = new IMULegIntegrationBase{Vs[frame_count],acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                 Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
+                                                                 Bas[frame_count], Bgs[frame_count], Bvs[frame_count], rho_fix_list, p_br, R_br};
 
     // we do not really use this
 //    if(ESTIMATE_EXTRINSIC == 2)
@@ -907,12 +894,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 //                solveGyroLegBias(all_image_frame, Bgs, Rho1, Rho2, Rho3, Rho4);
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
-                    Vector12d tmp; tmp.setZero();
-                    tmp.segment<3>(0) = Rho1[i];
-                    tmp.segment<3>(3) = Rho2[i];
-                    tmp.segment<3>(6) = Rho3[i];
-                    tmp.segment<3>(9) = Rho4[i];
-                    il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], tmp);
+                    il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], Vector3d::Zero());
                 }
                 optimization();
                 updateLatestStates();
@@ -948,10 +930,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             Rs[frame_count] = Rs[prev_frame];
             Bas[frame_count] = Bas[prev_frame];
             Bgs[frame_count] = Bgs[prev_frame];
-            Rho1[frame_count] = Rho1[prev_frame];
-            Rho2[frame_count] = Rho2[prev_frame];
-            Rho3[frame_count] = Rho3[prev_frame];
-            Rho4[frame_count] = Rho4[prev_frame];
+            Bvs[frame_count] = Bvs[prev_frame];
         }
 
     }
@@ -1266,21 +1245,9 @@ void Estimator::vector2double()
         }
         if (USE_LEG)
         {
-            para_LegBias[i][0] = Rho1[i].x();
-            para_LegBias[i][1] = Rho1[i].y();
-            para_LegBias[i][2] = Rho1[i].z();
-
-            para_LegBias[i][3] = Rho2[i].x();
-            para_LegBias[i][4] = Rho2[i].y();
-            para_LegBias[i][5] = Rho2[i].z();
-
-            para_LegBias[i][6] = Rho3[i].x();
-            para_LegBias[i][7] = Rho3[i].y();
-            para_LegBias[i][8] = Rho3[i].z();
-
-            para_LegBias[i][9] = Rho4[i].x();
-            para_LegBias[i][10] = Rho4[i].y();
-            para_LegBias[i][11] = Rho4[i].z();
+            para_LegBias[i][0] = Bvs[i].x();
+            para_LegBias[i][1] = Bvs[i].y();
+            para_LegBias[i][2] = Bvs[i].z();
         }
     }
 
@@ -1385,21 +1352,9 @@ void Estimator::double2vector()
     if (USE_LEG)
     {
         for (int i = 0; i <= WINDOW_SIZE; i++) {
-            Rho1[i] = Vector3d(para_LegBias[i][0],
+            Bvs[i] = Vector3d(para_LegBias[i][0],
                                para_LegBias[i][1],
                                para_LegBias[i][2]);
-
-            Rho2[i] = Vector3d(para_LegBias[i][3],
-                               para_LegBias[i][4],
-                               para_LegBias[i][5]);
-
-            Rho3[i] = Vector3d(para_LegBias[i][6],
-                               para_LegBias[i][7],
-                               para_LegBias[i][8]);
-
-            Rho4[i] = Vector3d(para_LegBias[i][9],
-                               para_LegBias[i][10],
-                               para_LegBias[i][11]);
         }
     }
 
@@ -1894,10 +1849,7 @@ void Estimator::slideWindow()
                     Vs[i].swap(Vs[i + 1]);
                     Bas[i].swap(Bas[i + 1]);
                     Bgs[i].swap(Bgs[i + 1]);
-                    Rho1[i].swap(Rho1[i + 1]);
-                    Rho2[i].swap(Rho2[i + 1]);
-                    Rho3[i].swap(Rho3[i + 1]);
-                    Rho4[i].swap(Rho4[i + 1]);
+                    Bvs[i].swap(Bvs[i + 1]);
                 }
 
                 else if(USE_IMU)
@@ -1922,22 +1874,14 @@ void Estimator::slideWindow()
                 Vs[WINDOW_SIZE] = Vs[WINDOW_SIZE - 1];
                 Bas[WINDOW_SIZE] = Bas[WINDOW_SIZE - 1];
                 Bgs[WINDOW_SIZE] = Bgs[WINDOW_SIZE - 1];
-                Rho1[WINDOW_SIZE] = Rho1[WINDOW_SIZE - 1];
-                Rho2[WINDOW_SIZE] = Rho2[WINDOW_SIZE - 1];
-                Rho3[WINDOW_SIZE] = Rho3[WINDOW_SIZE - 1];
-                Rho4[WINDOW_SIZE] = Rho4[WINDOW_SIZE - 1];
+                Bvs[WINDOW_SIZE] = Bvs[WINDOW_SIZE - 1];
 
 //                delete pre_integrations[WINDOW_SIZE];
 //                pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
 
                 delete il_pre_integrations[WINDOW_SIZE];
-                Vector12d tmp;
-                tmp.segment<3>(0) = Rho1[WINDOW_SIZE];
-                tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
-                tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
-                tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Vs[WINDOW_SIZE],acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE], rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
                 linear_acceleration_buf[WINDOW_SIZE].clear();
@@ -2005,22 +1949,14 @@ void Estimator::slideWindow()
                 Vs[frame_count - 1] = Vs[frame_count];
                 Bas[frame_count - 1] = Bas[frame_count];
                 Bgs[frame_count - 1] = Bgs[frame_count];
-                Rho1[frame_count - 1] = Rho1[frame_count];
-                Rho2[frame_count - 1] = Rho2[frame_count];
-                Rho3[frame_count - 1] = Rho3[frame_count];
-                Rho4[frame_count - 1] = Rho4[frame_count];
+                Bvs[frame_count - 1] = Bvs[frame_count];
 
                 delete pre_integrations[WINDOW_SIZE];
                 pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
 
                 delete il_pre_integrations[WINDOW_SIZE];
-                Vector12d tmp;
-                tmp.segment<3>(0) = Rho1[WINDOW_SIZE];
-                tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
-                tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
-                tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE], rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
                 linear_acceleration_buf[WINDOW_SIZE].clear();
