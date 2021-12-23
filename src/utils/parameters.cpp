@@ -169,9 +169,9 @@ void readParameters(std::string config_file)
 
     fsSettings["output_path"] >> OUTPUT_FOLDER;
     if (OPTIMIZE_LEG_BIAS) {
-        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + ".csv";
+        VINS_RESULT_PATH = OUTPUT_FOLDER + "/baseline_vilo_wb"+ Utility::GetCurrentTimeForFileName() + ".csv";
     } else {
-        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wob"+ Utility::GetCurrentTimeForFileName() + ".csv";
+        VINS_RESULT_PATH = OUTPUT_FOLDER + "/baseline_vilo_wob"+ Utility::GetCurrentTimeForFileName() + ".csv";
     }
     std::cout << "result path " << VINS_RESULT_PATH << std::endl;
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);

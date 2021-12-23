@@ -274,9 +274,9 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
-            (0.0001 * 0.0001), (0.0001 * 0.01), (0.0001 * 0.0001);
+            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N),
+            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N),
+            (RHO_Z_N * RHO_Z_N), (RHO_Z_N * RHO_Z_N), (RHO_Z_N * RHO_Z_N);
     if(update_jacobian)
     {
         for (int j = 0; j < NUM_OF_LEG; j++) {
