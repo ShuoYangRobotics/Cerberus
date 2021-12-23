@@ -612,13 +612,13 @@ void Estimator::processMeasurements()
 //                }
 //                lo_velocity_with_bias /= total_vel_weight;
                 // look at delta_epsilon of  as lo velocity measurement
-                for (int j = 0; j < NUM_OF_LEG; j++) {
-                    lo_velocity_with_bias_each_leg.segment<3>(3 * j) =
-                            il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt;
-//                    std::cout << il_pre_integrations[frame_count] -> delta_epsilon[j] << endl;
-//                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
-                }
-                lo_velocity_with_bias = il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
+//                for (int j = 0; j < NUM_OF_LEG; j++) {
+//                    lo_velocity_with_bias_each_leg.segment<3>(3 * j) =
+//                            il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt;
+////                    std::cout << il_pre_integrations[frame_count] -> delta_epsilon[j] << endl;
+////                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
+//                }
+//                lo_velocity_with_bias = il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
             }
             else if(USE_IMU)
             {
@@ -890,8 +890,13 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 }
                 //  initialize the leg bias too
                 // debug: check il_pre_integrations at this point
-                solveGyroscopeBias(all_image_frame, Bgs);
-//                solveGyroLegBias(all_image_frame, Bgs, Rho1, Rho2, Rho3, Rho4);
+                if (USE_LEG && OPTIMIZE_LEG_BIAS) {
+                    solveGyroLegBias(all_image_frame, Bgs, Bvs);
+                } else {
+                    solveGyroscopeBias(all_image_frame, Bgs);
+                }
+//
+
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
                     il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], Vector3d::Zero());
@@ -1498,20 +1503,20 @@ void Estimator::optimization()
                                                para_Pose[j], para_SpeedBias[j], para_LegBias[j]);
 
 
-            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
-                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
-            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
-            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
-            double **raw_jacobians = new double *[block_sizes.size()];
-            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
-            jacobians.resize(block_sizes.size());
-            for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
-            {
-                jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
-                raw_jacobians[xx] = jacobians[xx].data();
-                //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
-            }
-            imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
+//            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
+//                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
+//            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
+//            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
+//            double **raw_jacobians = new double *[block_sizes.size()];
+//            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
+//            jacobians.resize(block_sizes.size());
+//            for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
+//            {
+//                jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
+//                raw_jacobians[xx] = jacobians[xx].data();
+//                //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
+//            }
+//            imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
 //            std::cout << "residual between frame " << i << " and " << j << std::endl;
 //            std::cout << residuals.transpose() << std::endl;
 //            imu_leg_factor -> checkJacobian(parameter_blocks.data());

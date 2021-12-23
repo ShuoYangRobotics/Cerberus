@@ -44,7 +44,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
 
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 1> turb_residual =
             il_pre_integration->evaluate(Pi+turb, Qi, Vi, Bai, Bgi, Bvi, Pj, Qj, Vj, Baj, Bgj, Bvj);
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, 39, 39>>(
+    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -164,7 +164,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
     turb_residual = sqrt_info2 * turb_residual;
 
     tmp = turb_residual - (jacobians[5]* bvi_rand + residual);
-    std::cout << "perturb rhoj\t" << tmp.maxCoeff() << std::endl;
+    std::cout << "perturb Bvj\t" << tmp.maxCoeff() << std::endl;
 
     return;
 }
