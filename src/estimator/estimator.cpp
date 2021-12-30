@@ -620,6 +620,7 @@ void Estimator::processMeasurements()
                             il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt;
 //                    std::cout << il_pre_integrations[frame_count] -> delta_epsilon[j] << endl;
 //                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
+                    foot_contact_flag[j] = il_pre_integrations[frame_count]->foot_contact_flag[j];
                 }
                 lo_velocity_with_bias = il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
             }
@@ -1642,9 +1643,9 @@ void Estimator::optimization()
     TicToc t_solver;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    //cout << summary.BriefReport() << endl;
+    cout << summary.BriefReport() << endl;
     ROS_DEBUG("Iterations : %d", static_cast<int>(summary.iterations.size()));
-    //printf("solver costs: %f \n", t_solver.toc());
+    printf("solver costs: %f \n", t_solver.toc());
 
     double2vector();
     //printf("frame_count: %d \n", frame_count);

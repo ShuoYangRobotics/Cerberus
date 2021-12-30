@@ -33,10 +33,13 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
 
     for (int j = 0; j < NUM_OF_LEG; j++) {
         delta_epsilon.push_back(Eigen::Vector3d::Zero());
+        integration_contact_flag.push_back(true);
     }
     sum_delta_epsilon.setZero();
 
-
+    foot_force_window.setZero();
+    foot_force_window_idx.setZero();
+    foot_force_var.setZero();
 
 
             // the fixed kinematics parameter
@@ -176,11 +179,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     std::vector<Eigen::Vector3d> vi, vip1;
 
     // from foot contact force infer a contact flag
+    // calculate variance
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // get z directional contact force ( contact foot sensor reading)
         double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
 
-        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
+//        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
         if (force_mag < foot_force_min[j]) {
             foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
         }
@@ -191,12 +195,24 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         foot_force_min[j] *= 0.9991;
         foot_force_max[j] *= 0.997;
         foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
-        if ( force_mag > foot_force_contact_threshold[j]) {
-            foot_contact_flag[j] = 1;
-        } else {
-            foot_contact_flag[j] = 0;
+
+
+        foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
+
+        // get z force variance
+        foot_force_window_idx[j] ++;
+        foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
+        foot_force_window(j, foot_force_window_idx[j]) = force_mag;
+        Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
+        foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
+
+        if (foot_contact_flag[j] < 0.5) {
+            integration_contact_flag[j] = false;
         }
     }
+
+
+//    std::cout << foot_force_var << std::endl;
     // get velocity measurement
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // calculate fk of each leg
@@ -214,61 +230,20 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         result_linearized_rho.segment<3>(3 * j) = linearized_rho.segment<3>(3 * j);
     }
 
-//    // compare the velocity measurement with base_v, modify foot_contact_flag
-//    for (int j = 0; j < NUM_OF_LEG; j++) {
-//
-//        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
-//        Eigen::Vector3d diff = lo_v - base_v;
-//        if (diff.norm() < 0.5 * base_v.norm()) {
-//            foot_contact_flag[j] = 1;
-//        } else {
-//            foot_contact_flag[j] = 0;
-//        }
-//    }
-
     // design a new uncertainty function
     Vector12d uncertainties;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
-        double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
-        double diff_c_mag = diff_c;
-        // term 1
-        double n1 = V_N_MAX*(1-1/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j]))))+V_N_MIN;
-
-        // term 2
-        if (force_mag>foot_force_contact_threshold[j]) {
-            diff_c_mag /= V_N_TERM2_BOUND_FORCE/_dt;
-            if (diff_c_mag > 0)
-                diff_c_mag = V_N_TERM2_VAR_RESCALE*diff_c_mag;
-        } else {
-            diff_c_mag = 0;
-        }
-        double n2 = std::fmax(0, sqrt(fabs(diff_c_mag))*V_N_MAX - 80)+V_N_MIN; //relu
-
-        // term 3
-        Eigen::Vector3d n3 = V_N_MIN*Eigen::Vector3d::Ones();
-        if (force_mag>foot_force_contact_threshold[j]) {
-            Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
-            Eigen::Vector3d diff;
-            diff.setZero();
-            // prevent abnormal base_v
-            if (base_v.norm() / 3 < 5) {
-                diff = lo_v - base_v;
-                n3 = diff.array().square().sqrt();
-                n3 -= Eigen::Vector3d(V_N_TERM3_VEL_DIFF_XY * fabs(base_v(0)),
-                                      V_N_TERM3_VEL_DIFF_XY * fabs(base_v(1)),
-                                      V_N_TERM3_VEL_DIFF_Z * fabs(base_v(2)));
-                n3 = n3.cwiseMax(0);//relu
-                n3 = V_N_TERM3_DISTANCE_RESCALE * n3 + V_N_MIN * Eigen::Vector3d::Ones();
-            }
-        }
-
-        Eigen::Vector3d n = V_N_FINAL_RATIO*(n1*Eigen::Vector3d::Ones() +
-                n2*Eigen::Vector3d::Ones() + n3
-                );
+        double n1 = V_N_MAX*(1-foot_contact_flag[j])+V_N_MIN;
+        double n2 = V_N_MAX*foot_force_var[j];
+        Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
         uncertainties.segment<3>(3*j) = n;
     }
 //    std::cout << uncertainties.transpose() << std::endl;
+
+    Vector4d rho_uncertainty;
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        rho_uncertainty[j] = 5 * foot_contact_flag[j] + 0.0001;
+    }
 
     // use uncertainty to combine LO velocity
     Vector3d average_delta_epsilon; average_delta_epsilon.setZero();
@@ -323,14 +298,14 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            (uncertainties(0) * uncertainties(0)), (uncertainties(1) * uncertainties(1)), (uncertainties(2) * uncertainties(2)),
-            (uncertainties(3) * uncertainties(3)), (uncertainties(4) * uncertainties(4)), (uncertainties(5) * uncertainties(5)),
-            (uncertainties(6) * uncertainties(6)), (uncertainties(7) * uncertainties(7)), (uncertainties(8) * uncertainties(8)),
-            (uncertainties(9) * uncertainties(9)), (uncertainties(10) * uncertainties(10)), (uncertainties(11) * uncertainties(11)),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N),
-            (RHO_XY_N * RHO_XY_N), (RHO_XY_N * RHO_XY_N), (RHO_Z_N * RHO_Z_N);
+            uncertainties(0), uncertainties(1),  uncertainties(2),
+            uncertainties(3), uncertainties(4),  uncertainties(5),
+            uncertainties(6), uncertainties(7),  uncertainties(8),
+            uncertainties(9), uncertainties(10), uncertainties(11),
+            rho_uncertainty[0], rho_uncertainty[0], rho_uncertainty[0],
+            rho_uncertainty[1], rho_uncertainty[1], rho_uncertainty[1],
+            rho_uncertainty[2], rho_uncertainty[2], rho_uncertainty[2],
+            rho_uncertainty[3], rho_uncertainty[3], rho_uncertainty[3];
     if(update_jacobian)
     {
         for (int j = 0; j < NUM_OF_LEG; j++) {
@@ -374,81 +349,81 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
                 -a_1_x(1), a_1_x(0), 0;
         Eigen::Matrix3d kappa_7 = (Matrix3d::Identity() - R_w_x * _dt);
         // change to sparse matrix later otherwise they are too large
-//        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> F; F.setZero();
-        Eigen::SparseMatrix<double> F(RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE);
+        Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> F; F.setZero();
+//        Eigen::SparseMatrix<double> F(RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE);
         std::vector<Trip> trp;
         Eigen::Matrix3d tmp33;
         // F row 1
-//        F.block<3, 3>(0, 0) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,0+s_i,1));
+        F.block<3, 3>(0, 0) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,0+s_i,1));
         Eigen::Matrix3d kappa_1 = -0.5 * delta_q.toRotationMatrix() * R_a_0_x * _dt +
                                   -0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * kappa_7 * _dt;
-        tmp33 = 0.5 * _dt * kappa_1;
-//        F.block<3, 3>(0, 3) = 0.5 * _dt * kappa_1;
-        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,3+s_j,tmp33(s_i,s_j)));
-//        F.block<3, 3>(0, 6) = Matrix3d::Identity() * _dt;
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,6+s_i,_dt));
+//        tmp33 = 0.5 * _dt * kappa_1;
+        F.block<3, 3>(0, 3) = 0.5 * _dt * kappa_1;
+//        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,3+s_j,tmp33(s_i,s_j)));
+        F.block<3, 3>(0, 6) = Matrix3d::Identity() * _dt;
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(0+s_i,6+s_i,_dt));
 //        // 9 12 15 18 are 0
-//        F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
-        Eigen::Matrix3d kappa_2 = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
-        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,21+s_j,kappa_2(s_i,s_j)));
-//        F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
-        Eigen::Matrix3d kappa_3 = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
-        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,24+s_j,kappa_3(s_i,s_j)));
+        F.block<3, 3>(0, 21) = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
+//        Eigen::Matrix3d kappa_2 = -0.25 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt * _dt;
+//        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,21+s_j,kappa_2(s_i,s_j)));
+        F.block<3, 3>(0, 24) = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
+//        Eigen::Matrix3d kappa_3 = 0.25 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt * _dt;
+//        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(0+s_i,24+s_j,kappa_3(s_i,s_j)));
 
 //        // F row 2
-//        F.block<3, 3>(3, 3) = kappa_7;
-        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(3+s_i,3+s_j,kappa_7(s_i,s_j)));
-//        F.block<3, 3>(3, 24) = -1.0 * Matrix3d::Identity() * _dt;
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,24+s_i,-_dt));
+        F.block<3, 3>(3, 3) = kappa_7;
+//        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(3+s_i,3+s_j,kappa_7(s_i,s_j)));
+        F.block<3, 3>(3, 24) = -1.0 * Matrix3d::Identity() * _dt;
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(3+s_i,24+s_i,-_dt));
 //        // F row 3
-//        F.block<3, 3>(6, 3) = kappa_1;
-        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,3+s_j,kappa_1(s_i,s_j)));
-//        F.block<3, 3>(6, 6) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(6+s_i,6+s_i,1));
-//        F.block<3, 3>(6, 21) = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
-        Eigen::Matrix3d kappa_4 = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
-        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,21+s_j,kappa_4(s_i,s_j)));
+        F.block<3, 3>(6, 3) = kappa_1;
+//        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,3+s_j,kappa_1(s_i,s_j)));
+        F.block<3, 3>(6, 6) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(6+s_i,6+s_i,1));
+        F.block<3, 3>(6, 21) = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
+//        Eigen::Matrix3d kappa_4 = -0.5 * (delta_q.toRotationMatrix() + result_delta_q.toRotationMatrix()) * _dt;
+//        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,21+s_j,kappa_4(s_i,s_j)));
 
-//        F.block<3, 3>(6, 24) = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
-        Eigen::Matrix3d kappa_5 = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
-        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,24+s_j,kappa_5(s_i,s_j)));
+        F.block<3, 3>(6, 24) = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+//        Eigen::Matrix3d kappa_5 = 0.5 * result_delta_q.toRotationMatrix() * R_a_1_x * _dt * _dt;
+//        for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(6+s_i,24+s_j,kappa_5(s_i,s_j)));
 //
 //        // F row 4 5 6 7
         for (int j = 0; j < NUM_OF_LEG; j++) {
-//            F.block<3, 3>(9+3*j, 3) = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
-//                                      0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
-            tmp33 = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
+            F.block<3, 3>(9+3*j, 3) = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
                                       0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
-            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,3+s_j,tmp33(s_i,s_j)));
+//            tmp33 = -0.5 * _dt * delta_q.toRotationMatrix() * Utility::skewSymmetric(vi[j]) -
+//                                      0.5 * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])*kappa_7;
+//            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,3+s_j,tmp33(s_i,s_j)));
 
-//            F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
-            for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(9+3*j+s_i,9+3*j+s_i,1));
-//            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
-//                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
-//                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5
-            tmp33 = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+            F.block<3, 3>(9+3*j, 9+3*j)  = Matrix3d::Identity();
+//            for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(9+3*j+s_i,9+3*j+s_i,1));
+            F.block<3, 3>(9+3*j, 24) = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
                      - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
-                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5'
-            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,24+s_j,tmp33(s_i,s_j)));
-//            F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
-            tmp33 = 0.5 * _dt * (gi[j] + gip1[j]);
-            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,27+3*j+s_j,tmp33(s_i,s_j)));
+                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5
+//            tmp33 = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vip1[j])
+//                     - 0.5* _dt *(delta_q.toRotationMatrix()*Utility::skewSymmetric(p_br + R_br*fi[j])
+//                                 +result_delta_q.toRotationMatrix() * Utility::skewSymmetric(p_br + R_br*fip1[j])); //kappa_5'
+//            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,24+s_j,tmp33(s_i,s_j)));
+            F.block<3, 3>(9+3*j, 27+3*j) = 0.5 * _dt * (gi[j] + gip1[j]);
+//            tmp33 = 0.5 * _dt * (gi[j] + gip1[j]);
+//            for (int s_i=0; s_i<3;s_i++) for (int s_j=0; s_j<3;s_j++) trp.push_back(Trip(9+3*j+s_i,27+3*j+s_j,tmp33(s_i,s_j)));
         }
-//        F.block<3, 3>(21, 21) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(21+s_i,21+s_i,1));
-//        F.block<3, 3>(24, 24) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(24+s_i,24+s_i,1));
-//        F.block<3, 3>(27, 27) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(27+s_i,27+s_i,1));
-//        F.block<3, 3>(30, 30) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(30+s_i,30+s_i,1));
-//        F.block<3, 3>(33, 33) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(33+s_i,33+s_i,1));
-//        F.block<3, 3>(36, 36) = Matrix3d::Identity();
-        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(36+s_i,36+s_i,1));
+        F.block<3, 3>(21, 21) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(21+s_i,21+s_i,1));
+        F.block<3, 3>(24, 24) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(24+s_i,24+s_i,1));
+        F.block<3, 3>(27, 27) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(27+s_i,27+s_i,1));
+        F.block<3, 3>(30, 30) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(30+s_i,30+s_i,1));
+        F.block<3, 3>(33, 33) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(33+s_i,33+s_i,1));
+        F.block<3, 3>(36, 36) = Matrix3d::Identity();
+//        for (int s_i=0; s_i<3;s_i++)  trp.push_back(Trip(36+s_i,36+s_i,1));
 
-        F.setFromTriplets(trp.begin(),trp.end());
+//        F.setFromTriplets(trp.begin(),trp.end());
         // get V
 
         Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> V; V.setZero();
@@ -539,22 +514,22 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
         jacobian = F * jacobian;
 
-        noise_diag.diagonal()(2) = (ACC_N * ACC_N);
-        noise_diag.diagonal()(8) = (ACC_N * ACC_N);
+//        noise_diag.diagonal()(2) = (ACC_N * ACC_N);
+//        noise_diag.diagonal()(8) = (ACC_N * ACC_N);
         // scale IMU noise using the diff of the foot contact
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            // get z directional contact force ( contact foot sensor reading)
-//            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
+//            // get z directional contact force ( contact foot sensor reading)
+////            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
             double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
             double diff_c_mag = diff_c;
-            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
             noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(2) *= (1.0f + 0.001*abs(diff_c_mag));
-            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
+            noise_diag.diagonal()(2) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
             noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(8) *= (1.0f + 0.001*abs(diff_c_mag));
-//            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
-            // calculate a sum of delta_epsilon
+            noise_diag.diagonal()(8) *= (1.0f + 0.0002*abs(diff_c_mag));
+////            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
+//            // calculate a sum of delta_epsilon
         }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();
@@ -1005,16 +980,21 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     residuals.block<3, 1>(ILO_P, 0) = Qi.inverse() * (0.5 * G * sum_dt * sum_dt + Pj - Pi - Vi * sum_dt) - corrected_delta_p;
     residuals.block<3, 1>(ILO_R, 0) = 2 * (corrected_delta_q.inverse() * (Qi.inverse() * Qj)).vec();
     residuals.block<3, 1>(ILO_V, 0) = Qi.inverse() * (G * sum_dt + Vj - Vi) - corrected_delta_v;
-    residuals.block<3, 1>(ILO_EPS1, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[0];
-    residuals.block<3, 1>(ILO_EPS2, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[1];
-    residuals.block<3, 1>(ILO_EPS3, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[2];
-    residuals.block<3, 1>(ILO_EPS4, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[3];
+    // TODO: if during this period leg is always in the air, set residual be 0
+
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        if (integration_contact_flag[j] == true) {
+            residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[j];
+        } else {
+            residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Eigen::Vector3d::Zero();
+        }
+    }
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;
-    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - 0.995*rhoi.segment<3>(0);
-    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - 0.995*rhoi.segment<3>(3);
-    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - 0.995*rhoi.segment<3>(6);
-    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - 0.995*rhoi.segment<3>(9);
+    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - rhoi.segment<3>(0);
+    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - rhoi.segment<3>(3);
+    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - rhoi.segment<3>(6);
+    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - rhoi.segment<3>(9);
 
     return residuals;
 }

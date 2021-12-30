@@ -18,6 +18,7 @@ using namespace Eigen;
 
 #define RESIDUAL_STATE_SIZE 39
 #define NOISE_SIZE 54
+#define FOOT_VAR_WINDOW_SIZE 5
 typedef Eigen::Triplet<int> Trip;
 
 class IMULegIntegrationBase {
@@ -100,6 +101,13 @@ private:
     Vector4d foot_force_min;
     Vector4d foot_force_max;
     Vector4d foot_force_contact_threshold;
+    // variables to calculate variance of foot force
+    Eigen::Matrix<double, 4, FOOT_VAR_WINDOW_SIZE> foot_force_window;
+    Vector4i foot_force_window_idx;
+    Vector4d foot_force_var;
+
+    // keep track of whether the foot is not in contact through out the integration
+    std::vector<bool> integration_contact_flag;
 
 //    Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
     Eigen::DiagonalMatrix<double, NOISE_SIZE> noise_diag;
