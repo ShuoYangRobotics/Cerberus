@@ -234,8 +234,9 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     Vector12d uncertainties;
     for (int j = 0; j < NUM_OF_LEG; j++) {
         double n1 = V_N_MAX*(1-foot_contact_flag[j])+V_N_MIN;
-        double n2 = V_N_MAX*foot_force_var[j];
+        double n2 = V_N_TERM3_DISTANCE_RESCALE*foot_force_var[j];
         Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
+        // we only believe
         uncertainties.segment<3>(3*j) = n;
     }
 //    std::cout << uncertainties.transpose() << std::endl;
@@ -260,32 +261,11 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         average_delta_epsilon /= average_count;
     }
     if(average_delta_epsilon.norm() > 500) {
-        std::cout << "something is wrong" << std::endl;
+        std::cout << "lo velocity must be wrong" << std::endl;
         result_sum_delta_epsilon = sum_delta_epsilon;
     } else {
         result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
     }
-
-//    noise.setZero();
-//    noise.block<3, 3>(0, 0) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(3, 3) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(6, 6) =  (ACC_N * ACC_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(9, 9) =  (GYR_N * GYR_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(12, 12) =  (ACC_W * ACC_W) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(15, 15) =  (GYR_W * GYR_W) * Eigen::Matrix3d::Identity();
-//
-//    noise.block<3, 3>(18, 18) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(21, 21) =  (PHI_N * PHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(24, 24) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(27, 27) =  (DPHI_N * DPHI_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(30, 30) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(33, 33) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(36, 36) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(39, 39) =  (V_N * V_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(42, 42) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(45, 45) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(48, 48) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
-//    noise.block<3, 3>(51, 51) =  (RHO_N * RHO_N) * Eigen::Matrix3d::Identity();
 
     noise_diag.diagonal() <<
             (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
@@ -302,10 +282,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             uncertainties(3), uncertainties(4),  uncertainties(5),
             uncertainties(6), uncertainties(7),  uncertainties(8),
             uncertainties(9), uncertainties(10), uncertainties(11),
-            rho_uncertainty[0], rho_uncertainty[0], rho_uncertainty[0],
-            rho_uncertainty[1], rho_uncertainty[1], rho_uncertainty[1],
-            rho_uncertainty[2], rho_uncertainty[2], rho_uncertainty[2],
-            rho_uncertainty[3], rho_uncertainty[3], rho_uncertainty[3];
+            0.1*rho_uncertainty[0], 0.1*rho_uncertainty[0], rho_uncertainty[0],
+            0.1*rho_uncertainty[1], 0.1*rho_uncertainty[1], rho_uncertainty[1],
+            0.1*rho_uncertainty[2], 0.1*rho_uncertainty[2], rho_uncertainty[2],
+            0.1*rho_uncertainty[3], 0.1*rho_uncertainty[3], rho_uncertainty[3];
+
+
     if(update_jacobian)
     {
         for (int j = 0; j < NUM_OF_LEG; j++) {
@@ -517,20 +499,20 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //        noise_diag.diagonal()(2) = (ACC_N * ACC_N);
 //        noise_diag.diagonal()(8) = (ACC_N * ACC_N);
         // scale IMU noise using the diff of the foot contact
-        for (int j = 0; j < NUM_OF_LEG; j++) {
+//        for (int j = 0; j < NUM_OF_LEG; j++) {
 //            // get z directional contact force ( contact foot sensor reading)
 ////            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
-            double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
-            double diff_c_mag = diff_c;
+//            double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
+//            double diff_c_mag = diff_c;
 //            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(2) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(2) *= (1.0f + 0.0002*abs(diff_c_mag));
 //            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(8) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(8) *= (1.0f + 0.0002*abs(diff_c_mag));
 ////            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
 //            // calculate a sum of delta_epsilon
-        }
+//        }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();
 //        covariance = F * covariance * F.transpose() + tmp;
@@ -985,16 +967,14 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     for (int j = 0; j < NUM_OF_LEG; j++) {
         if (integration_contact_flag[j] == true) {
             residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[j];
+            residuals.block<3, 1>(ILO_RHO1+3*j, 0) = rhoj.segment<3>(0) - rhoi.segment<3>(0);
         } else {
             residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Eigen::Vector3d::Zero();
+            residuals.block<3, 1>(ILO_RHO1+3*j, 0) = Eigen::Vector3d::Zero();
         }
     }
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;
-    residuals.block<3, 1>(ILO_RHO1, 0) = rhoj.segment<3>(0) - rhoi.segment<3>(0);
-    residuals.block<3, 1>(ILO_RHO2, 0) = rhoj.segment<3>(3) - rhoi.segment<3>(3);
-    residuals.block<3, 1>(ILO_RHO3, 0) = rhoj.segment<3>(6) - rhoi.segment<3>(6);
-    residuals.block<3, 1>(ILO_RHO4, 0) = rhoj.segment<3>(9) - rhoi.segment<3>(9);
 
     return residuals;
 }

@@ -146,7 +146,7 @@ void Estimator::setParameter()
     leg_offset_x[0] = 0.1805; leg_offset_x[1] = 0.1805;  leg_offset_x[2] = -0.1805; leg_offset_x[3] = -0.1805;
     leg_offset_y[0] = 0.077;  leg_offset_y[1] = -0.077;  leg_offset_y[2] = 0.077;   leg_offset_y[3] = -0.077;
     motor_offset[0] = 0.0838; motor_offset[1] = -0.0838; motor_offset[2] = 0.0838;  motor_offset[3] = -0.0838;
-    upper_leg_length[0] = upper_leg_length[1] = upper_leg_length[2] = upper_leg_length[3] = 0.2;
+    upper_leg_length[0] = upper_leg_length[1] = upper_leg_length[2] = upper_leg_length[3] = 0.21;
     lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = LOWER_LEG_LENGTH;
 
     for (int i = 0; i < NUM_OF_LEG; i++) {
