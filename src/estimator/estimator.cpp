@@ -139,8 +139,8 @@ void Estimator::setParameter()
         processThread = std::thread(&Estimator::processMeasurements, this);
     }
     // set leg kinematics related parameters
-    // body_to_a1_body
-    p_br = Eigen::Vector3d(-0.2293, 0.0, -0.067);
+    // body_to_a1_body, in case the IMU and the robot body frame has nontrival transformation
+    p_br = Eigen::Vector3d(0, 0.0, 0);
     R_br = Eigen::Matrix3d::Identity();
     // leg order: 0-FL  1-FR  2-RL  3-RR
     leg_offset_x[0] = 0.1805; leg_offset_x[1] = 0.1805;  leg_offset_x[2] = -0.1805; leg_offset_x[3] = -0.1805;
@@ -339,14 +339,20 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
                                      vector<pair<double, Vector12d>> &footForceVector)
 {
     // debug
-//    std::cout << std::setprecision(20) << "times: " << t0 << "  ---  " << t1 << std::endl;
-//
-//    std::cout << "before change " << std::endl;
-//    std::cout << std::setprecision(20) << "acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
-//    std::cout << std::setprecision(20) << "lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
+    std::cout << std::setprecision(20) << "times: " << t0 << "  ---  " << t1 << std::endl;
+
+    std::cout << "before change " << std::endl;
+    std::cout << std::setprecision(20) << "acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
+    std::cout << std::setprecision(20) << "lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
+    std::cout << " buf size: " << accBuf.size()  << "  ---  " << legAngBufList.size() << std::endl;
     if (accBuf.empty())
     {
         printf("not receive imu\n");
+        return false;
+    }
+    if (legAngBufList.empty())
+    {
+        printf("not receive leg \n");
         return false;
     }
 //    printf("get imu from %f %f\n", t0, t1);
@@ -354,12 +360,13 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
     // must have more IMU than image
     if(t1 <= accBuf.back().first)
     {
-        while (accBuf.front().first <= t0)
+        while (!accBuf.empty() && accBuf.front().first <= t0)
         {
             accBuf.pop();
             gyrBuf.pop();
         }
-        while (legAngBufList.front().first <= t0)
+        // leave at least one element in legAngBufList, if IMU topic and the leg topic are very fast, this will sometimes result in less accurate leg measurement
+        while (legAngBufList.size() > 1 && legAngBufList.front().first < t0)
         {
             legAngBufList.pop_front();
             legAngVelBufList.pop_front();
@@ -380,12 +387,12 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
             // angle - only push once, push a 12d vector
             starting_idx = 0;
             lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
-            if (starting_idx > 0)
-            {
-                legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
-                legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
-                footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
-            }
+//                if (starting_idx > 0)
+//                {
+//                    legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
+//                    legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
+//                    footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
+//                }
 
             jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
             jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
@@ -401,11 +408,13 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
         jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
         jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
         footForceVector.push_back(make_pair(leg_search_time, lerpMtx.col(2)));
+        std::cout << accVector.size() << std::endl;
+        std::cout << footForceVector.size() << std::endl;
 
     }
     else
     {
-        printf("wait for imu\n");
+        printf("wait for imu and leg\n");
         return false;
     }
 
@@ -915,11 +924,15 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                     tmp.segment<3>(9) = Rho4[i];
                     il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], tmp);
                 }
+                ROS_WARN_STREAM("Initialization finish!0");
                 optimization();
+                ROS_WARN_STREAM("Initialization finish!1");
                 updateLatestStates();
+                ROS_WARN_STREAM("Initialization finish!2");
                 solver_flag = NON_LINEAR;
                 slideWindow();
                 ROS_INFO("Initialization finish!");
+                ROS_WARN_STREAM("Initialization finish!");
             }
         }
 
