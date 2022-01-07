@@ -169,7 +169,7 @@ void readParameters(std::string config_file)
 
     fsSettings["output_path"] >> OUTPUT_FOLDER;
     if (OPTIMIZE_LEG_BIAS) {
-        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + ".csv";
+        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + "-lc-" + to_string(LOWER_LEG_LENGTH) + ".csv";
     } else {
         VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wob"+ Utility::GetCurrentTimeForFileName() + ".csv";
     }

@@ -210,7 +210,16 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             integration_contact_flag[j] = false;
         }
     }
+//    std::cout << "foot force process" << std::endl;
+//    std::cout << "foot_force_max " << foot_force_max.transpose() << std::endl;
+//    std::cout << "foot_force_contact_threshold " << foot_force_contact_threshold.transpose() << std::endl;
+//    std::cout << "foot_force_min " << foot_force_min.transpose() << std::endl;
+//    std::cout << "foot_contact_flag " << foot_contact_flag.transpose() <<std::endl;
+//    std::cout << "foot_force_var " << foot_force_var.transpose() <<std::endl;
 
+    // caution: never use leg RL because on my robot the leg is wrong
+    foot_contact_flag[2] = 0;
+    integration_contact_flag[2] = false;
 
 //    std::cout << foot_force_var << std::endl;
     // get velocity measurement
@@ -231,11 +240,32 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     }
 
     // design a new uncertainty function
+
+    // record all four lo velocities, examine their difference to average
+    // only choose the most accurate two
+    Matrix<double, 3, 4> lo_veocities; lo_veocities.setZero();
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
+        lo_veocities.col(j) = lo_v;
+        // base_v is the current velocity estimation in body frame
+    }
+
     Vector12d uncertainties;
     for (int j = 0; j < NUM_OF_LEG; j++) {
         double n1 = V_N_MAX*(1-foot_contact_flag[j])+V_N_MIN;
-        double n2 = V_N_TERM3_DISTANCE_RESCALE*foot_force_var[j];
+        double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
+        Eigen::Vector3d n3; n3.setZero();
+        Eigen::Vector3d tmp = lo_veocities.col(j) - base_v;
+        for (int k = 0; k < 3; k++) {
+            if (fabs(tmp(k)) < 0.2) {
+                n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),4);
+            } else {
+                n3(k) = 10e10;
+            }
+
+        }
         Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
+//        n = n + n3;
         // we only believe
         uncertainties.segment<3>(3*j) = n;
     }
@@ -249,13 +279,20 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     // use uncertainty to combine LO velocity
     Vector3d average_delta_epsilon; average_delta_epsilon.setZero();
     double average_count = 0;
+    Vector4d weight_list; weight_list.setZero();
+
+
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        double weight = 1.0/uncertainties.segment<3>(3*j).norm();
-        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
-        average_delta_epsilon += weight * lo_v * _dt;
+        double weight = 100.0/(sqrt(uncertainties.segment<3>(3*j).norm()));
+        average_delta_epsilon += weight * lo_veocities.col(j) * _dt;
         average_count += weight;
+        weight_list[j] = weight;
     }
-    if (fabs(average_count) < 1e-5 || average_delta_epsilon.norm() > 100) {
+//    std::cout << _c_0.transpose() <<std::endl;
+//    std::cout << _c_1.transpose() <<std::endl;
+//    std::cout << weight_list.transpose() <<std::endl;
+//    std::cout << uncertainties.transpose() <<std::endl;
+    if (average_delta_epsilon.norm() > 100) {
         average_delta_epsilon.setZero();
     } else {
         average_delta_epsilon /= average_count;
@@ -265,6 +302,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         result_sum_delta_epsilon = sum_delta_epsilon;
     } else {
         result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
+    }
+
+    // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
+    if (foot_contact_flag.sum()<1e-6) {
+        rho_uncertainty.setConstant(0.00001);
+        uncertainties.setConstant(10e10);
     }
 
     noise_diag.diagonal() <<
@@ -282,10 +325,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             uncertainties(3), uncertainties(4),  uncertainties(5),
             uncertainties(6), uncertainties(7),  uncertainties(8),
             uncertainties(9), uncertainties(10), uncertainties(11),
-            0.1*rho_uncertainty[0], 0.1*rho_uncertainty[0], rho_uncertainty[0],
-            0.1*rho_uncertainty[1], 0.1*rho_uncertainty[1], rho_uncertainty[1],
-            0.1*rho_uncertainty[2], 0.1*rho_uncertainty[2], rho_uncertainty[2],
-            0.1*rho_uncertainty[3], 0.1*rho_uncertainty[3], rho_uncertainty[3];
+            rho_uncertainty[0], rho_uncertainty[0], rho_uncertainty[0],
+            rho_uncertainty[1], rho_uncertainty[1], rho_uncertainty[1],
+            rho_uncertainty[2], rho_uncertainty[2], rho_uncertainty[2],
+            rho_uncertainty[3], rho_uncertainty[3], rho_uncertainty[3];
 
 
     if(update_jacobian)

@@ -339,12 +339,12 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
                                      vector<pair<double, Vector12d>> &footForceVector)
 {
     // debug
-    std::cout << std::setprecision(20) << "times: " << t0 << "  ---  " << t1 << std::endl;
-
-    std::cout << "before change " << std::endl;
-    std::cout << std::setprecision(20) << "acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
-    std::cout << std::setprecision(20) << "lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
-    std::cout << " buf size: " << accBuf.size()  << "  ---  " << legAngBufList.size() << std::endl;
+//    std::cout << std::setprecision(5) << "times: " << t0 << "  ---  " << t1 << std::endl;
+//
+//    std::cout << "before change " << std::endl;
+//    std::cout << std::setprecision(5) << "acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
+//    std::cout << std::setprecision(5) << "lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
+//    std::cout << " buf size: " << accBuf.size()  << "  ---  " << legAngBufList.size() << std::endl;
     if (accBuf.empty())
     {
         printf("not receive imu\n");
@@ -408,8 +408,8 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
         jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
         jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
         footForceVector.push_back(make_pair(leg_search_time, lerpMtx.col(2)));
-        std::cout << accVector.size() << std::endl;
-        std::cout << footForceVector.size() << std::endl;
+//        std::cout << accVector.size() << std::endl;
+//        std::cout << footForceVector.size() << std::endl;
 
     }
     else
@@ -626,12 +626,12 @@ void Estimator::processMeasurements()
                 // look at delta_epsilon of  as lo velocity measurement
                 for (int j = 0; j < NUM_OF_LEG; j++) {
                     lo_velocity_with_bias_each_leg.segment<3>(3 * j) =
-                            il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt;
+                            Rs[frame_count]*(il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt);
 //                    std::cout << il_pre_integrations[frame_count] -> delta_epsilon[j] << endl;
 //                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
                     foot_contact_flag[j] = il_pre_integrations[frame_count]->foot_contact_flag[j];
                 }
-                lo_velocity_with_bias = il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
+                lo_velocity_with_bias = Rs[frame_count]*(il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt);
             }
             else if(USE_IMU)
             {
@@ -779,7 +779,7 @@ void Estimator::processIMULeg(double t, double dt,
         tmp.segment<3>(3) = Rho2[frame_count];
         tmp.segment<3>(6) = Rho3[frame_count];
         tmp.segment<3>(9) = Rho4[frame_count];
-        il_pre_integrations[frame_count] = new IMULegIntegrationBase{Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
+        il_pre_integrations[frame_count] = new IMULegIntegrationBase{Rs[frame_count].transpose()*Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                      Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
     }
 
@@ -848,7 +848,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     tmp.segment<3>(3) = Rho2[frame_count];
     tmp.segment<3>(6) = Rho3[frame_count];
     tmp.segment<3>(9) = Rho4[frame_count];
-    tmp_il_pre_integration = new IMULegIntegrationBase{Vs[frame_count],acc_0, gyr_0, phi_0, dphi_0, c_0,
+    tmp_il_pre_integration = new IMULegIntegrationBase{Rs[frame_count].transpose()*Vs[frame_count],acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                  Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
 
     // we do not really use this
@@ -1496,8 +1496,13 @@ void Estimator::optimization()
         if(USE_LEG)
             problem.AddParameterBlock(para_LegBias[i], SIZE_LEG_BIAS);
 
-        if (USE_LEG && !OPTIMIZE_LEG_BIAS)
+        if (USE_LEG && !OPTIMIZE_LEG_BIAS) {
             problem.SetParameterBlockConstant(para_LegBias[i]);
+        }
+
+        if (frame_count < WINDOW_SIZE) {
+            problem.SetParameterBlockConstant(para_LegBias[i]);
+        }
     }
     if(!USE_IMU)
         problem.SetParameterBlockConstant(para_Pose[0]);
@@ -1950,7 +1955,7 @@ void Estimator::slideWindow()
                 tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
                 tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
                 tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
-                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Vs[WINDOW_SIZE],acc_0, gyr_0, phi_0, dphi_0, c_0,
+                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose()*Vs[WINDOW_SIZE],acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                              Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
@@ -2033,7 +2038,7 @@ void Estimator::slideWindow()
                 tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
                 tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
                 tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
-                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
+                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose()*Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                              Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
