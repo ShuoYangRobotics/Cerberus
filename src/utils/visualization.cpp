@@ -192,17 +192,17 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
             << estimator.lo_velocity_with_bias.y() << ","     // 22
             << estimator.lo_velocity_with_bias.z() << ","     // 23
             << estimator.Rho1[WINDOW_SIZE].x() << ","         // 24
-            << estimator.Rho1[WINDOW_SIZE].y() << ","         // 25
-            << estimator.Rho1[WINDOW_SIZE].z() << ","         // 26
+            << estimator.Rho1[WINDOW_SIZE].x() << ","         // 25
+            << estimator.Rho1[WINDOW_SIZE].x() << ","         // 26
             << estimator.Rho2[WINDOW_SIZE].x() << ","         // 27
-            << estimator.Rho2[WINDOW_SIZE].y() << ","         // 28
-            << estimator.Rho2[WINDOW_SIZE].z() << ","         // 29
+            << estimator.Rho2[WINDOW_SIZE].x() << ","         // 28
+            << estimator.Rho2[WINDOW_SIZE].x() << ","         // 29
             << estimator.Rho3[WINDOW_SIZE].x() << ","         // 30
-            << estimator.Rho3[WINDOW_SIZE].y() << ","         // 31
-            << estimator.Rho3[WINDOW_SIZE].z() << ","         // 32
+            << estimator.Rho3[WINDOW_SIZE].x() << ","         // 31
+            << estimator.Rho3[WINDOW_SIZE].x() << ","         // 32
             << estimator.Rho4[WINDOW_SIZE].x() << ","         // 33
-            << estimator.Rho4[WINDOW_SIZE].y() << ","         // 34
-            << estimator.Rho4[WINDOW_SIZE].z() << ","         // 35
+            << estimator.Rho4[WINDOW_SIZE].x() << ","         // 34
+            << estimator.Rho4[WINDOW_SIZE].x() << ","         // 35
             // lo velocity of each foot
             << estimator.lo_velocity_each_leg(0) << "," // 36
             << estimator.lo_velocity_each_leg(1) << "," // 37
@@ -238,11 +238,11 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
         Eigen::Vector3d tmp_T = estimator.Ps[WINDOW_SIZE];
         printf("time: %f, t: %f %f %f q: %f %f %f %f \n", header.stamp.toSec(), tmp_T.x(), tmp_T.y(), tmp_T.z(),
                                                           tmp_Q.w(), tmp_Q.x(), tmp_Q.y(), tmp_Q.z());
-        printf("rho bias: %f %f %f %f %f %f %f %f %f %f %f %f \n",
-               estimator.Rho1[WINDOW_SIZE].x(), estimator.Rho1[WINDOW_SIZE].y(), estimator.Rho1[WINDOW_SIZE].z(),
-               estimator.Rho2[WINDOW_SIZE].x(), estimator.Rho2[WINDOW_SIZE].y(), estimator.Rho2[WINDOW_SIZE].z(),
-               estimator.Rho3[WINDOW_SIZE].x(), estimator.Rho3[WINDOW_SIZE].y(), estimator.Rho3[WINDOW_SIZE].z(),
-               estimator.Rho4[WINDOW_SIZE].x(), estimator.Rho4[WINDOW_SIZE].y(), estimator.Rho4[WINDOW_SIZE].z());
+        printf("rho bias: %f %f %f %f  \n",
+               estimator.Rho1[WINDOW_SIZE].x(),
+               estimator.Rho2[WINDOW_SIZE].x(),
+               estimator.Rho3[WINDOW_SIZE].x(),
+               estimator.Rho4[WINDOW_SIZE].x());
     }
 }
 

@@ -145,10 +145,10 @@ public:
     Matrix3d        Rs[(WINDOW_SIZE + 1)];
     Vector3d        Bas[(WINDOW_SIZE + 1)];
     Vector3d        Bgs[(WINDOW_SIZE + 1)];
-    Vector3d        Rho1[(WINDOW_SIZE + 1)];
-    Vector3d        Rho2[(WINDOW_SIZE + 1)];
-    Vector3d        Rho3[(WINDOW_SIZE + 1)];
-    Vector3d        Rho4[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho1[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho2[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho3[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho4[(WINDOW_SIZE + 1)];
     double td;
 
     Matrix3d back_R0, last_R, last_R0;
@@ -188,7 +188,7 @@ public:
     // variable of optimization
     double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];
     double para_SpeedBias[WINDOW_SIZE + 1][SIZE_SPEEDBIAS]; // velocity and IMU bias
-    double para_LegBias[WINDOW_SIZE + 1][12];    // leg bias
+    double para_LegBias[WINDOW_SIZE + 1][SIZE_LEG_BIAS];    // leg bias
     double para_Feature[NUM_OF_F][SIZE_FEATURE];
     double para_Ex_Pose[2][SIZE_POSE];
     double para_Retrive_Pose[SIZE_POSE];

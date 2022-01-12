@@ -42,7 +42,7 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
     for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end( ); frame_i++)
     {
         frame_j = next(frame_i);
-        Vector12d tmp; tmp.setZero();
+        Vector_rho tmp; tmp.setZero();
         frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], tmp);
     }
 }

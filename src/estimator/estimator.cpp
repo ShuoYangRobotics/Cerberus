@@ -52,10 +52,10 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i].setZero(); Rho1[i] = 1e-9*Eigen::Vector3d::Ones();
-        Rho2[i].setZero(); Rho2[i] = 1e-9*Eigen::Vector3d::Ones();
-        Rho3[i].setZero(); Rho3[i] = 1e-9*Eigen::Vector3d::Ones();
-        Rho4[i].setZero(); Rho4[i] = 1e-9*Eigen::Vector3d::Ones();
+        Rho1[i].setZero(); Rho1[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho2[i].setZero(); Rho2[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho3[i].setZero(); Rho3[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho4[i].setZero(); Rho4[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -144,14 +144,14 @@ void Estimator::setParameter()
     R_br = Eigen::Matrix3d::Identity();
     // leg order: 0-FL  1-FR  2-RL  3-RR
     leg_offset_x[0] = 0.1805; leg_offset_x[1] = 0.1805;  leg_offset_x[2] = -0.1805; leg_offset_x[3] = -0.1805;
-    leg_offset_y[0] = 0.077;  leg_offset_y[1] = -0.077;  leg_offset_y[2] = 0.077;   leg_offset_y[3] = -0.077;
+    leg_offset_y[0] = 0.047;  leg_offset_y[1] = -0.047;  leg_offset_y[2] = 0.047;   leg_offset_y[3] = -0.047;
     motor_offset[0] = 0.0838; motor_offset[1] = -0.0838; motor_offset[2] = 0.0838;  motor_offset[3] = -0.0838;
     upper_leg_length[0] = upper_leg_length[1] = upper_leg_length[2] = upper_leg_length[3] = 0.21;
     lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = LOWER_LEG_LENGTH;
 
     for (int i = 0; i < NUM_OF_LEG; i++) {
-        Eigen::VectorXd rho_fix(5); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i],lower_leg_length[i];
-        Eigen::VectorXd rho_opt(3); rho_opt << 0.0,0.0,0.0;
+        Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i],lower_leg_length[i];
+        Eigen::VectorXd rho_opt(RHO_OPT_SIZE); rho_opt << 0.0;
         rho_fix_list.push_back(rho_fix);
         rho_opt_list.push_back(rho_opt);
     }
@@ -774,11 +774,11 @@ void Estimator::processIMULeg(double t, double dt,
 
     if (!il_pre_integrations[frame_count])
     {
-        Vector12d tmp;
-        tmp.segment<3>(0) = Rho1[frame_count];
-        tmp.segment<3>(3) = Rho2[frame_count];
-        tmp.segment<3>(6) = Rho3[frame_count];
-        tmp.segment<3>(9) = Rho4[frame_count];
+        Vector_rho tmp;
+        tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[frame_count];
+        tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[frame_count];
+        tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[frame_count];
+        tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[frame_count];
         il_pre_integrations[frame_count] = new IMULegIntegrationBase{Rs[frame_count].transpose()*Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                      Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
     }
@@ -843,11 +843,11 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     all_image_frame.insert(make_pair(header, imageframe));
 //    tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
 
-    Vector12d tmp;
-    tmp.segment<3>(0) = Rho1[frame_count];
-    tmp.segment<3>(3) = Rho2[frame_count];
-    tmp.segment<3>(6) = Rho3[frame_count];
-    tmp.segment<3>(9) = Rho4[frame_count];
+    Vector_rho tmp;
+    tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[frame_count];
+    tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[frame_count];
+    tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[frame_count];
+    tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[frame_count];
     tmp_il_pre_integration = new IMULegIntegrationBase{Rs[frame_count].transpose()*Vs[frame_count],acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                  Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
 
@@ -917,11 +917,11 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 //                solveGyroLegBias(all_image_frame, Bgs, Rho1, Rho2, Rho3, Rho4);
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
-                    Vector12d tmp; tmp.setZero();
-                    tmp.segment<3>(0) = Rho1[i];
-                    tmp.segment<3>(3) = Rho2[i];
-                    tmp.segment<3>(6) = Rho3[i];
-                    tmp.segment<3>(9) = Rho4[i];
+                    Vector_rho tmp;
+                    tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[i];
+                    tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[i];
+                    tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[i];
+                    tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[i];
                     il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], tmp);
                 }
                 ROS_WARN_STREAM("Initialization finish!0");
@@ -1280,21 +1280,10 @@ void Estimator::vector2double()
         }
         if (USE_LEG)
         {
-            para_LegBias[i][0] = Rho1[i].x();
-            para_LegBias[i][1] = Rho1[i].y();
-            para_LegBias[i][2] = Rho1[i].z();
-
-            para_LegBias[i][3] = Rho2[i].x();
-            para_LegBias[i][4] = Rho2[i].y();
-            para_LegBias[i][5] = Rho2[i].z();
-
-            para_LegBias[i][6] = Rho3[i].x();
-            para_LegBias[i][7] = Rho3[i].y();
-            para_LegBias[i][8] = Rho3[i].z();
-
-            para_LegBias[i][9] = Rho4[i].x();
-            para_LegBias[i][10] = Rho4[i].y();
-            para_LegBias[i][11] = Rho4[i].z();
+            para_LegBias[i][0] = Rho1[i][0];
+            para_LegBias[i][1] = Rho2[i][0];
+            para_LegBias[i][2] = Rho3[i][0];
+            para_LegBias[i][3] = Rho4[i][0];
         }
     }
 
@@ -1399,21 +1388,10 @@ void Estimator::double2vector()
     if (USE_LEG)
     {
         for (int i = 0; i <= WINDOW_SIZE; i++) {
-            Rho1[i] = Vector3d(para_LegBias[i][0],
-                               para_LegBias[i][1],
-                               para_LegBias[i][2]);
-
-            Rho2[i] = Vector3d(para_LegBias[i][3],
-                               para_LegBias[i][4],
-                               para_LegBias[i][5]);
-
-            Rho3[i] = Vector3d(para_LegBias[i][6],
-                               para_LegBias[i][7],
-                               para_LegBias[i][8]);
-
-            Rho4[i] = Vector3d(para_LegBias[i][9],
-                               para_LegBias[i][10],
-                               para_LegBias[i][11]);
+            Rho1[i] <<para_LegBias[i][0];
+            Rho2[i] <<para_LegBias[i][1];
+            Rho3[i] <<para_LegBias[i][2];
+            Rho4[i] <<para_LegBias[i][3];
         }
     }
 
@@ -1950,11 +1928,11 @@ void Estimator::slideWindow()
 //                pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
 
                 delete il_pre_integrations[WINDOW_SIZE];
-                Vector12d tmp;
-                tmp.segment<3>(0) = Rho1[WINDOW_SIZE];
-                tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
-                tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
-                tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
+                Vector_rho tmp;
+                tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[WINDOW_SIZE];
+                tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[WINDOW_SIZE];
+                tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[WINDOW_SIZE];
+                tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose()*Vs[WINDOW_SIZE],acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                              Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
 
@@ -2033,11 +2011,11 @@ void Estimator::slideWindow()
                 pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
 
                 delete il_pre_integrations[WINDOW_SIZE];
-                Vector12d tmp;
-                tmp.segment<3>(0) = Rho1[WINDOW_SIZE];
-                tmp.segment<3>(3) = Rho2[WINDOW_SIZE];
-                tmp.segment<3>(6) = Rho3[WINDOW_SIZE];
-                tmp.segment<3>(9) = Rho4[WINDOW_SIZE];
+                Vector_rho tmp;
+                tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[WINDOW_SIZE];
+                tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[WINDOW_SIZE];
+                tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[WINDOW_SIZE];
+                tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose()*Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                              Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
 

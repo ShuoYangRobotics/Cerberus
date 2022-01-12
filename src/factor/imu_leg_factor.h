@@ -12,7 +12,7 @@
 #include "../utils/parameters.h"
 #include "imu_leg_integration_base.h"
 
-class IMULegFactor : public ceres::SizedCostFunction<39, 7, 9, 12, 7, 9, 12> {
+class IMULegFactor : public ceres::SizedCostFunction<RESIDUAL_STATE_SIZE, 7, 9, TOTAL_RHO_OPT_SIZE, 7, 9, TOTAL_RHO_OPT_SIZE> {
 public:
     IMULegFactor() = delete;
 

@@ -17,8 +17,6 @@
 #include <fstream>
 #include <map>
 
-#include "utility.h"
-
 using namespace std;
 
 const double FOCAL_LENGTH = 460.0;
@@ -92,12 +90,23 @@ extern int FLOW_BACK;
 
 void readParameters(std::string config_file);
 
+// parameters in the leg kinematics  and imu_leg_integration_base
+#define RHO_OPT_SIZE  1
+#define TOTAL_RHO_OPT_SIZE  4   //4xRHO_OPT_SIZE
+#define RHO_FIX_SIZE  5
+#define D_FK_DRHO_SIZE  3   // 3xRHO_OPT_SIZE
+#define D_J_DRHO_SIZE  9    // 9xRHO_OPT_SIZE
+#define RESIDUAL_STATE_SIZE 31  // 3*9 + 4xRHO_OPT_SIZE
+#define NOISE_SIZE 46           // 3*14 + 4xRHO_OPT_SIZE
+
+typedef Eigen::Matrix<double, 12, 1> Vector12d; //4xRHO_OPT_SIZE
+typedef Eigen::Matrix<double, 4, 1> Vector_rho; //4xRHO_OPT_SIZE
+
 enum SIZE_PARAMETERIZATION
 {
     SIZE_POSE = 7,       // p3, q4
     SIZE_SPEEDBIAS = 9,
-    SIZE_SPEED_LEG_BIAS = 21, // v 3, ba 3, bg 3, bv 3, rho1 3, rho2 3, rho3 3, rho 4 3
-    SIZE_LEG_BIAS = 12,
+    SIZE_LEG_BIAS = 4,  // 4 x RHO_OPT_SIZE
     SIZE_FEATURE = 1
 };
 
@@ -129,8 +138,30 @@ enum ILStateOrder // error state, total is RESIDUAL_STATE_SIZE
     ILO_EPS4 = 18,
     ILO_BA = 21,
     ILO_BG = 24,
-    ILO_RHO1 = 27,
-    ILO_RHO2 = 30,
-    ILO_RHO3 = 33,
-    ILO_RHO4 = 36,
+    ILO_RHO1 = 27,     // change according to RHO_OPT_SIZE
+    ILO_RHO2 = 28,     // change according to RHO_OPT_SIZE
+    ILO_RHO3 = 29,     // change according to RHO_OPT_SIZE
+    ILO_RHO4 = 30,     // change according to RHO_OPT_SIZE
+};
+
+enum ILNoiseStateOrder // noise state, total is NOISE_SIZE
+{
+    ILNO_Ai = 0,
+    ILNO_Gi = 3,
+    ILNO_Ai1 = 6,
+    ILNO_Gi1 = 9,
+    ILNO_BA = 12,
+    ILNO_BG = 15,
+    ILNO_PHIi = 18,
+    ILNO_PHIi1 = 21,
+    ILNO_DPHIi = 24,
+    ILNO_DPHIi1 = 27,
+    ILNO_V1 = 30,
+    ILNO_V2 = 33,
+    ILNO_V3 = 36,
+    ILNO_V4 = 39,
+    ILNO_NRHO1 = 42,
+    ILNO_NRHO2 = 43,
+    ILNO_NRHO3 = 44,
+    ILNO_NRHO4 = 45,
 };

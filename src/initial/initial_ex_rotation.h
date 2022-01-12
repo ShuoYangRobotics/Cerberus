@@ -13,6 +13,7 @@
 
 #include <vector>
 #include "../utils/parameters.h"
+#include "../utils/utility.h"
 using namespace std;
 
 #include <opencv2/opencv.hpp>
