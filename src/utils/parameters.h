@@ -90,6 +90,7 @@ extern int FLOW_BACK;
 
 void readParameters(std::string config_file);
 
+#define NUM_OF_LEG 4
 // parameters in the leg kinematics  and imu_leg_integration_base
 #define RHO_OPT_SIZE  1
 #define TOTAL_RHO_OPT_SIZE  4   //4xRHO_OPT_SIZE

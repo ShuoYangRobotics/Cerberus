@@ -218,8 +218,8 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //    std::cout << "foot_force_var " << foot_force_var.transpose() <<std::endl;
 
     // caution: never use leg RL because on my robot the leg is wrong
-    foot_contact_flag[2] = 0;
-    integration_contact_flag[2] = false;
+//    foot_contact_flag[2] = 0;
+//    integration_contact_flag[2] = false;
 
 //    std::cout << foot_force_var << std::endl;
     // get velocity measurement
@@ -243,7 +243,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     // record all four lo velocities, examine their difference to average
     // only choose the most accurate two
-    Matrix<double, 3, 4> lo_veocities; lo_veocities.setZero();
+    Matrix<double, 3, NUM_OF_LEG> lo_veocities; lo_veocities.setZero();
     for (int j = 0; j < NUM_OF_LEG; j++) {
         Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
         lo_veocities.col(j) = lo_v;
@@ -257,15 +257,15 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         Eigen::Vector3d n3; n3.setZero();
         Eigen::Vector3d tmp = lo_veocities.col(j) - base_v;
         for (int k = 0; k < 3; k++) {
-            if (fabs(tmp(k)) < 0.2) {
-                n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),4);
-            } else {
-                n3(k) = 10e10;
-            }
+//            if (fabs(tmp(k)) < 0.2) {
+                n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
+//            } else {
+//                n3(k) = 10e10;
+//            }
 
         }
         Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
-//        n = n + n3;
+        n = n + n3;
         // we only believe
         uncertainties.segment<3>(3*j) = n;
     }
@@ -273,36 +273,38 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        rho_uncertainty[j] = 5 * foot_contact_flag[j] + 0.0001;
+        rho_uncertainty[j] = 0.1 * foot_contact_flag[j] + 0.001;
     }
 
     // use uncertainty to combine LO velocity
     Vector3d average_delta_epsilon; average_delta_epsilon.setZero();
-    double average_count = 0;
-    Vector4d weight_list; weight_list.setZero();
+    Vector3d average_count; average_count.setZero();
+    Vector12d weight_list; weight_list.setZero();
+
 
 
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        double weight = 100.0/(sqrt(uncertainties.segment<3>(3*j).norm()));
-        average_delta_epsilon += weight * lo_veocities.col(j) * _dt;
+        // large uncertainty, small weight
+        Vector3d weight = (V_N_MAX + V_N_TERM2_VAR_RESCALE + V_N_TERM3_DISTANCE_RESCALE) /  uncertainties.segment<3>(3*j).array();
+        for (int k = 0; k < 3; k++) {
+            if (weight(k) < 0.001) weight(k) = 0.001;
+        }
+        average_delta_epsilon += weight.cwiseProduct(lo_veocities.col(j)) * _dt;
         average_count += weight;
-        weight_list[j] = weight;
+        weight_list.segment<3>(3*j) = weight;
     }
+//    std::cout << weight_list.transpose() << std::endl;
+//    std::cout << "showed lists" << std::endl;
 //    std::cout << _c_0.transpose() <<std::endl;
 //    std::cout << _c_1.transpose() <<std::endl;
 //    std::cout << weight_list.transpose() <<std::endl;
 //    std::cout << uncertainties.transpose() <<std::endl;
-    if (average_delta_epsilon.norm() > 100) {
-        average_delta_epsilon.setZero();
-    } else {
-        average_delta_epsilon /= average_count;
+
+    for (int k = 0; k < 3; k++) {
+        average_delta_epsilon(k) /= average_count(k);
     }
-    if(average_delta_epsilon.norm() > 500) {
-        std::cout << "lo velocity must be wrong" << std::endl;
-        result_sum_delta_epsilon = sum_delta_epsilon;
-    } else {
-        result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
-    }
+
+    result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
 
     // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
     if (foot_contact_flag.sum()<1e-6) {
@@ -321,10 +323,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            uncertainties(0), uncertainties(1),  uncertainties(2),
-            uncertainties(3), uncertainties(4),  uncertainties(5),
-            uncertainties(6), uncertainties(7),  uncertainties(8),
-            uncertainties(9), uncertainties(10), uncertainties(11),
+            uncertainties(0), uncertainties(1),  5*uncertainties(2),
+            uncertainties(3), uncertainties(4),  5*uncertainties(5),
+            uncertainties(6), uncertainties(7),  5*uncertainties(8),
+            uncertainties(9), uncertainties(10), 5*uncertainties(11),
             rho_uncertainty[0], rho_uncertainty[1], rho_uncertainty[2], rho_uncertainty[3];
 
 
@@ -1008,13 +1010,13 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     // TODO: if during this period leg is always in the air, set residual be 0
 
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        if (integration_contact_flag[j] == true) {
+//        if (integration_contact_flag[j] == true) {
             residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[j];
-            residuals.block<RHO_OPT_SIZE, 1>(ILO_RHO1+RHO_OPT_SIZE*j, 0) = rhoj.segment<RHO_OPT_SIZE>(0) - rhoi.segment<RHO_OPT_SIZE>(0);
-        } else {
-            residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Eigen::Vector3d::Zero();
-            residuals.block<RHO_OPT_SIZE, 1>(ILO_RHO1+RHO_OPT_SIZE*j, 0) = Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Zero();
-        }
+            residuals.block<RHO_OPT_SIZE, 1>(ILO_RHO1+RHO_OPT_SIZE*j, 0) = rhoj.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j) - rhoi.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j);
+//        } else {
+//            residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Eigen::Vector3d::Zero();
+//            residuals.block<RHO_OPT_SIZE, 1>(ILO_RHO1+RHO_OPT_SIZE*j, 0) = Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Zero();
+//        }
     }
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;

@@ -43,7 +43,6 @@ std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
 std::string LEG_TOPIC;
-int NUM_OF_LEG;
 int OPTIMIZE_LEG_BIAS;
 // temporarily write some parameters here
 double PHI_N;
@@ -133,8 +132,6 @@ void readParameters(std::string config_file)
     printf("USE_LEG: %d\n", USE_LEG);
     if(USE_LEG)
     {
-        NUM_OF_LEG = fsSettings["num_of_leg"];
-        printf("leg number %d\n", NUM_OF_LEG);
         fsSettings["leg_topic"] >> LEG_TOPIC;
         printf("LEG_TOPIC: %s\n", LEG_TOPIC.c_str());
 

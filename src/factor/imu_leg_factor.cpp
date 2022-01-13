@@ -303,8 +303,8 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_legbias_i.block<3, RHO_OPT_SIZE>(ILO_EPS3, 2*RHO_OPT_SIZE) = -dep3_drho3;
             jacobian_legbias_i.block<3, RHO_OPT_SIZE>(ILO_EPS4, 3*RHO_OPT_SIZE) = -dep4_drho4;
             jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1, 0*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 1*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 2*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO2, 1*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 2*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
             jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 3*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
 
             jacobian_legbias_i = sqrt_info * jacobian_legbias_i;

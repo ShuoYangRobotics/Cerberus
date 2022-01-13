@@ -47,7 +47,11 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
     }
 }
 
-void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, Vector3d* Rho1, Vector3d* Rho2, Vector3d* Rho3,Vector3d* Rho4)
+void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs,
+                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho1,
+                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho2,
+                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho3,
+                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho4)
 {
     Matrix3d A;
     Vector3d b;
@@ -72,46 +76,48 @@ void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs, V
     delta_bg = A.ldlt().solve(b);
     ROS_WARN_STREAM("gyroscope bias initial calibration " << delta_bg.transpose());
 
-    Vector12d delta_rho;
+    Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE> P;
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1> p;
+    Vector_rho delta_rho;
     for (int leg_idx = 0; leg_idx < NUM_OF_LEG; leg_idx ++) {
-        A.setZero(); b.setZero();
+        P.setZero(); b.setZero();
         for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
         {
             frame_j = next(frame_i);
-            Matrix3d tmp_A;
+            Eigen::Matrix<double, 3, RHO_OPT_SIZE> tmp_A;
             tmp_A.setZero();
-            Vector3d tmp_b;
+            Eigen::Matrix<double, 3, 1> tmp_b;
             tmp_b.setZero();
-            tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, 3>(9+3*leg_idx, 27+3*leg_idx);
+            tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, RHO_OPT_SIZE>(ILO_EPS1+3*leg_idx, ILO_RHO1+RHO_OPT_SIZE*leg_idx);
             tmp_b =   frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T)
                     - frame_j->second.il_pre_integration->delta_epsilon[leg_idx];
-            A += tmp_A.transpose() * tmp_A;
-            b += tmp_A.transpose() * tmp_b;
+            P += tmp_A.transpose() * tmp_A;
+            p += tmp_A.transpose() * tmp_b;
 
 //            Matrix3d tmp_ATA = tmp_A.transpose() * tmp_A;
 //            Vector3d tmp_solve = tmp_ATA.ldlt().solve(tmp_A.transpose() * tmp_b);
 //            std::cout << tmp_solve.transpose() << std::endl;
         }
-        delta_rho.segment<3>(3*leg_idx) = A.ldlt().solve(b);
+        delta_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*leg_idx) = P.ldlt().solve(p);
     }
     ROS_WARN_STREAM("leg bias initial calibration " << delta_rho.transpose());
 
     for (int i = 0; i <= WINDOW_SIZE; i++) {
         Bgs[i] += delta_bg;
-        Rho1[i] += delta_rho.segment<3>(0);
-        Rho2[i] += delta_rho.segment<3>(3);
-        Rho3[i] += delta_rho.segment<3>(6);
-        Rho4[i] += delta_rho.segment<3>(9);
+        Rho1[i] += delta_rho.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE);
+        Rho2[i] += delta_rho.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE);
+        Rho3[i] += delta_rho.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE);
+        Rho4[i] += delta_rho.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE);
     }
 
     for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end( ); frame_i++)
     {
         frame_j = next(frame_i);
-        Vector12d tmp; tmp.setZero();
-        tmp.segment<3>(0) = Rho1[0];
-        tmp.segment<3>(3) = Rho2[0];
-        tmp.segment<3>(6) = Rho3[0];
-        tmp.segment<3>(9) = Rho4[0];
+        Vector_rho tmp; tmp.setZero();
+        tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[0];
+        tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[0];
+        tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[0];
+        tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[0];
         frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], tmp);
     }
 }
