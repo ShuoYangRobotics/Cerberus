@@ -52,10 +52,11 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i].setZero(); Rho1[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho2[i].setZero(); Rho2[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho3[i].setZero(); Rho3[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho4[i].setZero(); Rho4[i] = 1e-9*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho1[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho2[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho3[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho4[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        std::cout << Rho1[i] << " "
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -150,10 +151,8 @@ void Estimator::setParameter()
     lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = LOWER_LEG_LENGTH;
 
     for (int i = 0; i < NUM_OF_LEG; i++) {
-        Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i],lower_leg_length[i];
-        Eigen::VectorXd rho_opt(RHO_OPT_SIZE); rho_opt << 0.0;
+        Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i];
         rho_fix_list.push_back(rho_fix);
-        rho_opt_list.push_back(rho_opt);
     }
 
     mProcess.unlock();

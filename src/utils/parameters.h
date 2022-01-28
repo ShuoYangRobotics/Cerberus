@@ -94,7 +94,7 @@ void readParameters(std::string config_file);
 // parameters in the leg kinematics  and imu_leg_integration_base
 #define RHO_OPT_SIZE  1
 #define TOTAL_RHO_OPT_SIZE  4   //4xRHO_OPT_SIZE
-#define RHO_FIX_SIZE  5
+#define RHO_FIX_SIZE  4
 #define D_FK_DRHO_SIZE  3   // 3xRHO_OPT_SIZE
 #define D_J_DRHO_SIZE  9    // 9xRHO_OPT_SIZE
 #define RESIDUAL_STATE_SIZE 31  // 3*9 + 4xRHO_OPT_SIZE
