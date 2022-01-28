@@ -17,8 +17,6 @@
 #include <fstream>
 #include <map>
 
-#include "utility.h"
-
 using namespace std;
 
 const double FOCAL_LENGTH = 460.0;
@@ -91,6 +89,19 @@ extern int SHOW_TRACK;
 extern int FLOW_BACK;
 
 void readParameters(std::string config_file);
+
+#define NUM_OF_LEG 4
+// parameters in the leg kinematics  and imu_leg_integration_base
+#define RHO_OPT_SIZE  1
+#define TOTAL_RHO_OPT_SIZE  4   //4xRHO_OPT_SIZE
+#define RHO_FIX_SIZE  4
+#define D_FK_DRHO_SIZE  3   // 3xRHO_OPT_SIZE
+#define D_J_DRHO_SIZE  9    // 9xRHO_OPT_SIZE
+#define RESIDUAL_STATE_SIZE 31  // 3*9 + 4xRHO_OPT_SIZE
+#define NOISE_SIZE 46           // 3*14 + 4xRHO_OPT_SIZE
+
+typedef Eigen::Matrix<double, 12, 1> Vector12d; //4xRHO_OPT_SIZE
+typedef Eigen::Matrix<double, 4, 1> Vector_rho; //4xRHO_OPT_SIZE
 
 enum SIZE_PARAMETERIZATION
 {

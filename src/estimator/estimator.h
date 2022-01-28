@@ -225,7 +225,6 @@ public:
     double upper_leg_length[4] = {};
     double lower_leg_length[4] = {};
     std::vector<Eigen::VectorXd> rho_fix_list;
-    std::vector<Eigen::VectorXd> rho_opt_list;
     A1Kinematics a1_kin;
 
     // add ground truth pose and orientation

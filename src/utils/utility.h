@@ -20,7 +20,8 @@
 #include <iomanip>
 #include <sstream>
 
-typedef Eigen::Matrix<double, 12, 1> Vector12d;
+#include "parameters.h"
+
 
 class Utility
 {

@@ -30,7 +30,18 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
     foot_force_min.setZero();
     foot_force_max.setZero();
 
-    // the fixed kinematics parameter
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        delta_epsilon.push_back(Eigen::Vector3d::Zero());
+        integration_contact_flag.push_back(true);
+    }
+    sum_delta_epsilon.setZero();
+
+    foot_force_window.setZero();
+    foot_force_window_idx.setZero();
+    foot_force_var.setZero();
+
+
+            // the fixed kinematics parameter
     rho_fix_list = _rho_fix_list;
     p_br = _p_br;
     R_br = _R_br;
@@ -162,11 +173,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     Vector3d vmi, vmi1;                      // weighted sum of all legs
 
     // from foot contact force infer a contact flag
+    // calculate variance
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // get z directional contact force ( contact foot sensor reading)
         double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
 
-        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
+//        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
         if (force_mag < foot_force_min[j]) {
             foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
         }
@@ -177,12 +189,33 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         foot_force_min[j] *= 0.9991;
         foot_force_max[j] *= 0.997;
         foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
-        if ( force_mag > foot_force_contact_threshold[j]) {
-            foot_contact_flag[j] = 1;
-        } else {
-            foot_contact_flag[j] = 0;
+
+
+        foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
+
+        // get z force variance
+        foot_force_window_idx[j] ++;
+        foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
+        foot_force_window(j, foot_force_window_idx[j]) = force_mag;
+        Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
+        foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
+
+        if (foot_contact_flag[j] < 0.5) {
+            integration_contact_flag[j] = false;
         }
     }
+//    std::cout << "foot force process" << std::endl;
+//    std::cout << "foot_force_max " << foot_force_max.transpose() << std::endl;
+//    std::cout << "foot_force_contact_threshold " << foot_force_contact_threshold.transpose() << std::endl;
+//    std::cout << "foot_force_min " << foot_force_min.transpose() << std::endl;
+//    std::cout << "foot_contact_flag " << foot_contact_flag.transpose() <<std::endl;
+//    std::cout << "foot_force_var " << foot_force_var.transpose() <<std::endl;
+
+    // caution: never use leg RL because on my robot the leg is wrong
+//    foot_contact_flag[2] = 0;
+//    integration_contact_flag[2] = false;
+
+//    std::cout << foot_force_var << std::endl;
     // get velocity measurement
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // calculate fk of each leg
@@ -199,69 +232,77 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     }
 
     // design a new uncertainty function
+
+    // record all four lo velocities, examine their difference to average
+    // only choose the most accurate two
+    Matrix<double, 3, NUM_OF_LEG> lo_veocities; lo_veocities.setZero();
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        Eigen::Vector3d lo_v = 0.5 * (delta_q * vi[j] + result_delta_q * vip1[j]);
+        lo_veocities.col(j) = lo_v;
+        // base_v is the current velocity estimation in body frame
+    }
+
     Vector12d uncertainties;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
-        double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
-        double diff_c_mag = diff_c;
-        // term 1
-        double n1 = V_N_MAX*(1-1/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j]))))+V_N_MIN;
+        double n1 = V_N_MAX*(1-foot_contact_flag[j])+V_N_MIN;
+        double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
+        Eigen::Vector3d n3; n3.setZero();
+        Eigen::Vector3d tmp = lo_veocities.col(j) - base_v;
+        for (int k = 0; k < 3; k++) {
+//            if (fabs(tmp(k)) < 0.2) {
+                n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
+//            } else {
+//                n3(k) = 10e10;
+//            }
 
-        // term 2
-        if (force_mag>foot_force_contact_threshold[j]) {
-            diff_c_mag /= V_N_TERM2_BOUND_FORCE/_dt;
-            if (diff_c_mag > 0)
-                diff_c_mag = V_N_TERM2_VAR_RESCALE*diff_c_mag;
-        } else {
-            diff_c_mag = 0;
         }
-        double n2 = std::fmax(0, sqrt(fabs(diff_c_mag))*V_N_MAX - 80)+V_N_MIN; //relu
-
-        // term 3
-        Eigen::Vector3d n3 = V_N_MIN*Eigen::Vector3d::Ones();
-        if (force_mag>foot_force_contact_threshold[j]) {
-            // velocity of each individual leg
-            Eigen::Vector3d lo_v = 0.5 * (delta_q * (vi[j]-linearized_bv) + result_delta_q * (vip1[j]-linearized_bv));
-            Eigen::Vector3d diff;
-            diff.setZero();
-            // prevent abnormal base_v
-            if (base_v.norm() / 3 < 5) {
-                diff = lo_v - base_v;
-                n3 = diff.array().square().sqrt();
-                n3 -= Eigen::Vector3d(V_N_TERM3_VEL_DIFF_XY * fabs(base_v(0)),
-                                      V_N_TERM3_VEL_DIFF_XY * fabs(base_v(1)),
-                                      V_N_TERM3_VEL_DIFF_Z * fabs(base_v(2)));
-                n3 = n3.cwiseMax(0);//relu
-                n3 = V_N_TERM3_DISTANCE_RESCALE * n3 + V_N_MIN * Eigen::Vector3d::Ones();
-            }
-        }
-
-        Eigen::Vector3d n = V_N_FINAL_RATIO*(n1*Eigen::Vector3d::Ones() +
-                n2*Eigen::Vector3d::Ones() + n3
-                );
+        Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
+        n = n + n3;
+        // we only believe
         uncertainties.segment<3>(3*j) = n;
     }
 //    std::cout << uncertainties.transpose() << std::endl;
 
-    // use uncertainty to combine LO velocity
-    Vector4d w;  // weight of each leg
-    double total_weight = 0; // total weight of all legs
-    vmi.setZero();
-    vmi1.setZero();
+    Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        w(j) = 1.0/uncertainties.segment<3>(3*j).norm();
-        total_weight += w(j);
-        vmi += w(j) * vi[j];
-        vmi1 += w(j) * vip1[j];
+        rho_uncertainty[j] = 5 * foot_contact_flag[j] + 0.001;
     }
 
-    vmi /= total_weight;
-    vmi1 /= total_weight;
+    // use uncertainty to combine LO velocity
+    Vector3d average_delta_epsilon; average_delta_epsilon.setZero();
+    Vector3d average_count; average_count.setZero();
+    Vector12d weight_list; weight_list.setZero();
 
-    Eigen::Vector3d average_delta_epsilon = 0.5 * (delta_q.toRotationMatrix() * (vmi-linearized_bv) + result_delta_q.toRotationMatrix() * (vmi1-linearized_bv))* _dt;
+
+
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+        // large uncertainty, small weight
+        Vector3d weight = (V_N_MAX + V_N_TERM2_VAR_RESCALE + V_N_TERM3_DISTANCE_RESCALE) /  uncertainties.segment<3>(3*j).array();
+        for (int k = 0; k < 3; k++) {
+            if (weight(k) < 0.001) weight(k) = 0.001;
+        }
+        average_delta_epsilon += weight.cwiseProduct(lo_veocities.col(j)) * _dt;
+        average_count += weight;
+        weight_list.segment<3>(3*j) = weight;
+    }
+//    std::cout << weight_list.transpose() << std::endl;
+//    std::cout << "showed lists" << std::endl;
+//    std::cout << _c_0.transpose() <<std::endl;
+//    std::cout << _c_1.transpose() <<std::endl;
+//    std::cout << weight_list.transpose() <<std::endl;
+//    std::cout << uncertainties.transpose() <<std::endl;
+
+    for (int k = 0; k < 3; k++) {
+        average_delta_epsilon(k) /= average_count(k);
+    }
+
     result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
 
-
+    // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
+    if (foot_contact_flag.sum()<1e-6) {
+        rho_uncertainty.setConstant(0.00001);
+        uncertainties.setConstant(10e10);
+    }
 
     noise_diag.diagonal() <<
             (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
@@ -491,23 +532,23 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
         jacobian = F * jacobian;
 
-        noise_diag.diagonal()(2) = (ACC_N * ACC_N);
-        noise_diag.diagonal()(8) = (ACC_N * ACC_N);
+//        noise_diag.diagonal()(2) = (ACC_N * ACC_N);
+//        noise_diag.diagonal()(8) = (ACC_N * ACC_N);
         // scale IMU noise using the diff of the foot contact
-        for (int j = 0; j < NUM_OF_LEG; j++) {
-            // get z directional contact force ( contact foot sensor reading)
-//            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
-            double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
-            double diff_c_mag = diff_c;
-            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(2) *= (1.0f + 0.001*abs(diff_c_mag));
-            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
-            noise_diag.diagonal()(8) *= (1.0f + 0.001*abs(diff_c_mag));
-//            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
-            // calculate a sum of delta_epsilon
-        }
+//        for (int j = 0; j < NUM_OF_LEG; j++) {
+//            // get z directional contact force ( contact foot sensor reading)
+////            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
+//            double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
+//            double diff_c_mag = diff_c;
+//            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(2) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
+//            noise_diag.diagonal()(8) *= (1.0f + 0.0002*abs(diff_c_mag));
+////            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
+//            // calculate a sum of delta_epsilon
+//        }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();
 //        covariance = F * covariance * F.transpose() + tmp;
