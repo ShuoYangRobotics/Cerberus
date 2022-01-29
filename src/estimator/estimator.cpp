@@ -56,7 +56,6 @@ void Estimator::clearState() {
         Rho2[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
         Rho3[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
         Rho4[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        std::cout << Rho1[i] << " "
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
