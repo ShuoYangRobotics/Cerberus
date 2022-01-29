@@ -26,7 +26,9 @@ public:
                           const Ref<const Vector12d>& _phi_0, const Ref<const Vector12d>& _dphi_0, const Ref<const Vector12d>& _c_0,
                           const Eigen::Vector3d &_linearized_ba, const Eigen::Vector3d &_linearized_bg,
                           const Vector3d &_linearized_bv,
-                          std::vector<Eigen::VectorXd> _rho_fix_list,  const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br);
+                          std::vector<Eigen::VectorXd> _rho_fix_list,
+                          std::vector<Eigen::VectorXd> _rho_opt_list,
+                          const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br);
 
     void push_back(double dt, const Eigen::Vector3d &acc, const Eigen::Vector3d &gyr,
                    const Ref<const Vector12d>& phi, const Ref<const Vector12d>& dphi, const Ref<const Vector12d>& c);
@@ -124,6 +126,7 @@ private:
 
     A1Kinematics a1_kin;
     std::vector<Eigen::VectorXd> rho_fix_list;
+    std::vector<Eigen::VectorXd> rho_opt_list;
     // following are some parameters that defines the transformation between IMU frame(b) and robot body frame(r)
     Eigen::Vector3d p_br;
     Eigen::Matrix3d R_br;

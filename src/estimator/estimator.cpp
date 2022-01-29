@@ -149,6 +149,9 @@ void Estimator::setParameter()
     for (int i = 0; i < NUM_OF_LEG; i++) {
         Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i];
         rho_fix_list.push_back(rho_fix);
+
+        Eigen::VectorXd rho_opt(RHO_OPT_SIZE); rho_opt << LOWER_LEG_LENGTH;
+        rho_opt_list.push_back(rho_opt);
     }
 
     mProcess.unlock();
@@ -769,7 +772,7 @@ void Estimator::processIMULeg(double t, double dt,
     if (!il_pre_integrations[frame_count])
     {
         il_pre_integrations[frame_count] = new IMULegIntegrationBase{Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                     Bas[frame_count], Bgs[frame_count], Bvs[frame_count], rho_fix_list, p_br, R_br};
+                                                                     Bas[frame_count], Bgs[frame_count], Bvs[frame_count], rho_fix_list, rho_opt_list, p_br, R_br};
     }
 
     if (frame_count != 0)
@@ -833,7 +836,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 //    tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
 
     tmp_il_pre_integration = new IMULegIntegrationBase{Vs[frame_count],acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                 Bas[frame_count], Bgs[frame_count], Bvs[frame_count], rho_fix_list, p_br, R_br};
+                                                                 Bas[frame_count], Bgs[frame_count], Bvs[frame_count], rho_fix_list, rho_opt_list, p_br, R_br};
 
     // we do not really use this
 //    if(ESTIMATE_EXTRINSIC == 2)
@@ -1902,7 +1905,7 @@ void Estimator::slideWindow()
 
                 delete il_pre_integrations[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Vs[WINDOW_SIZE],acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE], rho_fix_list, p_br, R_br};
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE], rho_fix_list, rho_opt_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
                 linear_acceleration_buf[WINDOW_SIZE].clear();
@@ -1977,7 +1980,7 @@ void Estimator::slideWindow()
 
                 delete il_pre_integrations[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE], rho_fix_list, p_br, R_br};
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE], rho_fix_list, rho_opt_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
                 linear_acceleration_buf[WINDOW_SIZE].clear();

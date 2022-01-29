@@ -97,8 +97,8 @@ void readParameters(std::string config_file);
 #define RHO_FIX_SIZE  4
 #define D_FK_DRHO_SIZE  3   // 3xRHO_OPT_SIZE
 #define D_J_DRHO_SIZE  9    // 9xRHO_OPT_SIZE
-#define RESIDUAL_STATE_SIZE 31  // 3*9 + 4xRHO_OPT_SIZE
-#define NOISE_SIZE 46           // 3*14 + 4xRHO_OPT_SIZE
+#define RESIDUAL_STATE_SIZE 21  // 3*9 + 4xRHO_OPT_SIZE
+#define NOISE_SIZE 39           // 3*14 + 4xRHO_OPT_SIZE
 
 typedef Eigen::Matrix<double, 12, 1> Vector12d; //4xRHO_OPT_SIZE
 typedef Eigen::Matrix<double, 4, 1> Vector_rho; //4xRHO_OPT_SIZE

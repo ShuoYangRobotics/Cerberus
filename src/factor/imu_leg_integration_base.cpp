@@ -8,7 +8,9 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
                                              const Ref<const Vector12d>& _dphi_0, const Ref<const Vector12d>& _c_0,
                                              const Vector3d &_linearized_ba, const Vector3d &_linearized_bg,
                                              const Vector3d &_linearized_bv,
-                                             std::vector<Eigen::VectorXd> _rho_fix_list, const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br)
+                                             std::vector<Eigen::VectorXd> _rho_fix_list,
+                                             std::vector<Eigen::VectorXd> _rho_opt_list,
+                                             const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br)
         : acc_0{_acc_0}, gyr_0{_gyr_0}, linearized_acc{_acc_0}, linearized_gyr{_gyr_0},
           linearized_ba{_linearized_ba}, linearized_bg{_linearized_bg}, linearized_bv{_linearized_bv},
           sum_dt{0.0}, delta_p{Eigen::Vector3d::Zero()}, delta_q{Eigen::Quaterniond::Identity()}, delta_v{Eigen::Vector3d::Zero()},
@@ -31,7 +33,6 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
     foot_force_max.setZero();
 
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        delta_epsilon.push_back(Eigen::Vector3d::Zero());
         integration_contact_flag.push_back(true);
     }
     sum_delta_epsilon.setZero();
@@ -43,6 +44,7 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
 
             // the fixed kinematics parameter
     rho_fix_list = _rho_fix_list;
+    rho_opt_list = _rho_opt_list;
     p_br = _p_br;
     R_br = _R_br;
 }
@@ -219,11 +221,11 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     // get velocity measurement
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // calculate fk of each leg
-        fi.push_back(a1_kin.fk(_phi_0.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
-        fip1.push_back(a1_kin.fk(_phi_1.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
+        fi.push_back(a1_kin.fk(_phi_0.segment<3>(3 * j), rho_opt_list[j], rho_fix_list[j]));
+        fip1.push_back(a1_kin.fk(_phi_1.segment<3>(3 * j), rho_opt_list[j], rho_fix_list[j]));
         // calculate jacobian of each leg
-        Ji.push_back(a1_kin.jac(_phi_0.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
-        Jip1.push_back(a1_kin.jac(_phi_1.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
+        Ji.push_back(a1_kin.jac(_phi_0.segment<3>(3 * j), rho_opt_list[j], rho_fix_list[j]));
+        Jip1.push_back(a1_kin.jac(_phi_1.segment<3>(3 * j), rho_opt_list[j], rho_fix_list[j]));
 
         // calculate vm
         vi.push_back(-R_br * Ji[j] * _dphi_0.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
@@ -254,7 +256,6 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //            } else {
 //                n3(k) = 10e10;
 //            }
-
         }
         Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
         n = n + n3;
@@ -263,45 +264,32 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     }
 //    std::cout << uncertainties.transpose() << std::endl;
 
-    Vector4d rho_uncertainty;
-    for (int j = 0; j < NUM_OF_LEG; j++) {
-        rho_uncertainty[j] = 5 * foot_contact_flag[j] + 0.001;
-    }
-
-    // use uncertainty to combine LO velocity
-    Vector3d average_delta_epsilon; average_delta_epsilon.setZero();
-    Vector3d average_count; average_count.setZero();
+    // use uncertainty to generate weight
     Vector12d weight_list; weight_list.setZero();
-
-
+    Vector3d total_weight; total_weight.setZero();
 
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // large uncertainty, small weight
         Vector3d weight = (V_N_MAX + V_N_TERM2_VAR_RESCALE + V_N_TERM3_DISTANCE_RESCALE) /  uncertainties.segment<3>(3*j).array();
         for (int k = 0; k < 3; k++) {
-            if (weight(k) < 0.001) weight(k) = 0.001;
+            if (weight(k) < 0.00001) weight(k) = 0.00001;
         }
-        average_delta_epsilon += weight.cwiseProduct(lo_veocities.col(j)) * _dt;
-        average_count += weight;
         weight_list.segment<3>(3*j) = weight;
+        total_weight += weight;
+        vmi += weight.cwiseProduct(vi[j]);
+        vmi1 +=  weight.cwiseProduct( vip1[j]);
     }
-//    std::cout << weight_list.transpose() << std::endl;
-//    std::cout << "showed lists" << std::endl;
-//    std::cout << _c_0.transpose() <<std::endl;
-//    std::cout << _c_1.transpose() <<std::endl;
-//    std::cout << weight_list.transpose() <<std::endl;
-//    std::cout << uncertainties.transpose() <<std::endl;
 
     for (int k = 0; k < 3; k++) {
-        average_delta_epsilon(k) /= average_count(k);
+        vmi(k) /= total_weight(k);
+        vmi1(k) /= total_weight(k);
     }
 
-    result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
+    result_sum_delta_epsilon = sum_delta_epsilon + 0.5 * (delta_q * (vmi - linearized_bv)  + result_delta_q * (vmi1 - linearized_bv)) * _dt;
 
     // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
     if (foot_contact_flag.sum()<1e-6) {
-        rho_uncertainty.setConstant(0.00001);
-        uncertainties.setConstant(10e10);
+        uncertainties.setConstant(10e3);
     }
 
     noise_diag.diagonal() <<
@@ -333,9 +321,9 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             kron_dphi1(0,6) = kron_dphi1(1,7) = kron_dphi1(2,8) = _dphi_1(2+3*j);
 
             // calculate h
-            Eigen::Matrix<double, 9, 3> dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), rho_opt_list[j], rho_fix_list[j]);
             hi.push_back( (R_br*kron_dphi0*dJdphi0 + R_w_0_x*R_br*Ji[j]) );
-            Eigen::Matrix<double, 9, 3> dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), Eigen::Vector3d::Zero(), rho_fix_list[j]);
+            Eigen::Matrix<double, 9, 3> dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), rho_opt_list[j], rho_fix_list[j]);
             hip1.push_back((R_br*kron_dphi1*dJdphi1 + R_w_1_x*R_br*Jip1[j]) );
         }
         Vector3d w_x = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
@@ -370,19 +358,21 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         Eigen::Matrix3d w_sum_Ji;         w_sum_Ji.setZero();
         Eigen::Matrix3d w_sum_Jip1;       w_sum_Jip1.setZero();
         for (int j = 0; j < NUM_OF_LEG; j++) {
-            w_sum_skew_fb   += w[j] * Utility::skewSymmetric(p_br + R_br*fi[j]);
-            w_sum_skew_fbp1 += w[j] * Utility::skewSymmetric(p_br + R_br*fip1[j]);
-            w_sum_hi        += w[j] * hi[j];
-            w_sum_hip1      += w[j] * hip1[j];
-            w_sum_Ji        += w[j] * Ji[j];
-            w_sum_Jip1      += w[j] * Jip1[j];
+            w_sum_skew_fb   += weight_list.segment<3>(3*j).asDiagonal() * Utility::skewSymmetric(p_br + R_br*fi[j]);
+            w_sum_skew_fbp1 += weight_list.segment<3>(3*j).asDiagonal() * Utility::skewSymmetric(p_br + R_br*fip1[j]);
+            w_sum_hi        += weight_list.segment<3>(3*j).asDiagonal() * hi[j];
+            w_sum_hip1      += weight_list.segment<3>(3*j).asDiagonal() * hip1[j];
+            w_sum_Ji        += weight_list.segment<3>(3*j).asDiagonal() * Ji[j];
+            w_sum_Jip1      += weight_list.segment<3>(3*j).asDiagonal() * Jip1[j];
         }
-        w_sum_skew_fb /= total_weight;
-        w_sum_skew_fbp1 /= total_weight;
-        w_sum_hi /= total_weight;
-        w_sum_hip1 /= total_weight;
-        w_sum_Ji /= total_weight;
-        w_sum_Jip1 /= total_weight;
+        for (int k = 0; k < 3; k++) {
+            w_sum_skew_fb.row(k) /= total_weight(k);
+            w_sum_skew_fbp1.row(k) /= total_weight(k);
+            w_sum_hi.row(k) /= total_weight(k);
+            w_sum_hip1.row(k) /= total_weight(k);
+            w_sum_Ji.row(k) /= total_weight(k);
+            w_sum_Jip1.row(k) /= total_weight(k);
+        }
         Eigen::Matrix3d kappa_5 = 0.5 * _dt * _dt * result_delta_q.toRotationMatrix() * Utility::skewSymmetric(vmi1-linearized_bv)
                                   - 0.5 * _dt * (delta_q.toRotationMatrix()*w_sum_skew_fb + result_delta_q.toRotationMatrix()*w_sum_skew_fbp1);
 
@@ -532,23 +522,6 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
         jacobian = F * jacobian;
 
-//        noise_diag.diagonal()(2) = (ACC_N * ACC_N);
-//        noise_diag.diagonal()(8) = (ACC_N * ACC_N);
-        // scale IMU noise using the diff of the foot contact
-//        for (int j = 0; j < NUM_OF_LEG; j++) {
-//            // get z directional contact force ( contact foot sensor reading)
-////            double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
-//            double diff_c = (_c_1(3*j+2) - _c_0(3*j+2)) / _dt;
-//            double diff_c_mag = diff_c;
-//            noise_diag.diagonal()(0) *= (1.0f + 0.0002*abs(diff_c_mag));
-//            noise_diag.diagonal()(1) *= (1.0f + 0.0002*abs(diff_c_mag));
-//            noise_diag.diagonal()(2) *= (1.0f + 0.0002*abs(diff_c_mag));
-//            noise_diag.diagonal()(6) *= (1.0f + 0.0002*abs(diff_c_mag));
-//            noise_diag.diagonal()(7) *= (1.0f + 0.0002*abs(diff_c_mag));
-//            noise_diag.diagonal()(8) *= (1.0f + 0.0002*abs(diff_c_mag));
-////            noise.block<3, 3>(30+3*j, 30+3*j) = (uncertainty * uncertainty) * coeff;
-//            // calculate a sum of delta_epsilon
-//        }
 //        std::cout << "The noise is  " << noise.diagonal().transpose() << std::endl;
 //        auto tmp = V * noise * V.transpose();
 //        covariance = F * covariance * F.transpose() + tmp;
