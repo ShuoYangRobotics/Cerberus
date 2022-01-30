@@ -255,7 +255,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         double n1 = V_N_MAX*(1-foot_contact_flag[j])+V_N_MIN;
         double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
         Eigen::Vector3d n3; n3.setZero();
-        Eigen::Vector3d tmp = lo_veocities.col(j) - base_v;
+        Eigen::Vector3d tmp = lo_veocities.col(j) - delta_v;
         for (int k = 0; k < 3; k++) {
 //            if (fabs(tmp(k)) < 0.2) {
                 n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
