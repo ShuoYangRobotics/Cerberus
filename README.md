@@ -68,3 +68,7 @@ topics:      /camera_forward/infra1/image_rect_raw    1529 msgs    : sensor_msgs
 
 ```
 For dataset with ground truth position, an additonal topic "/mocap_node/mocap/pose" is in the bag. The data type is "geometry_msgs/PoseStamped".
+
+
+## Different leg bias model
+The "main" branch and the "baseliine_vilens" contains two different velocity bias model. 
