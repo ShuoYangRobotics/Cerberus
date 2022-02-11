@@ -69,5 +69,5 @@ target_link_libraries(vileom_feature_track_test vileom_lib)
 
 
 add_executable(ceres_test src/test/ceres_test.cpp src/legKinematics/A1Kinematics.cpp)
-target_link_libraries(ceres_test ${CERES_LIBRARIES})
+target_link_libraries(ceres_test ${CERES_LIBRARIES} ${OpenCV_LIBS})
 
