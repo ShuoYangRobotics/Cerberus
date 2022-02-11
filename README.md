@@ -2,7 +2,7 @@ This ROS package contains a visual-inertial-leg odometry (VILO) for Unitree A1 r
 
 Our goal is to achieve low-cost minimum sensing on legged robots (sensing suites only has one IMU, one stereo camera, leg joint sensors. Total cost <$1000).
 
-This odometry is based on the VINS-Fusion, one of the most popular visual inertial odometry. The contribution of this work is adding body velocity 
+The contribution of this work is adding body velocity calculated from leg joint sensors. This odometry is based on the VINS-Fusion, one of the most popular visual inertial odometry. Additional to VINS's image and IMU measurement model, we add joint sensor calculated velocities. It is tricky to get this additional measurement right, because leg joint sensors and foot contact sensors are noisy. 
 
 Here are two videos comparing the performance of the VILO and the VINS-Fusion:
 [![video1](https://img.youtube.com/vi/jq9ijL9z3RI/0.jpg)](https://www.youtube.com/watch?v=jq9ijL9z3RI)
