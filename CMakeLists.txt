@@ -18,7 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
     image_transport
 
     # must install unitree_ros
-    unitree_legged_msgs
+#    unitree_legged_msgs
 )
 
 find_package(OpenCV REQUIRED)
