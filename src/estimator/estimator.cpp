@@ -277,18 +277,22 @@ void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngle
                          const Eigen::Ref<const Vector12d>& jointVels, const Eigen::Ref<const Vector12d>& footForces)
 {
     mBuf.lock();
-    Vector12d filtered_jointAngles;
-    Vector12d filtered_jointVels;
+    leg_msg_counter ++;
 
-    for (int i = 0; i < 12; i++) {
-        filtered_jointAngles[i] = joint_ang_filters[i].CalculateAverage(jointAngles[i]);
-        filtered_jointVels[i] = joint_vel_filters[i].CalculateAverage(jointVels[i]);
+    if (leg_msg_counter % 2 == 0) {
+        Vector12d filtered_jointAngles;
+        Vector12d filtered_jointVels;
+
+        for (int i = 0; i < 12; i++) {
+            filtered_jointAngles[i] = joint_ang_filters[i].CalculateAverage(jointAngles[i]);
+            filtered_jointVels[i] = joint_vel_filters[i].CalculateAverage(jointVels[i]);
+        }
+
+        legAngBufList.push_back(make_pair(t, filtered_jointAngles));
+        legAngVelBufList.push_back(make_pair(t, filtered_jointVels));
+
+        footForceBufList.push_back(make_pair(t, footForces));
     }
-
-    legAngBufList.push_back(make_pair(t, filtered_jointAngles));
-    legAngVelBufList.push_back(make_pair(t, filtered_jointVels));
-
-    footForceBufList.push_back(make_pair(t, footForces));
 //    std::cout << "input foot force" << footForces.transpose() << std::endl;
 //    printf("input leg joint state and foot force with time %f \n", t);
     mBuf.unlock();
