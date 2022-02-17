@@ -109,7 +109,16 @@ void Estimator::clearState() {
     f_manager.clearState();
 
     failure_occur = 0;
-    footForceFilter.setZero();
+
+    // init the filters for processing input sensor data
+    for (int i = 0; i < 3; i++) {
+        acc_filters.push_back(MovingWindowFilter(10));
+        gyro_filters.push_back(MovingWindowFilter(10));
+    }
+    for (int i = 0; i < 12; i++) {
+        joint_ang_filters.push_back(MovingWindowFilter(6));
+        joint_vel_filters.push_back(MovingWindowFilter(6));
+    }
 
     mProcess.unlock();
 }
@@ -240,8 +249,16 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
     mBuf.lock();
-    accBuf.push(make_pair(t, linearAcceleration));
-    gyrBuf.push(make_pair(t, angularVelocity));
+    Vector3d filtered_linearAcceleration;
+    Vector3d filtered_angularVelocity;
+
+    for (int i = 0; i < 3; i++) {
+        filtered_linearAcceleration[i] = acc_filters[i].CalculateAverage(linearAcceleration[i]);
+        filtered_angularVelocity[i] = gyro_filters[i].CalculateAverage(angularVelocity[i]);
+    }
+
+    accBuf.push(make_pair(t, filtered_linearAcceleration));
+    gyrBuf.push(make_pair(t, filtered_angularVelocity));
     //printf("input imu with time %f \n", t);
     mBuf.unlock();
 
@@ -260,10 +277,17 @@ void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngle
                          const Eigen::Ref<const Vector12d>& jointVels, const Eigen::Ref<const Vector12d>& footForces)
 {
     mBuf.lock();
-    legAngBufList.push_back(make_pair(t, jointAngles));
-    legAngVelBufList.push_back(make_pair(t, jointVels));
+    Vector12d filtered_jointAngles;
+    Vector12d filtered_jointVels;
 
-//    footForceFilter = footForceFilter*0.8 + footForces*0.2;
+    for (int i = 0; i < 12; i++) {
+        filtered_jointAngles[i] = joint_ang_filters[i].CalculateAverage(jointAngles[i]);
+        filtered_jointVels[i] = joint_vel_filters[i].CalculateAverage(jointVels[i]);
+    }
+
+    legAngBufList.push_back(make_pair(t, filtered_jointAngles));
+    legAngVelBufList.push_back(make_pair(t, filtered_jointVels));
+
     footForceBufList.push_back(make_pair(t, footForces));
 //    std::cout << "input foot force" << footForces.transpose() << std::endl;
 //    printf("input leg joint state and foot force with time %f \n", t);
