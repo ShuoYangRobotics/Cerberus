@@ -2,38 +2,41 @@
 // Created by shuoy on 7/19/21.
 //
 
-#include <ceres/ceres.h>
+#include <iostream>
+#include <numeric>      // std::accumulate
+#include <deque>
+#include <eigen3/Eigen/Dense>
 
-#include "../legKinematics/A1Kinematics.h"
-#include "../utils/utility.h"
+//#include "../legKinematics/A1Kinematics.h"
+//#include "../utils/utility.h"
 
 int main(int argc, char **argv) {
 
-    A1Kinematics a1_kin;
-    Eigen::Vector3d q(0.1,0.1,0.3);
-    Eigen::Vector3d w(0.1,0.1,0.1);
-    Eigen::Vector3d dq(0,1.1,1.3);
-    Eigen::VectorXd rho_fix(5); rho_fix << 0.3,0.15,0.08,0.2,0.2;
-    Eigen::VectorXd rho_opt(3); rho_opt << 0.0,0.0,0.0;
-    Eigen::VectorXd rho_perturb(3); rho_perturb << 0.003,0.0,-0.001;
-    Eigen::VectorXd _dphi_0(3); _dphi_0 << 1.1,2.2,-3.3;
-    Eigen::Vector3d p_bf = a1_kin.fk(q, rho_opt,rho_fix);
-    std::cout << "forward kinematics \n" << p_bf << std::endl;
-
-    Eigen::MatrixXd Jac = a1_kin.jac(q, rho_opt,rho_fix);
-    std::cout << "Jacobian \n" <<Jac << std::endl;
-
-    Eigen::Vector3d v = -Jac*dq - Utility::skewSymmetric(w)*p_bf;
-    std::cout << "v \n" <<v << std::endl;
-
-
-    rho_opt << 0.0,0.0,0.04;
-    Eigen::Vector3d p_bf2 = a1_kin.fk(q, rho_opt,rho_fix);
-    Eigen::MatrixXd Jac2 = a1_kin.jac(q, rho_opt,rho_fix);
-    std::cout << "forward kinematics with new rho_opt \n" << p_bf2 << std::endl;
-    std::cout << "Jacobian \n" <<Jac2 << std::endl;
-    Eigen::Vector3d v2 = -Jac2*dq - Utility::skewSymmetric(w)*p_bf2;
-    std::cout << "v2 \n" <<v2 << std::endl;
+//    A1Kinematics a1_kin;
+//    Eigen::Vector3d q(0.1,0.1,0.3);
+//    Eigen::Vector3d w(0.1,0.1,0.1);
+//    Eigen::Vector3d dq(0,1.1,1.3);
+//    Eigen::VectorXd rho_fix(5); rho_fix << 0.3,0.15,0.08,0.2,0.2;
+//    Eigen::VectorXd rho_opt(3); rho_opt << 0.0,0.0,0.0;
+//    Eigen::VectorXd rho_perturb(3); rho_perturb << 0.003,0.0,-0.001;
+//    Eigen::VectorXd _dphi_0(3); _dphi_0 << 1.1,2.2,-3.3;
+//    Eigen::Vector3d p_bf = a1_kin.fk(q, rho_opt,rho_fix);
+//    std::cout << "forward kinematics \n" << p_bf << std::endl;
+//
+//    Eigen::MatrixXd Jac = a1_kin.jac(q, rho_opt,rho_fix);
+//    std::cout << "Jacobian \n" <<Jac << std::endl;
+//
+//    Eigen::Vector3d v = -Jac*dq - Utility::skewSymmetric(w)*p_bf;
+//    std::cout << "v \n" <<v << std::endl;
+//
+//
+//    rho_opt << 0.0,0.0,0.04;
+//    Eigen::Vector3d p_bf2 = a1_kin.fk(q, rho_opt,rho_fix);
+//    Eigen::MatrixXd Jac2 = a1_kin.jac(q, rho_opt,rho_fix);
+//    std::cout << "forward kinematics with new rho_opt \n" << p_bf2 << std::endl;
+//    std::cout << "Jacobian \n" <<Jac2 << std::endl;
+//    Eigen::Vector3d v2 = -Jac2*dq - Utility::skewSymmetric(w)*p_bf2;
+//    std::cout << "v2 \n" <<v2 << std::endl;
 //
 //    Eigen::MatrixXd dfk_drho = a1_kin.dfk_drho(q, rho_opt,rho_fix);
 //    std::cout << "dfk_drho \n" <<dfk_drho << std::endl;
@@ -67,5 +70,17 @@ int main(int argc, char **argv) {
 //    Eigen::MatrixXd residual = Jac2 - (Jac1 + M2);
 //
 //    std::cout << "residual \n" <<residual << std::endl;
+
+    // test deque
+    std::deque<Eigen::Vector3d> test_deque;
+    test_deque.push_back(Eigen::Vector3d(1,2,3));
+    test_deque.push_back(Eigen::Vector3d(4,5,6));
+    test_deque.push_back(Eigen::Vector3d(7,8,9));
+
+    Eigen::Vector3d sum; sum.setZero();
+    sum = std::accumulate(test_deque.begin(),test_deque.end(), sum);
+    sum /= test_deque.size();
+    std::cout << sum << std::endl;
+
     return 0;
 }

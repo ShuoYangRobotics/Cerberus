@@ -21,6 +21,7 @@
 #include <eigen3/Eigen/Geometry>
 
 #include "../utils/parameters.h"
+#include "../utils/filter.hpp"
 #include "../featureTracker/feature_manager.h"
 #include "../featureTracker/feature_tracker.h"
 #include "../factor/imu_factor.h"
@@ -121,7 +122,6 @@ public:
     deque<pair<double, Vector12d>> legAngBufList;
     deque<pair<double, Vector12d>> legAngVelBufList;
     deque<pair<double, Vector12d>> footForceBufList;
-    Vector12d footForceFilter;
 
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
     double prevTime, curTime;
@@ -163,6 +163,14 @@ public:
     vector<Vector12d> joint_angle_buf[(WINDOW_SIZE + 1)];
     vector<Vector12d> joint_velocity_buf[(WINDOW_SIZE + 1)];
     vector<Vector12d> foot_contact_buf[(WINDOW_SIZE + 1)];
+
+    // filters to process inputs
+    vector<MovingWindowFilter> acc_filters;
+    vector<MovingWindowFilter> gyro_filters;
+
+    vector<MovingWindowFilter> joint_ang_filters;
+    vector<MovingWindowFilter> joint_vel_filters;
+
 
     int frame_count;
     int sum_of_outlier, sum_of_back, sum_of_front, sum_of_invalid;
