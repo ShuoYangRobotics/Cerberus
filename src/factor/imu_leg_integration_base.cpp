@@ -529,8 +529,8 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //        SelfAdjointEigenSolver<Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>> eigensolver(tmp);
 //        std::cout << "The determinant of V * noise * V.transpose() is " << tmp.determinant() << std::endl;
 //        std::cout << eigensolver.eigenvalues().transpose() << std::endl;
-        step_jacobian = F;
-        step_V = V;
+//        step_jacobian = F;
+//        step_V = V;
     }
 //    std::cout << "foot_force" << foot_force.transpose() << std::endl;
 //    std::cout << "foot_force_min" << foot_force_min.transpose() << std::endl;

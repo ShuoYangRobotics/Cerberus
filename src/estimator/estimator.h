@@ -170,6 +170,7 @@ public:
 
     vector<MovingWindowFilter> joint_ang_filters;
     vector<MovingWindowFilter> joint_vel_filters;
+    int leg_msg_counter;
 
 
     int frame_count;

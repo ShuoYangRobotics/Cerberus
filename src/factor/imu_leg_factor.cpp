@@ -229,11 +229,11 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
 
             jacobian_pose_i = sqrt_info * jacobian_pose_i;
 
-            if (jacobian_pose_i.maxCoeff() > 1e10 || jacobian_pose_i.minCoeff() < -1e10) {
-                ROS_WARN("numerical unstable in preintegration");
-                std::cout << sqrt_info << std::endl;
-                ROS_BREAK();
-            }
+//            if (jacobian_pose_i.maxCoeff() > 1e10 || jacobian_pose_i.minCoeff() < -1e10) {
+//                ROS_WARN("numerical unstable in preintegration");
+//                std::cout << sqrt_info << std::endl;
+//                ROS_BREAK();
+//            }
         }
 
         if (jacobians[1]) {
@@ -261,13 +261,13 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
 //            std::cout << jacobian_speedbias_i << std::endl;
             jacobian_speedbias_i = sqrt_info * jacobian_speedbias_i;
 //            std::cout << fabs(jacobian_speedbias_i.maxCoeff()) << std::endl;
-            ROS_ASSERT(fabs(jacobian_speedbias_i.maxCoeff()) < 1e10);
-            ROS_ASSERT(fabs(jacobian_speedbias_i.minCoeff()) < 1e10);
-            if (jacobian_speedbias_i.maxCoeff() > 1e10 || jacobian_speedbias_i.minCoeff() < -1e10) {
-                ROS_WARN("numerical unstable in preintegration");
-                std::cout << sqrt_info << std::endl;
-                ROS_BREAK();
-            }
+//            ROS_ASSERT(fabs(jacobian_speedbias_i.maxCoeff()) < 1e10);
+//            ROS_ASSERT(fabs(jacobian_speedbias_i.minCoeff()) < 1e10);
+//            if (jacobian_speedbias_i.maxCoeff() > 1e10 || jacobian_speedbias_i.minCoeff() < -1e10) {
+//                ROS_WARN("numerical unstable in preintegration");
+//                std::cout << sqrt_info << std::endl;
+//                ROS_BREAK();
+//            }
         }
 
         if (jacobians[2]) {
@@ -280,11 +280,11 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_legbias_i = sqrt_info * jacobian_legbias_i;
 //            ROS_ASSERT(fabs(jacobian_legbias_i.maxCoeff()) < 1e8);
 //            ROS_ASSERT(fabs(jacobian_legbias_i.minCoeff()) < -1e10);
-            if (jacobian_legbias_i.maxCoeff() > 1e10 || jacobian_legbias_i.minCoeff() < -1e10) {
-                ROS_WARN("numerical unstable in preintegration");
-                std::cout << sqrt_info << std::endl;
-                ROS_BREAK();
-            }
+//            if (jacobian_legbias_i.maxCoeff() > 1e10 || jacobian_legbias_i.minCoeff() < -1e10) {
+//                ROS_WARN("numerical unstable in preintegration");
+//                std::cout << sqrt_info << std::endl;
+//                ROS_BREAK();
+//            }
         }
 
         if (jacobians[3]) {
@@ -303,11 +303,11 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_pose_j = sqrt_info * jacobian_pose_j;
 //            ROS_ASSERT(fabs(jacobian_pose_j.maxCoeff()) < 1e8);
 //            ROS_ASSERT(fabs(jacobian_pose_j.minCoeff()) < 1e8);
-            if (jacobian_pose_j.maxCoeff() > 1e10 || jacobian_pose_j.minCoeff() < -1e10) {
-                ROS_WARN("numerical unstable in preintegration");
-                std::cout << sqrt_info << std::endl;
-                ROS_BREAK();
-            }
+//            if (jacobian_pose_j.maxCoeff() > 1e10 || jacobian_pose_j.minCoeff() < -1e10) {
+//                ROS_WARN("numerical unstable in preintegration");
+//                std::cout << sqrt_info << std::endl;
+//                ROS_BREAK();
+//            }
         }
 
         if (jacobians[4]) {
@@ -324,11 +324,11 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
 
 //            ROS_ASSERT(fabs(jacobian_speedbias_j.maxCoeff()) < 1e8);
 //            ROS_ASSERT(fabs(jacobian_speedbias_j.minCoeff()) < 1e8);
-            if (jacobian_speedbias_j.maxCoeff() > 1e10 || jacobian_speedbias_j.minCoeff() < -1e10) {
-                ROS_WARN("numerical unstable in preintegration");
-                std::cout << sqrt_info << std::endl;
-                ROS_BREAK();
-            }
+//            if (jacobian_speedbias_j.maxCoeff() > 1e10 || jacobian_speedbias_j.minCoeff() < -1e10) {
+//                ROS_WARN("numerical unstable in preintegration");
+//                std::cout << sqrt_info << std::endl;
+//                ROS_BREAK();
+//            }
         }
         if (jacobians[5]) {
             Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 3, Eigen::RowMajor>> jacobian_legbias_j(jacobians[5]);
@@ -339,11 +339,11 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
             jacobian_legbias_j = sqrt_info * jacobian_legbias_j;
 //            ROS_ASSERT(fabs(jacobian_legbias_j.maxCoeff()) < 1e8);
 //            ROS_ASSERT(fabs(jacobian_legbias_j.minCoeff()) < 1e8);
-            if (jacobian_legbias_j.maxCoeff() > 1e10 || jacobian_legbias_j.minCoeff() < -1e10) {
-                ROS_WARN("numerical unstable in preintegration");
-                std::cout << sqrt_info << std::endl;
-                ROS_BREAK();
-            }
+//            if (jacobian_legbias_j.maxCoeff() > 1e10 || jacobian_legbias_j.minCoeff() < -1e10) {
+//                ROS_WARN("numerical unstable in preintegration");
+//                std::cout << sqrt_info << std::endl;
+//                ROS_BREAK();
+//            }
         }
     }
     return true;
