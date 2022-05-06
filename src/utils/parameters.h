@@ -30,6 +30,8 @@ extern int ESTIMATE_EXTRINSIC;
 
 extern double ACC_N, ACC_W;
 extern double GYR_N, GYR_W;
+extern double LBV_N, LBV_W;
+extern double RHO_N;
 
 extern std::vector<Eigen::Matrix3d> RIC;     // num of cam, imu to camera rotation
 extern std::vector<Eigen::Vector3d> TIC;     // num of cam, imu to camera position
@@ -94,11 +96,12 @@ void readParameters(std::string config_file);
 // parameters in the leg kinematics  and imu_leg_integration_base
 #define RHO_OPT_SIZE  1
 #define TOTAL_RHO_OPT_SIZE  4   //4xRHO_OPT_SIZE
+#define TOTAL_BIAS_SIZE  7   //4xRHO_OPT_SIZE + 3
 #define RHO_FIX_SIZE  4
 #define D_FK_DRHO_SIZE  3   // 3xRHO_OPT_SIZE
 #define D_J_DRHO_SIZE  9    // 9xRHO_OPT_SIZE
-#define RESIDUAL_STATE_SIZE 31  // 3*9 + 4xRHO_OPT_SIZE
-#define NOISE_SIZE 46           // 3*14 + 4xRHO_OPT_SIZE
+#define RESIDUAL_STATE_SIZE 25  // 3*7 + 4xRHO_OPT_SIZE
+#define NOISE_SIZE 40           // 3*12 + 4xRHO_OPT_SIZE
 
 typedef Eigen::Matrix<double, 12, 1> Vector12d; //4xRHO_OPT_SIZE
 typedef Eigen::Matrix<double, 4, 1> Vector_rho; //4xRHO_OPT_SIZE
@@ -107,7 +110,8 @@ enum SIZE_PARAMETERIZATION
 {
     SIZE_POSE = 7,       // p3, q4
     SIZE_SPEEDBIAS = 9,
-    SIZE_LEG_BIAS = 4,  // 4 x RHO_OPT_SIZE
+    // must modify together with the change of RHO_OPT_SIZE
+    SIZE_LEG_BIAS = TOTAL_BIAS_SIZE,  // 4 x RHO_OPT_SIZE + 3 velocity bias
     SIZE_FEATURE = 1
 };
 
@@ -133,16 +137,14 @@ enum ILStateOrder // error state, total is RESIDUAL_STATE_SIZE
     ILO_P = 0,
     ILO_R = 3,
     ILO_V = 6,
-    ILO_EPS1 = 9,
-    ILO_EPS2 = 12,
-    ILO_EPS3 = 15,
-    ILO_EPS4 = 18,
-    ILO_BA = 21,
-    ILO_BG = 24,
-    ILO_RHO1 = 27,     // change according to RHO_OPT_SIZE
-    ILO_RHO2 = 28,     // change according to RHO_OPT_SIZE
-    ILO_RHO3 = 29,     // change according to RHO_OPT_SIZE
-    ILO_RHO4 = 30,     // change according to RHO_OPT_SIZE
+    ILO_EPS = 9,
+    ILO_BA = 12,
+    ILO_BG = 15,
+    ILO_BV = 18,
+    ILO_RHO1 = 21,     // change according to RHO_OPT_SIZE
+    ILO_RHO2 = 22,     // change according to RHO_OPT_SIZE
+    ILO_RHO3 = 23,     // change according to RHO_OPT_SIZE
+    ILO_RHO4 = 24,     // change according to RHO_OPT_SIZE
 };
 
 enum ILNoiseStateOrder // noise state, total is NOISE_SIZE
@@ -153,16 +155,14 @@ enum ILNoiseStateOrder // noise state, total is NOISE_SIZE
     ILNO_Gi1 = 9,
     ILNO_BA = 12,
     ILNO_BG = 15,
-    ILNO_PHIi = 18,
-    ILNO_PHIi1 = 21,
-    ILNO_DPHIi = 24,
-    ILNO_DPHIi1 = 27,
-    ILNO_V1 = 30,
-    ILNO_V2 = 33,
-    ILNO_V3 = 36,
-    ILNO_V4 = 39,
-    ILNO_NRHO1 = 42,
-    ILNO_NRHO2 = 43,
-    ILNO_NRHO3 = 44,
-    ILNO_NRHO4 = 45,
+    ILNO_BV = 18,
+    ILNO_PHIi = 21,
+    ILNO_PHIi1 = 24,
+    ILNO_DPHIi = 27,
+    ILNO_DPHIi1 = 30,
+    ILNO_V = 33,
+    ILNO_NRHO1 = 36,
+    ILNO_NRHO2 = 37,
+    ILNO_NRHO3 = 38,
+    ILNO_NRHO4 = 39,
 };

@@ -145,10 +145,13 @@ public:
     Matrix3d        Rs[(WINDOW_SIZE + 1)];
     Vector3d        Bas[(WINDOW_SIZE + 1)];
     Vector3d        Bgs[(WINDOW_SIZE + 1)];
+    // kinematics parameters of legs
     Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho1[(WINDOW_SIZE + 1)];
     Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho2[(WINDOW_SIZE + 1)];
     Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho3[(WINDOW_SIZE + 1)];
     Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho4[(WINDOW_SIZE + 1)];
+    // vilens velocity bias
+    Vector3d        Bvs[(WINDOW_SIZE + 1)];
     double td;
 
     Matrix3d back_R0, last_R, last_R0;
@@ -237,6 +240,7 @@ public:
     double upper_leg_length[4] = {};
     double lower_leg_length[4] = {};
     std::vector<Eigen::VectorXd> rho_fix_list;
+    std::vector<Eigen::VectorXd> rho_opt_list;
     A1Kinematics a1_kin;
 
     // add ground truth pose and orientation

@@ -43,84 +43,84 @@ void solveGyroscopeBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs)
     {
         frame_j = next(frame_i);
         Vector_rho tmp; tmp.setZero();
-        frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], tmp);
+        frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], Vector3d::Zero(), tmp);
     }
 }
 
-void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs,
-                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho1,
-                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho2,
-                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho3,
-                      Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho4)
-{
-    Matrix3d A;
-    Vector3d b;
-    Vector3d delta_bg;
-    A.setZero();
-    b.setZero();
-    map<double, ImageFrame>::iterator frame_i;
-    map<double, ImageFrame>::iterator frame_j;
-    for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
-    {
-        frame_j = next(frame_i);
-        Matrix3d tmp_A;
-        tmp_A.setZero();
-        Vector3d tmp_b;
-        tmp_b.setZero();
-        Eigen::Quaterniond q_ij(frame_i->second.R.transpose() * frame_j->second.R);
-        tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, 3>(ILO_R, ILO_BG);
-        tmp_b = 2 * (frame_j->second.il_pre_integration->delta_q.inverse() * q_ij).vec();
-        A += tmp_A.transpose() * tmp_A;
-        b += tmp_A.transpose() * tmp_b;
-    }
-    delta_bg = A.ldlt().solve(b);
-    ROS_WARN_STREAM("gyroscope bias initial calibration " << delta_bg.transpose());
+// void solveGyroLegBias(map<double, ImageFrame> &all_image_frame, Vector3d* Bgs,
+//                       Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho1,
+//                       Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho2,
+//                       Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho3,
+//                       Eigen::Matrix<double, RHO_OPT_SIZE, 1>* Rho4)
+// {
+//     Matrix3d A;
+//     Vector3d b;
+//     Vector3d delta_bg;
+//     A.setZero();
+//     b.setZero();
+//     map<double, ImageFrame>::iterator frame_i;
+//     map<double, ImageFrame>::iterator frame_j;
+//     for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
+//     {
+//         frame_j = next(frame_i);
+//         Matrix3d tmp_A;
+//         tmp_A.setZero();
+//         Vector3d tmp_b;
+//         tmp_b.setZero();
+//         Eigen::Quaterniond q_ij(frame_i->second.R.transpose() * frame_j->second.R);
+//         tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, 3>(ILO_R, ILO_BG);
+//         tmp_b = 2 * (frame_j->second.il_pre_integration->delta_q.inverse() * q_ij).vec();
+//         A += tmp_A.transpose() * tmp_A;
+//         b += tmp_A.transpose() * tmp_b;
+//     }
+//     delta_bg = A.ldlt().solve(b);
+//     ROS_WARN_STREAM("gyroscope bias initial calibration " << delta_bg.transpose());
 
-    Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE> P;
-    Eigen::Matrix<double, RHO_OPT_SIZE, 1> p;
-    Vector_rho delta_rho;
-    for (int leg_idx = 0; leg_idx < NUM_OF_LEG; leg_idx ++) {
-        P.setZero(); b.setZero();
-        for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
-        {
-            frame_j = next(frame_i);
-            Eigen::Matrix<double, 3, RHO_OPT_SIZE> tmp_A;
-            tmp_A.setZero();
-            Eigen::Matrix<double, 3, 1> tmp_b;
-            tmp_b.setZero();
-            tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, RHO_OPT_SIZE>(ILO_EPS1+3*leg_idx, ILO_RHO1+RHO_OPT_SIZE*leg_idx);
-            tmp_b =   frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T)
-                    - frame_j->second.il_pre_integration->delta_epsilon[leg_idx];
-            P += tmp_A.transpose() * tmp_A;
-            p += tmp_A.transpose() * tmp_b;
+//     Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE> P;
+//     Eigen::Matrix<double, RHO_OPT_SIZE, 1> p;
+//     Vector_rho delta_rho;
+//     for (int leg_idx = 0; leg_idx < NUM_OF_LEG; leg_idx ++) {
+//         P.setZero(); b.setZero();
+//         for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end(); frame_i++)
+//         {
+//             frame_j = next(frame_i);
+//             Eigen::Matrix<double, 3, RHO_OPT_SIZE> tmp_A;
+//             tmp_A.setZero();
+//             Eigen::Matrix<double, 3, 1> tmp_b;
+//             tmp_b.setZero();
+//             tmp_A = frame_j->second.il_pre_integration->jacobian.template block<3, RHO_OPT_SIZE>(ILO_EPS1+3*leg_idx, ILO_RHO1+RHO_OPT_SIZE*leg_idx);
+//             tmp_b =   frame_i->second.R.transpose() * (frame_j->second.T - frame_i->second.T)
+//                     - frame_j->second.il_pre_integration->delta_epsilon[leg_idx];
+//             P += tmp_A.transpose() * tmp_A;
+//             p += tmp_A.transpose() * tmp_b;
 
-//            Matrix3d tmp_ATA = tmp_A.transpose() * tmp_A;
-//            Vector3d tmp_solve = tmp_ATA.ldlt().solve(tmp_A.transpose() * tmp_b);
-//            std::cout << tmp_solve.transpose() << std::endl;
-        }
-        delta_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*leg_idx) = P.ldlt().solve(p);
-    }
-    ROS_WARN_STREAM("leg bias initial calibration " << delta_rho.transpose());
+// //            Matrix3d tmp_ATA = tmp_A.transpose() * tmp_A;
+// //            Vector3d tmp_solve = tmp_ATA.ldlt().solve(tmp_A.transpose() * tmp_b);
+// //            std::cout << tmp_solve.transpose() << std::endl;
+//         }
+//         delta_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*leg_idx) = P.ldlt().solve(p);
+//     }
+//     ROS_WARN_STREAM("leg bias initial calibration " << delta_rho.transpose());
 
-    for (int i = 0; i <= WINDOW_SIZE; i++) {
-        Bgs[i] += delta_bg;
-        Rho1[i] += delta_rho.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE);
-        Rho2[i] += delta_rho.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE);
-        Rho3[i] += delta_rho.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE);
-        Rho4[i] += delta_rho.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE);
-    }
+//     for (int i = 0; i <= WINDOW_SIZE; i++) {
+//         Bgs[i] += delta_bg;
+//         Rho1[i] += delta_rho.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE);
+//         Rho2[i] += delta_rho.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE);
+//         Rho3[i] += delta_rho.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE);
+//         Rho4[i] += delta_rho.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE);
+//     }
 
-    for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end( ); frame_i++)
-    {
-        frame_j = next(frame_i);
-        Vector_rho tmp; tmp.setZero();
-        tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[0];
-        tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[0];
-        tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[0];
-        tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[0];
-        frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], tmp);
-    }
-}
+//     for (frame_i = all_image_frame.begin(); next(frame_i) != all_image_frame.end( ); frame_i++)
+//     {
+//         frame_j = next(frame_i);
+//         Vector_rho tmp; tmp.setZero();
+//         tmp.segment<RHO_OPT_SIZE>(0*RHO_OPT_SIZE) = Rho1[0];
+//         tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[0];
+//         tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[0];
+//         tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[0];
+//         frame_j->second.il_pre_integration->repropagate(Vector3d::Zero(), Bgs[0], tmp);
+//     }
+// }
 
 
 MatrixXd TangentBasis(Vector3d &g0)

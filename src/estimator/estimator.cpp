@@ -56,6 +56,7 @@ void Estimator::clearState() {
         Rho2[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
         Rho3[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
         Rho4[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Bvs[i].setZero();
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -161,6 +162,9 @@ void Estimator::setParameter()
     for (int i = 0; i < NUM_OF_LEG; i++) {
         Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i];
         rho_fix_list.push_back(rho_fix);
+
+        Eigen::VectorXd rho_opt(RHO_OPT_SIZE); rho_opt << LOWER_LEG_LENGTH;
+        rho_opt_list.push_back(rho_opt);        
     }
 
     mProcess.unlock();
@@ -650,14 +654,14 @@ void Estimator::processMeasurements()
 //                }
 //                lo_velocity_with_bias /= total_vel_weight;
                 // look at delta_epsilon of  as lo velocity measurement
-                for (int j = 0; j < NUM_OF_LEG; j++) {
-                    lo_velocity_with_bias_each_leg.segment<3>(3 * j) =
-                            Rs[frame_count]*(il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt);
-//                    std::cout << il_pre_integrations[frame_count] -> delta_epsilon[j] << endl;
-//                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
-                    foot_contact_flag[j] = il_pre_integrations[frame_count]->foot_contact_flag[j];
-                }
-                lo_velocity_with_bias = Rs[frame_count]*(il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt);
+//                for (int j = 0; j < NUM_OF_LEG; j++) {
+//                    lo_velocity_with_bias_each_leg.segment<3>(3 * j) =
+//                            il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt;
+////                    std::cout << il_pre_integrations[frame_count] -> delta_epsilon[j] << endl;
+////                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
+//                }
+                // this is in world frame 
+                // lo_velocity_with_bias = il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
             }
             else if(USE_IMU)
             {
@@ -806,7 +810,7 @@ void Estimator::processIMULeg(double t, double dt,
         tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[frame_count];
         tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[frame_count];
         il_pre_integrations[frame_count] = new IMULegIntegrationBase{Rs[frame_count].transpose()*Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                     Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
+                                                                     Bas[frame_count], Bgs[frame_count], Bvs[frame_count], tmp, rho_fix_list, p_br, R_br};
     }
 
     if (frame_count != 0)
@@ -875,7 +879,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[frame_count];
     tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[frame_count];
     tmp_il_pre_integration = new IMULegIntegrationBase{Rs[frame_count].transpose()*Vs[frame_count],acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                 Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
+                                                                 Bas[frame_count], Bgs[frame_count], Bvs[frame_count], tmp, rho_fix_list, p_br, R_br};
 
     // we do not really use this
 //    if(ESTIMATE_EXTRINSIC == 2)
@@ -939,7 +943,13 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 }
                 //  initialize the leg bias too
                 // debug: check il_pre_integrations at this point
+                // if (USE_LEG && OPTIMIZE_LEG_BIAS) {
+                //     solveGyroLegBias(all_image_frame, Bgs, Bvs);
+                // } else {
                 solveGyroscopeBias(all_image_frame, Bgs);
+                // }
+//
+
 //                solveGyroLegBias(all_image_frame, Bgs, Rho1, Rho2, Rho3, Rho4);
                 for (int i = 0; i <= WINDOW_SIZE; i++)
                 {
@@ -948,7 +958,8 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                     tmp.segment<RHO_OPT_SIZE>(1*RHO_OPT_SIZE) = Rho2[i];
                     tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[i];
                     tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[i];
-                    il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], tmp);
+                    // Ba Bg Bv, rho
+                    il_pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i], Vector3d::Zero(), tmp);
                 }
                 ROS_WARN_STREAM("Initialization finish!0");
                 optimization();
@@ -988,6 +999,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             Rs[frame_count] = Rs[prev_frame];
             Bas[frame_count] = Bas[prev_frame];
             Bgs[frame_count] = Bgs[prev_frame];
+            Bvs[frame_count] = Bvs[prev_frame];
             Rho1[frame_count] = Rho1[prev_frame];
             Rho2[frame_count] = Rho2[prev_frame];
             Rho3[frame_count] = Rho3[prev_frame];
@@ -1306,10 +1318,15 @@ void Estimator::vector2double()
         }
         if (USE_LEG)
         {
-            para_LegBias[i][0] = Rho1[i][0];
-            para_LegBias[i][1] = Rho2[i][0];
-            para_LegBias[i][2] = Rho3[i][0];
-            para_LegBias[i][3] = Rho4[i][0];
+            // modify this when changing RHO_OPT_SIZE
+            para_LegBias[i][0] = Bvs[i].x();
+            para_LegBias[i][1] = Bvs[i].y();
+            para_LegBias[i][2] = Bvs[i].z();
+            para_LegBias[i][3] = Rho1[i][0];
+            para_LegBias[i][4] = Rho2[i][0];
+            para_LegBias[i][5] = Rho3[i][0];
+            para_LegBias[i][6] = Rho4[i][0];
+
         }
     }
 
@@ -1414,10 +1431,13 @@ void Estimator::double2vector()
     if (USE_LEG)
     {
         for (int i = 0; i <= WINDOW_SIZE; i++) {
-            Rho1[i] <<para_LegBias[i][0];
-            Rho2[i] <<para_LegBias[i][1];
-            Rho3[i] <<para_LegBias[i][2];
-            Rho4[i] <<para_LegBias[i][3];
+            Bvs[i] = Vector3d(para_LegBias[i][0],
+                               para_LegBias[i][1],
+                               para_LegBias[i][2]);       
+            Rho1[i] <<para_LegBias[i][3];
+            Rho2[i] <<para_LegBias[i][4];
+            Rho3[i] <<para_LegBias[i][5];
+            Rho4[i] <<para_LegBias[i][6];     
         }
     }
 
@@ -1566,23 +1586,23 @@ void Estimator::optimization()
                                                para_Pose[j], para_SpeedBias[j], para_LegBias[j]);
 
 
-            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
-                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
-            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
-            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
-            double **raw_jacobians = new double *[block_sizes.size()];
-            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
-            jacobians.resize(block_sizes.size());
-            for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
-            {
-                jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
-                raw_jacobians[xx] = jacobians[xx].data();
-                //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
-            }
-            imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
-//            std::cout << "residual between frame " << i << " and " << j << std::endl;
-//            std::cout << residuals.transpose() << std::endl;
-//            imu_leg_factor -> checkJacobian(parameter_blocks.data());
+        //     std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
+        //                                                               para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
+        //     std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
+        //     Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
+        //     double **raw_jacobians = new double *[block_sizes.size()];
+        //     std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
+        //     jacobians.resize(block_sizes.size());
+        //     for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
+        //     {
+        //         jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
+        //         raw_jacobians[xx] = jacobians[xx].data();
+        //         //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
+        //     }
+        //     imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
+        //    std::cout << "residual between frame " << i << " and " << j << std::endl;
+        //    std::cout << residuals.transpose() << std::endl;
+        //    imu_leg_factor -> checkJacobian(parameter_blocks.data());
 
         }
 
@@ -1917,6 +1937,7 @@ void Estimator::slideWindow()
                     Vs[i].swap(Vs[i + 1]);
                     Bas[i].swap(Bas[i + 1]);
                     Bgs[i].swap(Bgs[i + 1]);
+                    Bvs[i].swap(Bvs[i + 1]);
                     Rho1[i].swap(Rho1[i + 1]);
                     Rho2[i].swap(Rho2[i + 1]);
                     Rho3[i].swap(Rho3[i + 1]);
@@ -1945,6 +1966,7 @@ void Estimator::slideWindow()
                 Vs[WINDOW_SIZE] = Vs[WINDOW_SIZE - 1];
                 Bas[WINDOW_SIZE] = Bas[WINDOW_SIZE - 1];
                 Bgs[WINDOW_SIZE] = Bgs[WINDOW_SIZE - 1];
+                Bvs[WINDOW_SIZE] = Bvs[WINDOW_SIZE - 1];
                 Rho1[WINDOW_SIZE] = Rho1[WINDOW_SIZE - 1];
                 Rho2[WINDOW_SIZE] = Rho2[WINDOW_SIZE - 1];
                 Rho3[WINDOW_SIZE] = Rho3[WINDOW_SIZE - 1];
@@ -1960,7 +1982,8 @@ void Estimator::slideWindow()
                 tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[WINDOW_SIZE];
                 tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose()*Vs[WINDOW_SIZE],acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE],
+                                                                             tmp, rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
                 linear_acceleration_buf[WINDOW_SIZE].clear();
@@ -2028,6 +2051,7 @@ void Estimator::slideWindow()
                 Vs[frame_count - 1] = Vs[frame_count];
                 Bas[frame_count - 1] = Bas[frame_count];
                 Bgs[frame_count - 1] = Bgs[frame_count];
+                Bvs[frame_count - 1] = Bvs[frame_count];
                 Rho1[frame_count - 1] = Rho1[frame_count];
                 Rho2[frame_count - 1] = Rho2[frame_count];
                 Rho3[frame_count - 1] = Rho3[frame_count];
@@ -2043,7 +2067,8 @@ void Estimator::slideWindow()
                 tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[WINDOW_SIZE];
                 tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[WINDOW_SIZE];
                 il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose()*Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
+                                                                             Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], Bvs[WINDOW_SIZE],
+                                                                             tmp, rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
                 linear_acceleration_buf[WINDOW_SIZE].clear();

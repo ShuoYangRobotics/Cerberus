@@ -14,6 +14,8 @@ double INIT_DEPTH;
 double MIN_PARALLAX;
 double ACC_N, ACC_W;
 double GYR_N, GYR_W;
+double LBV_N, LBV_W;
+double RHO_N;
 
 std::vector<Eigen::Matrix3d> RIC;
 std::vector<Eigen::Vector3d> TIC;
@@ -142,6 +144,10 @@ void readParameters(std::string config_file)
         DPHI_N = fsSettings["joint_velocity_n"];
         RHO_XY_N = fsSettings["leg_bias_xy_n"];
         RHO_Z_N = fsSettings["leg_bias_z_n"];
+
+        LBV_N = 0.5; 
+        LBV_W = 0.1; 
+        RHO_N = 0.01; 
 
         V_N_FORCE_THRES_RATIO = fsSettings["v_n_force_thres_ratio"];
         V_N_MIN = fsSettings["v_n_min"];

@@ -192,47 +192,42 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
             << estimator.lo_velocity_with_bias.y() << ","     // 22
             << estimator.lo_velocity_with_bias.z() << ","     // 23
             << estimator.Rho1[WINDOW_SIZE].x() << ","         // 24
-            << estimator.Rho1[WINDOW_SIZE].x() << ","         // 25
-            << estimator.Rho1[WINDOW_SIZE].x() << ","         // 26
-            << estimator.Rho2[WINDOW_SIZE].x() << ","         // 27
-            << estimator.Rho2[WINDOW_SIZE].x() << ","         // 28
-            << estimator.Rho2[WINDOW_SIZE].x() << ","         // 29
-            << estimator.Rho3[WINDOW_SIZE].x() << ","         // 30
-            << estimator.Rho3[WINDOW_SIZE].x() << ","         // 31
-            << estimator.Rho3[WINDOW_SIZE].x() << ","         // 32
-            << estimator.Rho4[WINDOW_SIZE].x() << ","         // 33
-            << estimator.Rho4[WINDOW_SIZE].x() << ","         // 34
-            << estimator.Rho4[WINDOW_SIZE].x() << ","         // 35
+            << estimator.Rho2[WINDOW_SIZE].x() << ","         // 25
+            << estimator.Rho3[WINDOW_SIZE].x() << ","         // 26
+            << estimator.Rho4[WINDOW_SIZE].x() << ","         // 27
+            << estimator.Bvs[WINDOW_SIZE].x() << ","          // 28
+            << estimator.Bvs[WINDOW_SIZE].y() << ","          // 29
+            << estimator.Bvs[WINDOW_SIZE].z() << ","          // 30
             // lo velocity of each foot
-            << estimator.lo_velocity_each_leg(0) << "," // 36
-            << estimator.lo_velocity_each_leg(1) << "," // 37
-            << estimator.lo_velocity_each_leg(2) << "," // 38
-            << estimator.lo_velocity_each_leg(3) << "," // 39
-            << estimator.lo_velocity_each_leg(4) << "," // 40
-            << estimator.lo_velocity_each_leg(5) << "," // 41
-            << estimator.lo_velocity_each_leg(6) << "," // 42
-            << estimator.lo_velocity_each_leg(7) << "," // 43
-            << estimator.lo_velocity_each_leg(8) << "," // 44
-            << estimator.lo_velocity_each_leg(9) << "," // 45
-            << estimator.lo_velocity_each_leg(10) << "," // 46
-            << estimator.lo_velocity_each_leg(11) << "," // 47
+            << estimator.lo_velocity_each_leg(0) << "," // 31
+            << estimator.lo_velocity_each_leg(1) << "," // 32
+            << estimator.lo_velocity_each_leg(2) << "," // 33
+            << estimator.lo_velocity_each_leg(3) << "," // 34
+            << estimator.lo_velocity_each_leg(4) << "," // 35
+            << estimator.lo_velocity_each_leg(5) << "," // 36
+            << estimator.lo_velocity_each_leg(6) << "," // 37
+            << estimator.lo_velocity_each_leg(7) << "," // 38
+            << estimator.lo_velocity_each_leg(8) << "," // 39
+            << estimator.lo_velocity_each_leg(9) << "," // 40
+            << estimator.lo_velocity_each_leg(10) << "," // 41
+            << estimator.lo_velocity_each_leg(11) << "," // 42
             // lo_velocity_with_bias_each_leg of each foot
-            << estimator.lo_velocity_with_bias_each_leg(0) << "," // 48
-            << estimator.lo_velocity_with_bias_each_leg(1) << "," // 49
-            << estimator.lo_velocity_with_bias_each_leg(2) << "," // 50
-            << estimator.lo_velocity_with_bias_each_leg(3) << "," // 51
-            << estimator.lo_velocity_with_bias_each_leg(4) << "," // 52
-            << estimator.lo_velocity_with_bias_each_leg(5) << "," // 53
-            << estimator.lo_velocity_with_bias_each_leg(6) << "," // 54
-            << estimator.lo_velocity_with_bias_each_leg(7) << "," // 55
-            << estimator.lo_velocity_with_bias_each_leg(8) << "," // 56
-            << estimator.lo_velocity_with_bias_each_leg(9) << "," // 57
-            << estimator.lo_velocity_with_bias_each_leg(10) << "," // 58
-            << estimator.lo_velocity_with_bias_each_leg(11) << "," // 59
-            << estimator.foot_contact_flag(0) << "," // 60
-            << estimator.foot_contact_flag(1) << "," // 61
-            << estimator.foot_contact_flag(2) << "," // 62
-            << estimator.foot_contact_flag(3) << "," // 63
+            << estimator.lo_velocity_with_bias_each_leg(0) << "," // 43
+            << estimator.lo_velocity_with_bias_each_leg(1) << "," // 44
+            << estimator.lo_velocity_with_bias_each_leg(2) << "," // 45
+            << estimator.lo_velocity_with_bias_each_leg(3) << "," // 46
+            << estimator.lo_velocity_with_bias_each_leg(4) << "," // 47
+            << estimator.lo_velocity_with_bias_each_leg(5) << "," // 48
+            << estimator.lo_velocity_with_bias_each_leg(6) << "," // 49
+            << estimator.lo_velocity_with_bias_each_leg(7) << "," // 50
+            << estimator.lo_velocity_with_bias_each_leg(8) << "," // 51
+            << estimator.lo_velocity_with_bias_each_leg(9) << "," // 52
+            << estimator.lo_velocity_with_bias_each_leg(10) << "," // 53
+            << estimator.lo_velocity_with_bias_each_leg(11) << "," // 54
+            << estimator.foot_contact_flag(0) << "," // 55
+            << estimator.foot_contact_flag(1) << "," // 56
+            << estimator.foot_contact_flag(2) << "," // 57
+            << estimator.foot_contact_flag(3) << "," // 58
             << endl;
         foutC.close();
         Eigen::Vector3d tmp_T = estimator.Ps[WINDOW_SIZE];
@@ -243,6 +238,9 @@ void pubOdometry(const Estimator &estimator, const std_msgs::Header &header)
                estimator.Rho2[WINDOW_SIZE].x(),
                estimator.Rho3[WINDOW_SIZE].x(),
                estimator.Rho4[WINDOW_SIZE].x());
+        printf("Bvs bias: %f %f %f \n",
+               estimator.Bvs[WINDOW_SIZE].x(), estimator.Bvs[WINDOW_SIZE].y(), estimator.Bvs[WINDOW_SIZE].z());
+
     }
 }
 

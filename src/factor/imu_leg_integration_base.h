@@ -24,22 +24,24 @@ public:
     IMULegIntegrationBase() = delete;
     IMULegIntegrationBase(const Eigen::Vector3d &_base_v, const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
                           const Ref<const Vector12d>& _phi_0, const Ref<const Vector12d>& _dphi_0, const Ref<const Vector12d>& _c_0,
-                          const Eigen::Vector3d &_linearized_ba, const Eigen::Vector3d &_linearized_bg, const Ref<const Vector_rho>& _linearized_rho,
+                          const Eigen::Vector3d &_linearized_ba, const Eigen::Vector3d &_linearized_bg, const Vector3d &_linearized_bv, 
+                          const Ref<const Vector_rho>& _linearized_rho,
                           std::vector<Eigen::VectorXd> _rho_fix_list,  const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br);
 
     void push_back(double dt, const Eigen::Vector3d &acc, const Eigen::Vector3d &gyr,
                    const Ref<const Vector12d>& phi, const Ref<const Vector12d>& dphi, const Ref<const Vector12d>& c);
     void repropagate(const Eigen::Vector3d &_linearized_ba,
                      const Eigen::Vector3d &_linearized_bg,
+                     const Eigen::Vector3d &_linearized_bv,
                      const Ref<const Vector_rho> &_linearized_rho);
     void propagate(double _dt, const Eigen::Vector3d &_acc_1, const Eigen::Vector3d &_gyr_1,
                    const Ref<const Vector12d>& _phi_1, const Ref<const Vector12d>& _dphi_1, const Ref<const Vector12d>& _c_1);
 
     Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 1> evaluate(const Eigen::Vector3d &Pi, const Eigen::Quaterniond &Qi, const Eigen::Vector3d &Vi,
-                                          const Eigen::Vector3d &Bai, const Eigen::Vector3d &Bgi,
+                                          const Eigen::Vector3d &Bai, const Eigen::Vector3d &Bgi, const Eigen::Vector3d &Bvi,
                                           const Vector_rho &rhoi,
                                           const Eigen::Vector3d &Pj, const Eigen::Quaterniond &Qj, const Eigen::Vector3d &Vj,
-                                          const Eigen::Vector3d &Baj, const Eigen::Vector3d &Bgj,
+                                          const Eigen::Vector3d &Baj, const Eigen::Vector3d &Bgj, const Eigen::Vector3d &Bvj,
                                           const Vector_rho &rhoj);
 
 
@@ -49,12 +51,12 @@ public:
                              const Ref<const Vector12d> &_c_0, const Ref<const Vector12d> &_phi_1,
                              const Ref<const Vector12d> &_dphi_1, const Ref<const Vector12d> &_c_1,
                              const Vector3d &delta_p, const Quaterniond &delta_q,
-                             const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon, Vector3d &sum_delta_epsilon,
-                             const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+                             const Vector3d &delta_v, const Vector3d delta_epsilon, 
+                             const Vector3d &linearized_ba, const Vector3d &linearized_bg, const Vector3d &linearized_bv,
                              const Ref<const Vector_rho> &linearized_rho, Vector3d &result_delta_p,
                              Quaterniond &result_delta_q, Vector3d &result_delta_v,
-                             vector<Eigen::Vector3d> &result_delta_epsilon, Vector3d &result_sum_delta_epsilon,
-                             Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
+                             Vector3d &result_delta_epsilon, 
+                             Vector3d &result_linearized_ba, Vector3d &result_linearized_bg, Vector3d &result_linearized_bv,
                              Vector_rho &result_linearized_rho, bool update_jacobian);
 
     void checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
@@ -63,8 +65,8 @@ public:
                   const Ref<const Vector12d> &_c_0, const Ref<const Vector12d> &_phi_1,
                   const Ref<const Vector12d> &_dphi_1, const Ref<const Vector12d> &_c_1,
                   const Vector3d &delta_p, const Quaterniond &delta_q,
-                  const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
-                  const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+                  const Vector3d &delta_v, const Vector3d delta_epsilon, 
+                  const Vector3d &linearized_ba, const Vector3d &linearized_bg, const Vector3d &linearized_bv,
                   const Ref<const Vector_rho> &linearized_rho);
 
     // state size
@@ -74,11 +76,11 @@ public:
     Eigen::Vector3d delta_p;  // alpha
     Eigen::Quaterniond delta_q;  // gamma
     Eigen::Vector3d delta_v;     // beta
-    std::vector<Eigen::Vector3d> delta_epsilon;     // epsilon, displacement calculated from each leg
-    Vector3d sum_delta_epsilon;                     // sum of epsilon, consider foot contact
+    Eigen::Vector3d  delta_epsilon;     // epsilon, displacement calculated from each leg, consider foot contact
+
 
     // the output of optimization,
-    Eigen::Vector3d linearized_ba, linearized_bg;
+    Eigen::Vector3d linearized_ba, linearized_bg, linearized_bv;
     Vector_rho linearized_rho;
     Vector4i foot_contact_flag;
 
