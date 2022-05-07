@@ -12,7 +12,7 @@
 #include "../utils/parameters.h"
 #include "imu_leg_integration_base.h"
 
-class IMULegFactor : public ceres::SizedCostFunction<RESIDUAL_STATE_SIZE, 7, 9, TOTAL_BIAS_SIZE, 7, 9, TOTAL_BIAS_SIZE> {
+class IMULegFactor : public ceres::SizedCostFunction<ERROR_STATE_SIZE, 7, 9, TOTAL_BIAS_SIZE, 7, 9, TOTAL_BIAS_SIZE> {
 public:
     IMULegFactor() = delete;
 

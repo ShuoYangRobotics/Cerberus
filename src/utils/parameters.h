@@ -100,7 +100,8 @@ void readParameters(std::string config_file);
 #define RHO_FIX_SIZE  4
 #define D_FK_DRHO_SIZE  3   // 3xRHO_OPT_SIZE
 #define D_J_DRHO_SIZE  9    // 9xRHO_OPT_SIZE
-#define RESIDUAL_STATE_SIZE 25  // 3*7 + 4xRHO_OPT_SIZE
+#define ERROR_STATE_SIZE 25  // 3*7 + 4xRHO_OPT_SIZE
+// #define RESIDUAL_STATE_SIZE 33
 #define NOISE_SIZE 40           // 3*12 + 4xRHO_OPT_SIZE
 
 typedef Eigen::Matrix<double, 12, 1> Vector12d; //4xRHO_OPT_SIZE
@@ -132,7 +133,7 @@ enum NoiseOrder
     O_GW = 9
 };
 
-enum ILStateOrder // error state, total is RESIDUAL_STATE_SIZE
+enum ILStateOrder // error state, total is ERROR_STATE_SIZE
 {
     ILO_P = 0,
     ILO_R = 3,
@@ -145,6 +146,14 @@ enum ILStateOrder // error state, total is RESIDUAL_STATE_SIZE
     ILO_RHO2 = 22,     // change according to RHO_OPT_SIZE
     ILO_RHO3 = 23,     // change according to RHO_OPT_SIZE
     ILO_RHO4 = 24,     // change according to RHO_OPT_SIZE
+    // ILO_RHO1j = 25,
+    // ILO_RHO2j = 26,
+    // ILO_RHO3j = 27,
+    // ILO_RHO4j = 28,
+    // ILO_RHO1i = 29,
+    // ILO_RHO2i = 30,
+    // ILO_RHO3i = 31,
+    // ILO_RHO4i = 32,
 };
 
 enum ILNoiseStateOrder // noise state, total is NOISE_SIZE

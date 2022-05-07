@@ -25,7 +25,7 @@ public:
     IMULegIntegrationBase(const Eigen::Vector3d &_base_v, const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
                           const Ref<const Vector12d>& _phi_0, const Ref<const Vector12d>& _dphi_0, const Ref<const Vector12d>& _c_0,
                           const Eigen::Vector3d &_linearized_ba, const Eigen::Vector3d &_linearized_bg, const Vector3d &_linearized_bv, 
-                          const Ref<const Vector_rho>& _linearized_rho,
+                          const Vector_rho & _linearized_rho,
                           std::vector<Eigen::VectorXd> _rho_fix_list,  const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br);
 
     void push_back(double dt, const Eigen::Vector3d &acc, const Eigen::Vector3d &gyr,
@@ -33,11 +33,11 @@ public:
     void repropagate(const Eigen::Vector3d &_linearized_ba,
                      const Eigen::Vector3d &_linearized_bg,
                      const Eigen::Vector3d &_linearized_bv,
-                     const Ref<const Vector_rho> &_linearized_rho);
+                     const Vector_rho & _linearized_rho);
     void propagate(double _dt, const Eigen::Vector3d &_acc_1, const Eigen::Vector3d &_gyr_1,
                    const Ref<const Vector12d>& _phi_1, const Ref<const Vector12d>& _dphi_1, const Ref<const Vector12d>& _c_1);
 
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 1> evaluate(const Eigen::Vector3d &Pi, const Eigen::Quaterniond &Qi, const Eigen::Vector3d &Vi,
+    Eigen::Matrix<double, ERROR_STATE_SIZE, 1> evaluate(const Eigen::Vector3d &Pi, const Eigen::Quaterniond &Qi, const Eigen::Vector3d &Vi,
                                           const Eigen::Vector3d &Bai, const Eigen::Vector3d &Bgi, const Eigen::Vector3d &Bvi,
                                           const Vector_rho &rhoi,
                                           const Eigen::Vector3d &Pj, const Eigen::Quaterniond &Qj, const Eigen::Vector3d &Vj,
@@ -71,7 +71,7 @@ public:
 
     // state size
 
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> jacobian, covariance;
+    Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE> jacobian, covariance;
     double sum_dt;
     Eigen::Vector3d delta_p;  // alpha
     Eigen::Quaterniond delta_q;  // gamma
@@ -111,8 +111,8 @@ private:
 
 //    Eigen::Matrix<double, NOISE_SIZE, NOISE_SIZE> noise;
     Eigen::DiagonalMatrix<double, NOISE_SIZE> noise_diag;
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> step_jacobian;
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, NOISE_SIZE> step_V;
+    Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE> step_jacobian;
+    Eigen::Matrix<double, ERROR_STATE_SIZE, NOISE_SIZE> step_V;
 
     // added Dec-19, the base velocity of the robot when the factor is initially created.
     // we use this value to help determine which leg lo velocity we should trust

@@ -31,13 +31,13 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
     rhoj << parameters[5][3], parameters[5][4], parameters[5][5], parameters[5][6];
 
     std::vector<int> block_sizes{7,9,TOTAL_BIAS_SIZE,7,9,TOTAL_BIAS_SIZE};
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 1> residual;
+    Eigen::Matrix<double, ERROR_STATE_SIZE, 1> residual;
     double **raw_jacobians = new double *[block_sizes.size()];
     std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
     jacobians.resize(block_sizes.size());
     for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
     {
-        jacobians[xx].resize(RESIDUAL_STATE_SIZE, block_sizes[xx]);
+        jacobians[xx].resize(ERROR_STATE_SIZE, block_sizes[xx]);
         raw_jacobians[xx] = jacobians[xx].data();
         //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
     }
@@ -48,12 +48,12 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
     Vector3d turb(0.0001, -0.003, 0.003);
     Eigen::Matrix<double, 7, 1> turb_vec; turb_vec.setZero(); turb_vec.segment<3>(0) = turb;
 
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 1> turb_residual =
+    Eigen::Matrix<double, ERROR_STATE_SIZE, 1> turb_residual =
             il_pre_integration->evaluate(
                 Pi+turb, Qi, Vi, Bai, Bgi, Bvi, rhoi, 
                 Pj, Qj, Vj, Baj, Bgj, Bvj, rhoj
             );
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE> sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -67,7 +67,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi* Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2).normalized(), Vi, Bai, Bgi, Bvi, rhoi, 
                     Pj, Qj, Vj, Baj, Bgj, Bvj, rhoj
             );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -88,7 +88,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi, Vi+turb, Bai, Bgi, Bvi, rhoi, 
                     Pj, Qj, Vj, Baj, Bgj, Bvj, rhoj
                 );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -105,7 +105,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi, Vi, Bai+turb, Bgi, Bvi, rhoi, 
                     Pj, Qj, Vj, Baj, Bgj, Bvj, rhoj
                 );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -122,7 +122,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi, Vi, Bai, Bgi+turb, Bvi, rhoi, 
                     Pj, Qj, Vj, Baj, Bgj, Bvj, rhoj 
                 );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -139,7 +139,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi, Vi, Bai, Bgi, Bvi+bvi_rand, rhoi+rhoi_rand, 
                     Pj, Qj, Vj, Baj, Bgj, Bvj, rhoj
                 );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -160,7 +160,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi, Vi, Bai, Bgi, Bvi, rhoi, 
                     Pj+turb, Qj, Vj, Baj, Bgj, Bvj, rhoj
                 );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -174,7 +174,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi, Vi, Bai, Bgi, Bvi, rhoi, 
                     Pj, Qj* Quaterniond(1, turb(0) / 2, turb(1) / 2, turb(2) / 2).normalized(), Vj, Baj, Bgj, Bvj, rhoj
                     );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -195,7 +195,7 @@ void IMULegFactor::checkJacobian(const double *const *parameters) {
                     Pi, Qi, Vi, Bai, Bgi, Bvi, rhoi, 
                     Pj, Qj, Vj, Baj, Bgj, Bvj+bvj_rand, rhoj+rhoj_rand
                 );
-    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    sqrt_info2 = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //    sqrt_info2.setIdentity();
     turb_residual = sqrt_info2 * turb_residual;
@@ -237,10 +237,10 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
     Vector_rho rhoj;
     rhoj << parameters[5][3], parameters[5][4], parameters[5][5], parameters[5][6];
 
-    Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 1>> residual(residuals);
+    Eigen::Map<Eigen::Matrix<double, ERROR_STATE_SIZE, 1>> residual(residuals);
     residual = il_pre_integration->evaluate(Pi, Qi, Vi, Bai, Bgi, Bvi, rhoi,
                                             Pj, Qj, Vj, Baj, Bgj, Bvj, rhoj);
-    Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE> sqrt_info = Eigen::LLT<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, RESIDUAL_STATE_SIZE>>(
+    Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE> sqrt_info = Eigen::LLT<Eigen::Matrix<double, ERROR_STATE_SIZE, ERROR_STATE_SIZE>>(
             il_pre_integration->covariance.inverse()).matrixL().transpose();
 //        sqrt_info.setIdentity();
     residual = sqrt_info * residual;
@@ -263,7 +263,7 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
         Eigen::Matrix<double, 3, RHO_OPT_SIZE>  dep_drho4 = il_pre_integration->jacobian.block<3, RHO_OPT_SIZE>(ILO_EPS, ILO_RHO4);
 
         if (jacobians[0]) {
-            Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 7, Eigen::RowMajor>> jacobian_pose_i(jacobians[0]);
+            Eigen::Map<Eigen::Matrix<double, ERROR_STATE_SIZE, 7, Eigen::RowMajor>> jacobian_pose_i(jacobians[0]);
             jacobian_pose_i.setZero();
 
             jacobian_pose_i.block<3, 3>(ILO_P, 0) = -Qi.inverse().toRotationMatrix();
@@ -290,7 +290,7 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
         }
 
         if (jacobians[1]) {
-            Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 9, Eigen::RowMajor>> jacobian_speedbias_i(jacobians[1]);
+            Eigen::Map<Eigen::Matrix<double, ERROR_STATE_SIZE, 9, Eigen::RowMajor>> jacobian_speedbias_i(jacobians[1]);
             jacobian_speedbias_i.setZero();
             jacobian_speedbias_i.block<3, 3>(ILO_P, 0) = -Qi.inverse().toRotationMatrix() * sum_dt;
             jacobian_speedbias_i.block<3, 3>(ILO_P, 3) = -dp_dba;
@@ -323,9 +323,10 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
         }
 
         if (jacobians[2]) {
-            Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, TOTAL_BIAS_SIZE, Eigen::RowMajor>> jacobian_legbias_i(jacobians[2]);
+            Eigen::Map<Eigen::Matrix<double, ERROR_STATE_SIZE, TOTAL_BIAS_SIZE, Eigen::RowMajor>> jacobian_legbias_i(jacobians[2]);
             jacobian_legbias_i.setZero();
 
+            jacobian_legbias_i.block<3, 3>(ILO_EPS, 0) = -dep_dbv;
             jacobian_legbias_i.block<3, RHO_OPT_SIZE>(ILO_EPS, 3+0*RHO_OPT_SIZE) = -dep_drho1;
             jacobian_legbias_i.block<3, RHO_OPT_SIZE>(ILO_EPS, 3+1*RHO_OPT_SIZE) = -dep_drho2;
             jacobian_legbias_i.block<3, RHO_OPT_SIZE>(ILO_EPS, 3+2*RHO_OPT_SIZE) = -dep_drho3;
@@ -333,10 +334,19 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
 
             jacobian_legbias_i.block<3, 3>(ILO_BV, 0) = -Eigen::Matrix3d::Identity();
 
-            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1, 3+0*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO2, 3+1*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 3+2*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 3+3*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1, 3+0*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO2, 3+1*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 3+2*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 3+3*RHO_OPT_SIZE) = -Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1, 3+0*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO2, 3+1*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 3+2*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 3+3*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+
+
+            // for (int j = 0; j < NUM_OF_LEG; j++) {
+            //     jacobian_legbias_i.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1i+j, 3+j*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // }
 
             jacobian_legbias_i = sqrt_info * jacobian_legbias_i;
 //            ROS_ASSERT(fabs(jacobian_legbias_i.maxCoeff()) < 1e8);
@@ -349,7 +359,7 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
         }
 
         if (jacobians[3]) {
-            Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 7, Eigen::RowMajor>> jacobian_pose_j(jacobians[3]);
+            Eigen::Map<Eigen::Matrix<double, ERROR_STATE_SIZE, 7, Eigen::RowMajor>> jacobian_pose_j(jacobians[3]);
             jacobian_pose_j.setZero();
 
             jacobian_pose_j.block<3, 3>(ILO_P, 0) = Qi.inverse().toRotationMatrix();
@@ -372,7 +382,7 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
         }
 
         if (jacobians[4]) {
-            Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, 9, Eigen::RowMajor>> jacobian_speedbias_j(jacobians[4]);
+            Eigen::Map<Eigen::Matrix<double, ERROR_STATE_SIZE, 9, Eigen::RowMajor>> jacobian_speedbias_j(jacobians[4]);
             jacobian_speedbias_j.setZero();
 
             jacobian_speedbias_j.block<3, 3>(ILO_V, 0) = Qi.inverse().toRotationMatrix();
@@ -392,15 +402,19 @@ bool IMULegFactor::Evaluate(const double *const *parameters, double *residuals, 
 //            }
         }
         if (jacobians[5]) {
-            Eigen::Map<Eigen::Matrix<double, RESIDUAL_STATE_SIZE, TOTAL_BIAS_SIZE, Eigen::RowMajor>> jacobian_legbias_j(jacobians[5]);
+            Eigen::Map<Eigen::Matrix<double, ERROR_STATE_SIZE, TOTAL_BIAS_SIZE, Eigen::RowMajor>> jacobian_legbias_j(jacobians[5]);
             jacobian_legbias_j.setZero();
 
             jacobian_legbias_j.block<3, 3>(ILO_BV, 0) = Eigen::Matrix3d::Identity();
 
-            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1, 3+0*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO2, 3+1*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 3+2*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
-            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 3+3*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1, 3+0*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO2, 3+1*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 3+2*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            // jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 3+3*RHO_OPT_SIZE) = Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO1, 3+0*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO2, 3+1*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO3, 3+2*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
+            jacobian_legbias_j.block<RHO_OPT_SIZE, RHO_OPT_SIZE>(ILO_RHO4, 3+3*RHO_OPT_SIZE) = 0.5*Eigen::Matrix<double, RHO_OPT_SIZE, RHO_OPT_SIZE>::Identity();
 
             jacobian_legbias_j = sqrt_info * jacobian_legbias_j;
 //            ROS_ASSERT(fabs(jacobian_legbias_j.maxCoeff()) < 1e8);
