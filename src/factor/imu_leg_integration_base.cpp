@@ -134,6 +134,11 @@ void IMULegIntegrationBase::propagate(double _dt, const Vector3d &_acc_1, const 
 //                        delta_p, delta_q, delta_v, delta_epsilon,
 //                        linearized_ba, linearized_bg, linearized_bv, linearized_rho);
 
+
+    // std::cout << "inside propagate" << std::endl;
+    // std::cout << delta_epsilon.transpose() << std::endl;
+    // std::cout << result_delta_epsilon.transpose() << std::endl;
+
     delta_p = result_delta_p;
     delta_q = result_delta_q;
     delta_v = result_delta_v;
@@ -188,14 +193,14 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             w_1_x(2), 0, -w_1_x(0),
             -w_1_x(1), w_1_x(0), 0;
 
-    Eigen::Vector3d gj[NUM_OF_LEG], gjp1[NUM_OF_LEG];
-    Eigen::Matrix3d dgdphi_j[NUM_OF_LEG], dgdphi_jp1[NUM_OF_LEG];
-    Eigen::Matrix<double, 3, RHO_OPT_SIZE> dgdrho_j[NUM_OF_LEG], dgdrho_jp1[NUM_OF_LEG];
-    Eigen::Vector3d gbj[NUM_OF_LEG], gbjp1[NUM_OF_LEG];
+    std::vector<Eigen::Vector3d> gj(NUM_OF_LEG), gjp1(NUM_OF_LEG);
+    std::vector<Eigen::Matrix3d> dgdphi_j(NUM_OF_LEG), dgdphi_jp1(NUM_OF_LEG);
+    std::vector<Eigen::Matrix<double, 3, RHO_OPT_SIZE>> dgdrho_j(NUM_OF_LEG), dgdrho_jp1(NUM_OF_LEG);
+    std::vector<Eigen::Vector3d> gbj(NUM_OF_LEG), gbjp1(NUM_OF_LEG);
 
 
     // velocity from individual leg
-    Eigen::Vector3d vmj[NUM_OF_LEG], vmjp1[NUM_OF_LEG];
+    std::vector<Eigen::Vector3d> vmj(NUM_OF_LEG), vmjp1(NUM_OF_LEG);
     // total velocity
     Eigen::Vector3d vm, vmp1;
     vm.setZero();
@@ -207,20 +212,20 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
         // get z directional contact force ( contact foot sensor reading)
         double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
 
-//        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
-        // if (force_mag < foot_force_min[j]) {
-        //     foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
-        // }
-        // if (force_mag > foot_force_max[j]) {
-        //     foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
-        // }
-        // // exponential decay, max force decays faster
-        // foot_force_min[j] *= 0.9991;
-        // foot_force_max[j] *= 0.997;
-        // foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
+       force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
+        if (force_mag < foot_force_min[j]) {
+            foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
+        }
+        if (force_mag > foot_force_max[j]) {
+            foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
+        }
+        // exponential decay, max force decays faster
+        foot_force_min[j] *= 0.9991;
+        foot_force_max[j] *= 0.997;
+        foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
 
 
-        foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-30.0)));
+        foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
 
         // // get z force variance
         // foot_force_window_idx[j] ++;
@@ -249,46 +254,57 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     // get velocity measurement
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // calculate fk of each leg
-        gj[j] = a1_kin.fk(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
-        gjp1[j] = a1_kin.fk(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        // gj[j] = a1_kin.fk(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        // gjp1[j] = a1_kin.fk(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        // // calculate jacobian of each leg
+        // dgdphi_j[j] = a1_kin.jac(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        // dgdphi_jp1[j] = a1_kin.jac(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        VectorXd test(1); test << 0.21;
+        gj[j] = a1_kin.fk(_phi_0.segment<3>(3 * j), test, rho_fix_list[j]);
+        gjp1[j] = a1_kin.fk(_phi_1.segment<3>(3 * j), test, rho_fix_list[j]);
         // calculate jacobian of each leg
-        dgdphi_j[j] = a1_kin.jac(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
-        dgdphi_jp1[j] = a1_kin.jac(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        dgdphi_j[j] = a1_kin.jac(_phi_0.segment<3>(3 * j), test, rho_fix_list[j]);
+        dgdphi_jp1[j] = a1_kin.jac(_phi_1.segment<3>(3 * j), test, rho_fix_list[j]);
 
         gbj[j] = p_br + R_br * gj[j];
         gbjp1[j] = p_br + R_br * gjp1[j];
         // calculate vm
-        vmj[j]   = -R_br * dgdphi_j[j] * _dphi_0.segment<3>(3 * j) - R_w_0_x * gbj[j];
+        // vmj[j]   = -R_br * dgdphi_j[j]   * _dphi_0.segment<3>(3 * j) - R_w_0_x * gbj[j];
+        // vmjp1[j] = -R_br * dgdphi_jp1[j] * _dphi_1.segment<3>(3 * j) - R_w_1_x * gbjp1[j];
+        // Vector3d tmp = ( _phi_1.segment<3>(3 * j) - _phi_0.segment<3>(3 * j) )/_dt;
+        vmj[j]   = -R_br * dgdphi_j[j]   * _dphi_0.segment<3>(3 * j) - R_w_0_x * gbj[j];
         vmjp1[j] = -R_br * dgdphi_jp1[j] * _dphi_1.segment<3>(3 * j) - R_w_1_x * gbjp1[j];
 
-        result_linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j) = linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j);
     }
+    // std::cout << "debug" << std::endl;
+    // std::cout << _phi_0.transpose() << std::endl;
+    // std::cout << _dphi_0.transpose() << std::endl;
+    // std::cout << _phi_1.transpose() << std::endl;
+    // std::cout << _dphi_1.transpose() << std::endl;
 
     // combine velocities
     double total_weight = 0;
     double weight_j[NUM_OF_LEG];
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        if (foot_contact_flag[j] > 0.5) {
-            weight_j[j] = 1.0;
-            total_weight += 1.0;
-            vm += vmj[j];
-            vmp1 += vmjp1[j];
-        } else {
-            weight_j[j] = 0.0;
-        }
+        weight_j[j] = foot_contact_flag[j];
+        total_weight += weight_j[j];
+        vm += weight_j[j]*vmj[j];
+        vmp1 += weight_j[j]*vmjp1[j];
     }
 
-    if (total_weight < 1e-5) {
+    if (total_weight < 1.0) {
         // no foot is in contact with ground, do something to nv
-        noise_diag.diagonal()[33] = 9999;
-        noise_diag.diagonal()[34] = 9999;
-        noise_diag.diagonal()[35] = 9999;
+        noise_diag.diagonal()[33] = 99999;
+        noise_diag.diagonal()[34] = 99999;
+        noise_diag.diagonal()[35] = 99999;
+        vm.setZero(); 
+        vmp1.setZero();  
     } else {
         vm /= total_weight; 
         vmp1 /= total_weight; 
-        noise_diag.diagonal()[33] = LBV_N*(NUM_OF_LEG-total_weight)+0.000001;
-        noise_diag.diagonal()[34] = LBV_N*(NUM_OF_LEG-total_weight)+0.000001;
-        noise_diag.diagonal()[35] = LBV_N*(NUM_OF_LEG-total_weight)+0.000001;
+        noise_diag.diagonal()[33] = LBV_N;
+        noise_diag.diagonal()[34] = LBV_N;
+        noise_diag.diagonal()[35] = LBV_N;
     }
 
     // propagate epsilon
@@ -304,10 +320,13 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     Vector3d un_v_1 = result_delta_q * (vmp1 - linearized_bv);
     Vector3d un_v = 0.5 * (un_v_0 + un_v_1);
     result_delta_epsilon = delta_epsilon + un_v * _dt;
+    // problem: delta_epsilon is very large
 
     result_linearized_ba = linearized_ba;
     result_linearized_bg = linearized_bg;
     result_linearized_bv = linearized_bv;
+    result_linearized_rho = linearized_rho;
+
 
 //     // design a new uncertainty function
 

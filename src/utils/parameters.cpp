@@ -142,26 +142,13 @@ void readParameters(std::string config_file)
 
         PHI_N = fsSettings["joint_angle_n"];
         DPHI_N = fsSettings["joint_velocity_n"];
-        RHO_XY_N = fsSettings["leg_bias_xy_n"];
-        RHO_Z_N = fsSettings["leg_bias_z_n"];
 
-        LBV_N = 0.5; 
-        LBV_W = 0.1; 
-        RHO_N = 0.01; 
+        LBV_N = fsSettings["leg_odom_noise"];
+        LBV_W = fsSettings["velocity_bias_random_walk"];
+        RHO_N = fsSettings["leg_legnth_random_walk"]; 
 
         V_N_FORCE_THRES_RATIO = fsSettings["v_n_force_thres_ratio"];
-        V_N_MIN = fsSettings["v_n_min"];
-        V_N_MAX = fsSettings["v_n_max"];
-        V_N_W1 = fsSettings["v_n_w1"];
-        V_N_W2 = fsSettings["v_n_w2"];
-        V_N_W3 = fsSettings["v_n_w3"];
         V_N_TERM1_STEEP = fsSettings["v_n_term1_steep"];
-        V_N_TERM2_BOUND_FORCE = fsSettings["v_n_term2_bound_force"];
-        V_N_TERM2_VAR_RESCALE = fsSettings["v_n_term2_var_rescale"];
-        V_N_TERM3_VEL_DIFF_XY = fsSettings["v_n_term3_vel_diff_xy"];
-        V_N_TERM3_VEL_DIFF_Z = fsSettings["v_n_term3_vel_diff_z"];
-        V_N_TERM3_DISTANCE_RESCALE = fsSettings["v_n_term3_distance_rescale"];
-        V_N_FINAL_RATIO = fsSettings["v_n_final_ratio"];
 
         LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];
     }

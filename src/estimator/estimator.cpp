@@ -52,10 +52,6 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho2[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho3[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho4[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
         Bvs[i].setZero();
 
         dt_buf[i].clear();
@@ -117,8 +113,9 @@ void Estimator::clearState() {
         gyro_filters.push_back(MovingWindowFilter(10));
     }
     for (int i = 0; i < 12; i++) {
-        joint_ang_filters.push_back(MovingWindowFilter(6));
-        joint_vel_filters.push_back(MovingWindowFilter(6));
+        joint_ang_filters.push_back(MovingWindowFilter(10));
+        joint_vel_filters.push_back(MovingWindowFilter(10));
+        foot_force_filters.push_back(MovingWindowFilter(30));
     }
 
     mProcess.unlock();
@@ -157,7 +154,7 @@ void Estimator::setParameter()
     leg_offset_y[0] = 0.047;  leg_offset_y[1] = -0.047;  leg_offset_y[2] = 0.047;   leg_offset_y[3] = -0.047;
     motor_offset[0] = 0.0838; motor_offset[1] = -0.0838; motor_offset[2] = 0.0838;  motor_offset[3] = -0.0838;
     upper_leg_length[0] = upper_leg_length[1] = upper_leg_length[2] = upper_leg_length[3] = 0.21;
-    lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = LOWER_LEG_LENGTH;
+    lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = 0.21;
 
     for (int i = 0; i < NUM_OF_LEG; i++) {
         Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i];
@@ -165,6 +162,14 @@ void Estimator::setParameter()
 
         Eigen::VectorXd rho_opt(RHO_OPT_SIZE); rho_opt << LOWER_LEG_LENGTH;
         rho_opt_list.push_back(rho_opt);        
+    }
+
+    for (int i = 0; i < WINDOW_SIZE + 1; i++)
+    {
+        Rho1[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho2[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho3[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho4[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
     }
 
     mProcess.unlock();
@@ -286,16 +291,19 @@ void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngle
     if (leg_msg_counter % 2 == 0) {
         Vector12d filtered_jointAngles;
         Vector12d filtered_jointVels;
+        Vector12d filtered_footForces;
 
         for (int i = 0; i < 12; i++) {
             filtered_jointAngles[i] = joint_ang_filters[i].CalculateAverage(jointAngles[i]);
             filtered_jointVels[i] = joint_vel_filters[i].CalculateAverage(jointVels[i]);
+            filtered_footForces[i] = foot_force_filters[i].CalculateAverage(footForces[i]);
+            
         }
 
         legAngBufList.push_back(make_pair(t, filtered_jointAngles));
         legAngVelBufList.push_back(make_pair(t, filtered_jointVels));
 
-        footForceBufList.push_back(make_pair(t, footForces));
+        footForceBufList.push_back(make_pair(t, filtered_footForces));
     }
 //    std::cout << "input foot force" << footForces.transpose() << std::endl;
 //    printf("input leg joint state and foot force with time %f \n", t);
@@ -594,38 +602,37 @@ void Estimator::processMeasurements()
                 }
 
                 // calculate leg odometry as a comparison to ground truth
-//                std::vector<Eigen::Vector3d> fi,fi_correct;
-//                std::vector<Eigen::Matrix3d> Ji,Ji_correct;
-//                std::vector<Eigen::Vector3d> vi,vi_correct;
-//                std::vector<double> vel_weight;
-//                Vector3d w_0_x = gyrVector[0].second - Bgs[frame_count];
-//                Matrix3d R_w_0_x;
-//                R_w_0_x<<0, -w_0_x(2), w_0_x(1),
-//                        w_0_x(2), 0, -w_0_x(0),
-//                        -w_0_x(1), w_0_x(0), 0;
-//                for (int j = 0; j < NUM_OF_LEG; j++) {
-//                    fi.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(3 * j), Eigen::Vector3d::Zero(),
-//                                           rho_fix_list[j]));
-//                    // calculate jacobian of each leg
-//                    Ji.push_back(
-//                            a1_kin.jac(jointAngVector[0].second.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
-//
-//                    // calculate vm
-//                    vi.push_back(-R_br * Ji[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
-//                    // see which leg is on the groud by looking at the foot contact flag calculated in il_pre_integrations[frame_count]
-//                    vel_weight.push_back(
-//                                il_pre_integrations[frame_count]->foot_contact_flag[j]
-//                            );
-//                    foot_contact_flag[j] = il_pre_integrations[frame_count]->foot_contact_flag[j];
-//                }
-//                double total_vel_weight = 0;
-//                for (int j = 0; j < NUM_OF_LEG; j++) total_vel_weight += vel_weight[j];
-//                lo_velocity.setZero();
-//                for (int j = 0; j < NUM_OF_LEG; j++) {
-//                    lo_velocity += vel_weight[j]*Rs[frame_count]*vi[j];
-//                    lo_velocity_each_leg.segment<3>(3 * j) = Rs[frame_count]*vi[j];
-//                }
-//                lo_velocity /= total_vel_weight;
+               std::vector<Eigen::Vector3d> fi,fi_correct;
+               std::vector<Eigen::Matrix3d> Ji,Ji_correct;
+               std::vector<Eigen::Vector3d> vi,vi_correct;
+               std::vector<double> vel_weight;
+               Vector3d w_0_x = gyrVector[0].second - Bgs[frame_count];
+               Matrix3d R_w_0_x;
+               R_w_0_x<<0, -w_0_x(2), w_0_x(1),
+                       w_0_x(2), 0, -w_0_x(0),
+                       -w_0_x(1), w_0_x(0), 0;
+               for (int j = 0; j < NUM_OF_LEG; j++) {
+                   fi.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(3 * j), rho_opt_list[j],
+                                          rho_fix_list[j]));
+                   // calculate jacobian of each leg
+                   Ji.push_back(
+                           a1_kin.jac(jointAngVector[0].second.segment<3>(3 * j), rho_opt_list[j], rho_fix_list[j]));
+
+                   // calculate vm
+                   vi.push_back(-R_br * Ji[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
+                   // see which leg is on the groud by looking at the foot contact flag calculated in il_pre_integrations[frame_count]
+                   vel_weight.push_back(
+                               il_pre_integrations[frame_count]->foot_contact_flag[j]
+                           );
+                   foot_contact_flag[j] = il_pre_integrations[frame_count]->foot_contact_flag[j];
+               }
+               double total_vel_weight = 0;
+               for (int j = 0; j < NUM_OF_LEG; j++) total_vel_weight += vel_weight[j];
+               lo_velocity.setZero();
+               for (int j = 0; j < NUM_OF_LEG; j++) {
+                   lo_velocity += vel_weight[j]*Rs[frame_count]*vi[j];
+               }
+               lo_velocity /= total_vel_weight;
 //
 //
 //                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(0), Rho1[frame_count],
@@ -661,7 +668,13 @@ void Estimator::processMeasurements()
 ////                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
 //                }
                 // this is in world frame 
-                // lo_velocity_with_bias = il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
+                std::cout << "total delta_p" << endl;
+                std::cout << il_pre_integrations[frame_count] -> delta_p << endl;
+                std::cout << "total delta_epsilon" << endl;
+                std::cout << il_pre_integrations[frame_count] -> delta_epsilon << endl;
+                std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
+                lo_velocity_with_bias = il_pre_integrations[frame_count] -> delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
+            
             }
             else if(USE_IMU)
             {

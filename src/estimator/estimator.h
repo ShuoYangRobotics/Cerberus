@@ -176,6 +176,7 @@ public:
 
     vector<MovingWindowFilter> joint_ang_filters;
     vector<MovingWindowFilter> joint_vel_filters;
+    vector<MovingWindowFilter> foot_force_filters;
     int leg_msg_counter;
 
 
