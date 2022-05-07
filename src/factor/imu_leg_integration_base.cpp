@@ -11,7 +11,11 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
                                              std::vector<Eigen::VectorXd> _rho_fix_list, const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br)
         : acc_0{_acc_0}, gyr_0{_gyr_0}, linearized_acc{_acc_0}, linearized_gyr{_gyr_0},
           linearized_ba{_linearized_ba}, linearized_bg{_linearized_bg}, linearized_bv{_linearized_bv},
-          sum_dt{0.0}, delta_p{Eigen::Vector3d::Zero()}, delta_q{Eigen::Quaterniond::Identity()}, delta_v{Eigen::Vector3d::Zero()}
+          sum_dt{0.0}, 
+          delta_p{Eigen::Vector3d::Zero()}, 
+          delta_q{Eigen::Quaterniond::Identity()}, 
+          delta_v{Eigen::Vector3d::Zero()}, 
+          delta_epsilon{Eigen::Vector3d::Zero()}  //<-- forgot to set this to zero, it seems delta_epsilon is kept the same nonzero value if not explicitly initialize
 {
     jacobian.setIdentity();
     covariance.setZero();
@@ -227,12 +231,12 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
         foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
 
-        // // get z force variance
-        // foot_force_window_idx[j] ++;
-        // foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
-        // foot_force_window(j, foot_force_window_idx[j]) = force_mag;
-        // Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
-        // foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
+        // get z force variance
+        foot_force_window_idx[j] ++;
+        foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
+        foot_force_window(j, foot_force_window_idx[j]) = force_mag;
+        Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
+        foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
 
         // if (foot_contact_flag[j] < 0.5) {
         //     integration_contact_flag[j] = false;
@@ -254,17 +258,17 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     // get velocity measurement
     for (int j = 0; j < NUM_OF_LEG; j++) {
         // calculate fk of each leg
-        // gj[j] = a1_kin.fk(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
-        // gjp1[j] = a1_kin.fk(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
-        // // calculate jacobian of each leg
-        // dgdphi_j[j] = a1_kin.jac(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
-        // dgdphi_jp1[j] = a1_kin.jac(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
-        VectorXd test(1); test << 0.21;
-        gj[j] = a1_kin.fk(_phi_0.segment<3>(3 * j), test, rho_fix_list[j]);
-        gjp1[j] = a1_kin.fk(_phi_1.segment<3>(3 * j), test, rho_fix_list[j]);
+        gj[j] = a1_kin.fk(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        gjp1[j] = a1_kin.fk(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
         // calculate jacobian of each leg
-        dgdphi_j[j] = a1_kin.jac(_phi_0.segment<3>(3 * j), test, rho_fix_list[j]);
-        dgdphi_jp1[j] = a1_kin.jac(_phi_1.segment<3>(3 * j), test, rho_fix_list[j]);
+        dgdphi_j[j] = a1_kin.jac(_phi_0.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        dgdphi_jp1[j] = a1_kin.jac(_phi_1.segment<3>(3 * j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE * j), rho_fix_list[j]);
+        // VectorXd test(1); test << 0.21;
+        // gj[j] = a1_kin.fk(_phi_0.segment<3>(3 * j), test, rho_fix_list[j]);
+        // gjp1[j] = a1_kin.fk(_phi_1.segment<3>(3 * j), test, rho_fix_list[j]);
+        // // calculate jacobian of each leg
+        // dgdphi_j[j] = a1_kin.jac(_phi_0.segment<3>(3 * j), test, rho_fix_list[j]);
+        // dgdphi_jp1[j] = a1_kin.jac(_phi_1.segment<3>(3 * j), test, rho_fix_list[j]);
 
         gbj[j] = p_br + R_br * gj[j];
         gbjp1[j] = p_br + R_br * gjp1[j];
@@ -320,7 +324,6 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     Vector3d un_v_1 = result_delta_q * (vmp1 - linearized_bv);
     Vector3d un_v = 0.5 * (un_v_0 + un_v_1);
     result_delta_epsilon = delta_epsilon + un_v * _dt;
-    // problem: delta_epsilon is very large
 
     result_linearized_ba = linearized_ba;
     result_linearized_bg = linearized_bg;
@@ -360,10 +363,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //     }
 // //    std::cout << uncertainties.transpose() << std::endl;
 
-//     Vector4d rho_uncertainty;
-//     for (int j = 0; j < NUM_OF_LEG; j++) {
-//         rho_uncertainty[j] = 5 * foot_contact_flag[j] + 0.001;
-//     }
+    // Vector4d rho_uncertainty;
+    // for (int j = 0; j < NUM_OF_LEG; j++) {
+    //     noise_diag.diagonal()[36+j] = 0.1 * foot_contact_flag[j] + RHO_N;
+    // }
 
 //     // use uncertainty to combine LO velocity
 //     Vector3d average_delta_epsilon; average_delta_epsilon.setZero();

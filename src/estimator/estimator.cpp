@@ -668,11 +668,11 @@ void Estimator::processMeasurements()
 ////                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
 //                }
                 // this is in world frame 
-                std::cout << "total delta_p" << endl;
-                std::cout << il_pre_integrations[frame_count] -> delta_p << endl;
-                std::cout << "total delta_epsilon" << endl;
-                std::cout << il_pre_integrations[frame_count] -> delta_epsilon << endl;
-                std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
+                // std::cout << "total delta_p" << endl;
+                // std::cout << il_pre_integrations[frame_count] -> delta_p << endl;
+                // std::cout << "total delta_epsilon" << endl;
+                // std::cout << il_pre_integrations[frame_count] -> delta_epsilon << endl;
+                // std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
                 lo_velocity_with_bias = il_pre_integrations[frame_count] -> delta_epsilon/il_pre_integrations[frame_count]->sum_dt;
             
             }
