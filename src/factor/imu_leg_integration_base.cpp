@@ -273,7 +273,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        rho_uncertainty[j] = 5 * foot_contact_flag[j] + 0.001;
+        rho_uncertainty[j] = 0.001 * foot_contact_flag[j] + 0.00001;
     }
 
     // use uncertainty to combine LO velocity

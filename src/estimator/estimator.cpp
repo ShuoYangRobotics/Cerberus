@@ -112,8 +112,8 @@ void Estimator::clearState() {
 
     // init the filters for processing input sensor data
     for (int i = 0; i < 3; i++) {
-        acc_filters.push_back(MovingWindowFilter(10));
-        gyro_filters.push_back(MovingWindowFilter(10));
+        acc_filters.push_back(MovingWindowFilter(5));
+        gyro_filters.push_back(MovingWindowFilter(5));
     }
     for (int i = 0; i < 12; i++) {
         joint_ang_filters.push_back(MovingWindowFilter(6));
@@ -279,7 +279,7 @@ void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngle
     mBuf.lock();
     leg_msg_counter ++;
 
-    if (leg_msg_counter % 2 == 0) {
+//    if (leg_msg_counter % 2 == 0) {
         Vector12d filtered_jointAngles;
         Vector12d filtered_jointVels;
 
@@ -288,11 +288,11 @@ void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngle
             filtered_jointVels[i] = joint_vel_filters[i].CalculateAverage(jointVels[i]);
         }
 
-        legAngBufList.push_back(make_pair(t, filtered_jointAngles));
-        legAngVelBufList.push_back(make_pair(t, filtered_jointVels));
+        legAngBufList.push_back(make_pair(t, jointAngles));
+        legAngVelBufList.push_back(make_pair(t, jointVels));
 
         footForceBufList.push_back(make_pair(t, footForces));
-    }
+//    }
 //    std::cout << "input foot force" << footForces.transpose() << std::endl;
 //    printf("input leg joint state and foot force with time %f \n", t);
     mBuf.unlock();
