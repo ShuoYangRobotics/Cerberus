@@ -52,10 +52,6 @@ void Estimator::clearState() {
         Vs[i].setZero();
         Bas[i].setZero();
         Bgs[i].setZero();
-        Rho1[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho2[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho3[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho4[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
 
         dt_buf[i].clear();
         linear_acceleration_buf[i].clear();
@@ -161,6 +157,14 @@ void Estimator::setParameter()
     for (int i = 0; i < NUM_OF_LEG; i++) {
         Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i];
         rho_fix_list.push_back(rho_fix);
+    }
+
+    for (int i = 0; i < WINDOW_SIZE + 1; i++)
+    {
+        Rho1[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho2[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho3[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho4[i] = LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
     }
 
     mProcess.unlock();
