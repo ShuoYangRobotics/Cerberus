@@ -2,8 +2,8 @@
 // Created by shuoy on 8/10/21.
 //
 
-#ifndef VILEOM_A1KINEMATICS_H
-#define VILEOM_A1KINEMATICS_H
+#ifndef VILO_A1KINEMATICS_H
+#define VILO_A1KINEMATICS_H
 
 #include <eigen3/Eigen/Dense>
 #include "../utils/parameters.h"
@@ -37,4 +37,4 @@ class A1Kinematics {
 };
 
 
-#endif //VILEOM_A1KINEMATICS_H
+#endif //VILO_A1KINEMATICS_H

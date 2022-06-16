@@ -2,8 +2,8 @@
 // Created by shuoy on 8/23/21.
 //
 
-#ifndef VILEOM_IMU_LEG_FACTOR_H
-#define VILEOM_IMU_LEG_FACTOR_H
+#ifndef VILO_IMU_LEG_FACTOR_H
+#define VILO_IMU_LEG_FACTOR_H
 #include <ros/assert.h>
 #include <iostream>
 #include <eigen3/Eigen/Dense>
@@ -24,4 +24,4 @@ public:
     void checkJacobian(double const *const *parameters);
     IMULegIntegrationBase *il_pre_integration;
 };
-#endif //VILEOM_IMU_LEG_FACTOR_H
+#endif //VILO_IMU_LEG_FACTOR_H

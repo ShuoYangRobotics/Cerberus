@@ -211,12 +211,12 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /vileom/path
+          Topic: /vilo/path
           Unreliable: false
           Value: true
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /vileom/camera_pose_visual
+          Marker Topic: /vilo/camera_pose_visual
           Name: CameraMarker
           Namespaces:
             {}
@@ -247,7 +247,7 @@ Visualization Manager:
           Size (Pixels): 2
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /vileom/point_cloud
+          Topic: /vilo/point_cloud
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -277,7 +277,7 @@ Visualization Manager:
           Size (Pixels): 1
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /vileom/margin_cloud
+          Topic: /vilo/margin_cloud
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true

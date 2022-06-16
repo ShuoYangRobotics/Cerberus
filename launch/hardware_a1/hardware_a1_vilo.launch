@@ -3,9 +3,9 @@
 <launch>
 
     <!-- VINS config -->
-    <param name="vileom_config_file" type="string" value="$(find a1_launch)/config/hardware_a1_vilo_config.yaml" />
+    <param name="vilo_config_file" type="string" value="$(find a1_launch)/config/hardware_a1_vilo_config.yaml" />
     
-    <node name="vileom" pkg="vileom" type="vileom_feature_track_test"
+    <node name="vilo" pkg="vilo" type="vilo_feature_track_test"
             args="$(find a1_launch)/config/hardware_a1_vilo_config.yaml" output="screen"/>
     <!-- <node name="vinsloopfusion" pkg="loop_fusion" type="loop_fusion_node"
             args="$(find a1_launch)/config/hardware_a1_vilo_config.yaml" /> -->
