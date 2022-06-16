@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>vileom</name>
+  <name>vilo</name>
   <version>0.0.0</version>
   <description>The visual inertial leg odometry package</description>
 
