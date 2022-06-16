@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(vileom)
+project(vilo)
 
 set(CMAKE_BUILD_TYPE "Release")
 #set(CMAKE_BUILD_TYPE "Debug")
@@ -38,7 +38,7 @@ include_directories(
 
 catkin_package()
 
-add_library(vileom_lib
+add_library(vilo_lib
     src/estimator/estimator.cpp
     src/featureTracker/feature_tracker.cpp
     src/featureTracker/feature_manager.cpp
@@ -61,11 +61,11 @@ add_library(vileom_lib
     src/initial/initial_sfm.cpp
     src/initial/initial_ex_rotation.cpp
         src/factor/imu_leg_factor.cpp src/factor/imu_leg_factor.h src/factor/imu_leg_integration_base.cpp src/factor/imu_leg_integration_base.h)
-target_link_libraries(vileom_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
+target_link_libraries(vilo_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
 
 # this is actually the main function, not just the test...
-add_executable(vileom_feature_track_test src/feature_track_test.cpp )
-target_link_libraries(vileom_feature_track_test vileom_lib)
+add_executable(vilo_feature_track_test src/feature_track_test.cpp )
+target_link_libraries(vilo_feature_track_test vilo_lib)
 
 
 add_executable(ceres_test src/test/ceres_test.cpp src/legKinematics/A1Kinematics.cpp)

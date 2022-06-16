@@ -1,0 +1,6 @@
+<launch>
+    <include file="$(find a1_launch)/launch/hardware_a1/hardware_a1_vilo.launch" />
+
+    <include file="$(find a1_launch)/launch/hardware_a1/hardware_a1_vilo_rviz.launch" />
+
+</launch>

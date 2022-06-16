@@ -1,0 +1,7 @@
+<launch>
+
+    <node name="a1_visualizer" pkg="a1_visualizer" type="hardware_a1_visualizer" output= "screen"/>
+
+
+    <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find a1_launch)/config/rviz/vilo_rviz_config.rviz" />
+</launch>

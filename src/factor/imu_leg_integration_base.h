@@ -2,8 +2,8 @@
 // Created by shuoy on 8/23/21.
 //
 
-#ifndef VILEOM_IMU_LEG_INTEGRATION_BASE_H
-#define VILEOM_IMU_LEG_INTEGRATION_BASE_H
+#ifndef VILO_IMU_LEG_INTEGRATION_BASE_H
+#define VILO_IMU_LEG_INTEGRATION_BASE_H
 #include<algorithm>
 #include<cmath>
 
@@ -134,4 +134,4 @@ private:
 };
 
 
-#endif //VILEOM_IMU_LEG_INTEGRATION_BASE_H
+#endif //VILO_IMU_LEG_INTEGRATION_BASE_H

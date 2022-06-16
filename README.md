@@ -1,4 +1,4 @@
-This ROS package contains a visual-inertial-leg odometry (VILO) for Unitree A1 robot. The package name is currently called vileom, which is an obsolete name, which will be revised in later versions. 
+This ROS package contains a visual-inertial-leg odometry (VILO) for Unitree A1 robot. 
 
 Our goal is to achieve low-cost minimum sensing on legged robots (sensing suites only has one IMU, one stereo camera, leg joint sensors. Total cost <$1000).
 
@@ -10,23 +10,10 @@ Here are two videos comparing the performance of the VILO and the VINS-Fusion:
 [![video2](https://img.youtube.com/vi/oNwwQ0l-O4U/0.jpg)](https://www.youtube.com/watch?v=oNwwQ0l-O4U)
 
 
-The package is only tested in Ubuntu 18.04 and ROS melodic. 
 
 ## Installation
-Please follow VINS-Fusion's installation guide. 
+use VScode docker container 
 
-
-This package must also working together with 
-
-https://github.com/paulyang1990/A1_visualizer
-
-and
-
-https://github.com/paulyang1990/a1_launch
-
-The A1_visualizer has its own dependencies. A1_launch is just a collection of launch files. Download these two packages (and their dependencies) and compile them together with the VILO (vileom).
-
-The A1_launch contains scripts to run the VILO. And the VILO uses A1_visualizer to visualize the estimation results. 
 
 ## Dataset
 A Google drive folder https://drive.google.com/drive/folders/13GsFDaBkDrslOl9BfE4AJnOn3ECDXVnc

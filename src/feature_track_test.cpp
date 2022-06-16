@@ -151,7 +151,7 @@ void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 }
 
 // the construction of this function should depends on the format of the input topic
-// here we use A1 robot from unitree so the message here is a unitree_legged_msgs
+// here we use A1 robot from unitree so the message here is a JointState
 double prev_t = -1.0;
 Vector12d prev_joint_positions;
 
@@ -170,7 +170,6 @@ void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
         joint_positions(3*i+0) = a1_state -> position[3*i+0];
         joint_positions(3*i+1) = a1_state -> position[3*i+1];
         joint_positions(3*i+2) = a1_state -> position[3*i+2];
-        // the joint velocity from Isaac Sim is very wrong
 
         //get dt
         double dt = 0;
@@ -306,14 +305,14 @@ void gt_callback(const nav_msgs::OdometryConstPtr &gt_msg) {
 }
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "vileom");
+    ros::init(argc, argv, "vilo");
     ros::NodeHandle n("~");
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
     if(argc != 2)
     {
-        printf("please intput: rosrun vileom vileom_feature_track_test [config file] \n"
-               "for example: rosrun vileom vileom_feature_track_test "
+        printf("please intput: rosrun vilo vilo_feature_track_test [config file] \n"
+               "for example: rosrun vilo vilo_feature_track_test "
                "~/catkin_ws/src/VINS-Fusion/config/euroc/euroc_stereo_imu_config.yaml \n");
         return 1;
     }

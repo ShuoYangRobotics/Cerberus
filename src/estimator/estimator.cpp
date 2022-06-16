@@ -404,7 +404,7 @@ bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
             gyrBuf.pop();
         }
         // leave at least one element in legAngBufList, if IMU topic and the leg topic are very fast, this will sometimes result in less accurate leg measurement
-        while (legAngBufList.size() > 1 && legAngBufList.front().first < t0)
+        while (legAngBufList.size() > 1 && legAngBufList.front().first <= t0)
         {
             legAngBufList.pop_front();
             legAngVelBufList.pop_front();
