@@ -1,5 +1,6 @@
 FROM ros:melodic-perception
 
+
 ENV CERES_VERSION="1.14.0"
 ENV CATKIN_WS=/root/vins_ws
 
@@ -39,3 +40,8 @@ RUN git clone https://github.com/HKUST-Aerial-Robotics/VINS-Fusion.git
 WORKDIR $CATKIN_WS
 RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash; catkin build; source ${CATKIN_WS}/devel/setup.bash; catkin build"
 RUN echo "source ${CATKIN_WS}/devel/setup.bash" >> /root/.bashrc
+
+
+# change timezone (this is very important otherwise many ROS topic time will be strange)
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
