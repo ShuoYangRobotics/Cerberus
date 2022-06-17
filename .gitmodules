@@ -1,0 +1,6 @@
+[submodule "kalmanFilter"]
+	path = kalmanFilter
+	url = git submodule add git@github.com:ShuoYangRobotics/legged-kalman-filter.git src/kalmanFilter
+[submodule "src/kalmanFilter"]
+	path = src/kalmanFilter
+	url = git@github.com:ShuoYangRobotics/legged-kalman-filter.git

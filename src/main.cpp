@@ -243,66 +243,66 @@ void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
     return;
 }
 
-void imu_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-{
-    if (switch_msg->data == true)
-    {
-        //ROS_WARN("use IMU!");
-        estimator.changeSensorType(1, STEREO);
-    }
-    else
-    {
-        //ROS_WARN("disable IMU!");
-        estimator.changeSensorType(0, STEREO);
-    }
-    return;
-}
+// void imu_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
+// {
+//     if (switch_msg->data == true)
+//     {
+//         //ROS_WARN("use IMU!");
+//         estimator.changeSensorType(1, STEREO);
+//     }
+//     else
+//     {
+//         //ROS_WARN("disable IMU!");
+//         estimator.changeSensorType(0, STEREO);
+//     }
+//     return;
+// }
 
-void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-{
-    if (switch_msg->data == true)
-    {
-        //ROS_WARN("use stereo!");
-        estimator.changeSensorType(USE_IMU, 1);
-    }
-    else
-    {
-        //ROS_WARN("use mono camera (left)!");
-        estimator.changeSensorType(USE_IMU, 0);
-    }
-    return;
-}
+// void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
+// {
+//     if (switch_msg->data == true)
+//     {
+//         //ROS_WARN("use stereo!");
+//         estimator.changeSensorType(USE_IMU, 1);
+//     }
+//     else
+//     {
+//         //ROS_WARN("use mono camera (left)!");
+//         estimator.changeSensorType(USE_IMU, 0);
+//     }
+//     return;
+// }
 
 // ground truth call back
-void mocap_callback(const geometry_msgs::PoseStampedConstPtr &gt_msg) {
-    Eigen::Vector3d position(gt_msg->pose.position.x,
-                             gt_msg->pose.position.y,
-                             gt_msg->pose.position.z);
-    Eigen::Quaterniond orientation(gt_msg->pose.orientation.w,
-                                   gt_msg->pose.orientation.x,
-                                   gt_msg->pose.orientation.y,
-                                   gt_msg->pose.orientation.z);
-    Eigen::Vector3d velocity(0,
-                             0,
-                             0);
-    estimator.receiveGroundTruthData(position, orientation, velocity);
 
-}
+// void mocap_callback(const geometry_msgs::PoseStampedConstPtr &gt_msg) {
+//     Eigen::Vector3d position(gt_msg->pose.position.x,
+//                              gt_msg->pose.position.y,
+//                              gt_msg->pose.position.z);
+//     Eigen::Quaterniond orientation(gt_msg->pose.orientation.w,
+//                                    gt_msg->pose.orientation.x,
+//                                    gt_msg->pose.orientation.y,
+//                                    gt_msg->pose.orientation.z);
+//     Eigen::Vector3d velocity(0,
+//                              0,
+//                              0);
+//     estimator.receiveGroundTruthData(position, orientation, velocity);
+// }
 
-void gt_callback(const nav_msgs::OdometryConstPtr &gt_msg) {
-    Eigen::Vector3d position(gt_msg->pose.pose.position.x,
-                             gt_msg->pose.pose.position.y,
-                             gt_msg->pose.pose.position.z);
-    Eigen::Quaterniond orientation(gt_msg->pose.pose.orientation.w,
-                                   gt_msg->pose.pose.orientation.x,
-                                   gt_msg->pose.pose.orientation.y,
-                                   gt_msg->pose.pose.orientation.z);
-    Eigen::Vector3d velocity(0,
-                             0,
-                             0);
-    estimator.receiveGroundTruthData(position, orientation, velocity);
+// void gt_callback(const nav_msgs::OdometryConstPtr &gt_msg) {
+//     Eigen::Vector3d position(gt_msg->pose.pose.position.x,
+//                              gt_msg->pose.pose.position.y,
+//                              gt_msg->pose.pose.position.z);
+//     Eigen::Quaterniond orientation(gt_msg->pose.pose.orientation.w,
+//                                    gt_msg->pose.pose.orientation.x,
+//                                    gt_msg->pose.pose.orientation.y,
+//                                    gt_msg->pose.pose.orientation.z);
+//     Eigen::Vector3d velocity(0,
+//                              0,
+//                              0);
+//     estimator.receiveGroundTruthData(position, orientation, velocity);
 
-}
+// }
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vilo");
@@ -322,8 +322,6 @@ int main(int argc, char **argv)
 
     readParameters(config_file);
     estimator.setParameter();
-    // to initialize data structure
-//    estimator.clearState();
 
 #ifdef EIGEN_DONT_PARALLELIZE
     ROS_DEBUG("EIGEN_DONT_PARALLELIZE");
@@ -333,20 +331,20 @@ int main(int argc, char **argv)
 
     registerPub(n);
 
-    ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
     ros::Subscriber sub_feature = n.subscribe("/feature_tracker/feature", 2000, feature_callback);
     ros::Subscriber sub_img0 = n.subscribe(IMAGE0_TOPIC, 100, img0_callback);
     ros::Subscriber sub_img1 = n.subscribe(IMAGE1_TOPIC, 100, img1_callback);
     ros::Subscriber sub_restart = n.subscribe("/vins_restart", 100, restart_callback);
-    ros::Subscriber sub_imu_switch = n.subscribe("/vins_imu_switch", 100, imu_switch_callback);
-    ros::Subscriber sub_cam_switch = n.subscribe("/vins_cam_switch", 100, cam_switch_callback);
+    // ros::Subscriber sub_imu_switch = n.subscribe("/vins_imu_switch", 100, imu_switch_callback);
+    // ros::Subscriber sub_cam_switch = n.subscribe("/vins_cam_switch", 100, cam_switch_callback);
 
-    // the robot must publish a message with type sensor_msgs::JointState
+    // sync IMU and leg
+    ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
     ros::Subscriber sub_leg_msg = n.subscribe(LEG_TOPIC, 100, leg_state_callback);
 
-    // receive mocap pose
-    ros::Subscriber sub_mocap_msg = n.subscribe("/mocap_node/mocap/pose", 100, mocap_callback);
-    ros::Subscriber sub_isaac_gt_msg = n.subscribe("/isaac_a1/gt_body_pose", 100, gt_callback);
+    // receive mocap pose 
+    // ros::Subscriber sub_mocap_msg = n.subscribe("/mocap_node/mocap/pose", 100, mocap_callback);
+    // ros::Subscriber sub_isaac_gt_msg = n.subscribe("/isaac_a1/gt_body_pose", 100, gt_callback);
 
     std::thread sync_thread{sync_process};
     ros::spin();

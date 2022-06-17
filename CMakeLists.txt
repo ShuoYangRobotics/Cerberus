@@ -65,9 +65,8 @@ add_library(vilo_lib
 
 target_link_libraries(vilo_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
 
-# this is actually the main function, not just the test...
-add_executable(vilo_feature_track_test src/feature_track_test.cpp )
-target_link_libraries(vilo_feature_track_test vilo_lib)
+add_executable(vilo src/main.cpp )
+target_link_libraries(vilo vilo_lib)
 
 
 add_executable(ceres_test src/test/ceres_test.cpp src/legKinematics/A1Kinematics.cpp)
