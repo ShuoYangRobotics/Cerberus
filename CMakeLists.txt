@@ -60,7 +60,9 @@ add_library(vilo_lib
     src/initial/initial_aligment.cpp
     src/initial/initial_sfm.cpp
     src/initial/initial_ex_rotation.cpp
-        src/factor/imu_leg_factor.cpp src/factor/imu_leg_factor.h src/factor/imu_leg_integration_base.cpp src/factor/imu_leg_integration_base.h)
+    src/factor/imu_leg_factor.cpp src/factor/imu_leg_factor.h src/factor/imu_leg_integration_base.cpp src/factor/imu_leg_integration_base.h
+)
+
 target_link_libraries(vilo_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
 
 # this is actually the main function, not just the test...

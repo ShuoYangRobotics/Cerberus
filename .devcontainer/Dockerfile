@@ -45,3 +45,34 @@ RUN echo "source ${CATKIN_WS}/devel/setup.bash" >> /root/.bashrc
 # change timezone (this is very important otherwise many ROS topic time will be strange)
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+
+### run docker as a ssh daemon
+RUN apt-get update \
+  && apt-get install -y ssh 
+RUN touch /etc/ssh/sshd_config_test_clion
+RUN ( \
+    echo 'LogLevel DEBUG2'; \
+    echo 'PermitRootLogin yes'; \
+    echo 'PasswordAuthentication yes'; \
+    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+    echo 'Port 2237'; \
+  ) > /etc/ssh/sshd_config_test_clion \
+  && mkdir /run/sshd
+
+# Change the password 'password' to something more secure
+RUN useradd -m user && yes password | passwd user
+RUN echo 'root:2022quad' | chpasswd
+
+CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
+
+
+# docker build -t a1_vins_image .
+
+# docker run -d \
+# --network host \
+# --cap-add=IPC_LOCK --cap-add=sys_nice \
+# -v /home/shuoyang/Documents/tightly-coupled-visual-inertial-leg-odometry:/root/vins_ws/src/vilo \
+# --device /dev/input \
+# --name a1_vins_container \
+# a1_vins_image
