@@ -64,7 +64,7 @@ double V_N_TERM2_VAR_RESCALE;
 double V_N_TERM3_DISTANCE_RESCALE;
 double V_N_FINAL_RATIO;
 
-double LOWER_LEG_LENGTH;
+double VINS_LOWER_LEG_LENGTH;
 
 int MAX_CNT;
 int MIN_DIST;
@@ -157,7 +157,7 @@ void readParameters(std::string config_file)
         V_N_TERM3_DISTANCE_RESCALE = fsSettings["v_n_term3_distance_rescale"];
         V_N_FINAL_RATIO = fsSettings["v_n_final_ratio"];
 
-        LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];
+        VINS_LOWER_LEG_LENGTH = fsSettings["lower_leg_length"];
     }
 
     SOLVER_TIME = fsSettings["max_solver_time"];
@@ -167,9 +167,9 @@ void readParameters(std::string config_file)
 
     fsSettings["output_path"] >> OUTPUT_FOLDER;
     if (OPTIMIZE_LEG_BIAS) {
-        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + "-lc-" + to_string(LOWER_LEG_LENGTH) + ".csv";
+        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + "-lc-" + to_string(VINS_LOWER_LEG_LENGTH) + ".csv";
     } else {
-        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wob"+ Utility::GetCurrentTimeForFileName() + "-lc-" + to_string(LOWER_LEG_LENGTH) + ".csv";
+        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wob"+ Utility::GetCurrentTimeForFileName() + "-lc-" + to_string(VINS_LOWER_LEG_LENGTH) + ".csv";
     }
     std::cout << "result path " << VINS_RESULT_PATH << std::endl;
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);

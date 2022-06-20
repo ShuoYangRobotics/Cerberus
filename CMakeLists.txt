@@ -35,6 +35,11 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIR}
 )
+# search for casadi in the environment
+find_package(casadi REQUIRED) 
+
+# Find the savitzky golay filter package and all its dependencies 
+find_package(gram_savitzky_golay REQUIRED)
 
 catkin_package()
 
@@ -63,10 +68,19 @@ add_library(vilo_lib
     src/factor/imu_leg_factor.cpp src/factor/imu_leg_factor.h src/factor/imu_leg_integration_base.cpp src/factor/imu_leg_integration_base.h
 )
 
+
+# kf subdirectory
+add_subdirectory(src/kalmanFilter)
+
 target_link_libraries(vilo_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
 
 add_executable(vilo src/main.cpp )
-target_link_libraries(vilo vilo_lib)
+target_link_libraries(vilo 
+    vilo_lib
+    kf_lib
+    casadi
+    gram_savitzky_golay::gram_savitzky_golay
+)
 
 
 add_executable(ceres_test src/test/ceres_test.cpp src/legKinematics/A1Kinematics.cpp)

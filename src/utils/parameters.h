@@ -73,7 +73,7 @@ extern double V_N_TERM2_VAR_RESCALE;
 extern double V_N_TERM3_DISTANCE_RESCALE;
 extern double V_N_FINAL_RATIO;
 
-extern double LOWER_LEG_LENGTH;
+extern double VINS_LOWER_LEG_LENGTH;
 
 extern int MULTIPLE_THREAD;
 // pts_gt for debug purpose;

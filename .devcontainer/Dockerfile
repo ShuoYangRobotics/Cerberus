@@ -47,6 +47,32 @@ ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 
+# casadi 
+
+ENV SUPPORT_WS=/root/support_files
+WORKDIR $SUPPORT_WS
+RUN git clone https://github.com/casadi/casadi.git
+RUN cd ${SUPPORT_WS}/casadi && git checkout tags/3.5.5
+RUN mkdir ${SUPPORT_WS}/casadi/build && cd ${SUPPORT_WS}/casadi/build
+RUN cmake -DWITH_CPLEX=OFF -DWITH_KNITRO=OFF -DWITH_OOQP=OFF -DWITH_SNOPT=OFF ${SUPPORT_WS}/casadi
+RUN make -j8
+RUN make install
+# /usr/local/lib/casadi/
+# /usr/local/include/casadi
+
+# filter for 
+WORKDIR $SUPPORT_WS
+RUN git clone https://github.com/ShuoYangRobotics/gram_savitzky_golay.git
+WORKDIR ${SUPPORT_WS}/gram_savitzky_golay 
+RUN git submodule init
+RUN git submodule update
+RUN mkdir build 
+WORKDIR ${SUPPORT_WS}/gram_savitzky_golay/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release ../
+RUN make 
+RUN make install
+
+
 ### run docker as a ssh daemon
 RUN apt-get update \
   && apt-get install -y ssh 
