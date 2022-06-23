@@ -21,7 +21,6 @@
 #include <eigen3/Eigen/Geometry>
 
 #include "../utils/parameters.h"
-#include "../utils/filter.hpp"
 #include "../featureTracker/feature_manager.h"
 #include "../featureTracker/feature_tracker.h"
 #include "../factor/imu_factor.h"
@@ -48,14 +47,14 @@ public:
     // interface
     void initFirstPose(Eigen::Vector3d p, Eigen::Matrix3d r);
     void inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity);
-    void inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngles, const Eigen::Ref<const Vector12d>& jointVels, const Eigen::Ref<const Vector12d>& footForces);
+    void inputLeg(double t, const Eigen::Ref<const Vector_dof>& jointAngles, const Eigen::Ref<const Vector_dof>& jointVels, const Eigen::Ref<const Vector_leg>& footForces);
     void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame);
     void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity);
     void processIMULeg(double t, double dt,
                        const Vector3d &linear_acceleration, const Vector3d &angular_velocity,
-                       const Ref<const Vector12d> &joint_angle, const Ref<const Vector12d> &joint_velocity,
-                       const Ref<const Vector12d> &foot_contact);
+                       const Ref<const Vector_dof> &joint_angle, const Ref<const Vector_dof> &joint_velocity,
+                       const Ref<const Vector_leg> &foot_contact);
     // // most important function, trigger optimization
     void processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header);
     void processMeasurements();
@@ -76,16 +75,16 @@ public:
     bool failureDetection();
     bool getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector,
                                               vector<pair<double, Eigen::Vector3d>> &gyrVector);
-    bool getIMUAndLegInterval(double t0, double t1, double t_delay,
-                                         vector<pair<double, Eigen::Vector3d>> &accVector,
-                                         vector<pair<double, Eigen::Vector3d>> &gyrVector,
-                                         vector<pair<double, Vector12d>> &jointAngVector,
-                                         vector<pair<double, Vector12d>> &jointVelVector,
-                                         vector<pair<double, Vector12d>> &footForceVector);
+    bool getIMUAndLegInterval(double t0, double t1, 
+                        vector<pair<double, Eigen::Vector3d>> &accVector,
+                        vector<pair<double, Eigen::Vector3d>> &gyrVector,
+                        vector<pair<double, Vector_dof>> &jointAngVector,
+                        vector<pair<double, Vector_dof>> &jointVelVector,
+                        vector<pair<double, Vector_leg>> &contactFlagVector);
 //    bool getLegInterval(double t0, double t1,
 //                                   vector<pair<double, Eigen::VectorXd>> &jointAngVector,
 //                                   vector<pair<double, Eigen::VectorXd>> &jointVelVector,
-//                                   vector<pair<double, Eigen::VectorXd>> &footForceVector);
+//                                   vector<pair<double, Eigen::VectorXd>> &contactFlagVector);
     void getPoseInWorldFrame(Eigen::Matrix4d &T);
     void getPoseInWorldFrame(int index, Eigen::Matrix4d &T);
     void predictPtsInNextFrame();
@@ -119,9 +118,9 @@ public:
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
 
-    deque<pair<double, Vector12d>> legAngBufList;
-    deque<pair<double, Vector12d>> legAngVelBufList;
-    deque<pair<double, Vector12d>> footForceBufList;
+    queue<pair<double, Vector_dof>> legAngBufList;
+    queue<pair<double, Vector_dof>> legAngVelBufList;
+    queue<pair<double, Vector_leg>> contactFlagBufList;
 
     queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
     double prevTime, curTime;
@@ -158,21 +157,16 @@ public:
     IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)];
     IMULegIntegrationBase * il_pre_integrations[(WINDOW_SIZE + 1)];
     Vector3d acc_0, gyr_0;
-    Vector12d phi_0, dphi_0, c_0;
+    Vector_dof phi_0, dphi_0;
+    Vector_leg c_0;
 
     vector<double> dt_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> linear_acceleration_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> angular_velocity_buf[(WINDOW_SIZE + 1)];
-    vector<Vector12d> joint_angle_buf[(WINDOW_SIZE + 1)];
-    vector<Vector12d> joint_velocity_buf[(WINDOW_SIZE + 1)];
-    vector<Vector12d> foot_contact_buf[(WINDOW_SIZE + 1)];
+    vector<Vector_dof> joint_angle_buf[(WINDOW_SIZE + 1)];
+    vector<Vector_dof> joint_velocity_buf[(WINDOW_SIZE + 1)];
+    vector<Vector_leg> foot_contact_buf[(WINDOW_SIZE + 1)];
 
-    // filters to process inputs
-    vector<MovingWindowFilter> acc_filters;
-    vector<MovingWindowFilter> gyro_filters;
-
-    vector<MovingWindowFilter> joint_ang_filters;
-    vector<MovingWindowFilter> joint_vel_filters;
     int leg_msg_counter;
 
 

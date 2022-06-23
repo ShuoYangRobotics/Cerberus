@@ -14,8 +14,13 @@
 // ros related
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
-// unitree message
-// #include <unitree_legged_msgs/LowState.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <ros/console.h>
+#include <sensor_msgs/Imu.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 
 // project related
@@ -23,8 +28,23 @@
 #include "utils/parameters.h"
 #include "utils/visualization.h"
 
+#include "kalmanFilter/A1KFCombineLOWithFoot.h"
+
 // global variables
 Estimator estimator;
+
+// kf for estimating contact 
+// sensor process to filter imu and leg data
+A1SensorData data;
+A1KFCombineLOWithFoot kf;  // Kalman filter Baseline 3 with foot
+double curr_t;
+
+// debug print filtered data
+ros::Publisher filterd_imu_pub;
+ros::Publisher filterd_joint_pub;
+ros::Publisher filterd_pos_pub;
+
+bool first_sensor_received = false;
 
 queue<sensor_msgs::ImuConstPtr> imu_buf;
 queue<sensor_msgs::PointCloudConstPtr> feature_buf;
@@ -134,66 +154,6 @@ void sync_process()
     }
 }
 
-
-void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
-{
-    double t = imu_msg->header.stamp.toSec();
-    double dx = imu_msg->linear_acceleration.x;
-    double dy = imu_msg->linear_acceleration.y;
-    double dz = imu_msg->linear_acceleration.z;
-    double rx = imu_msg->angular_velocity.x;
-    double ry = imu_msg->angular_velocity.y;
-    double rz = imu_msg->angular_velocity.z;
-    Vector3d acc(dx, dy, dz);
-    Vector3d gyr(rx, ry, rz);
-    estimator.inputIMU(t, acc, gyr);
-
-}
-
-// the construction of this function should depends on the format of the input topic
-// here we use A1 robot from unitree so the message here is a JointState
-double prev_t = -1.0;
-Vector12d prev_joint_positions;
-
-void leg_state_callback(const sensor_msgs::JointStateConstPtr& a1_state)
-{
-//     ROS_INFO("received");
-//     TODO: is this time stamp enough? should another "td" be used here to compensate
-    double t = a1_state -> header.stamp.toSec();
-
-
-    Vector12d joint_positions;
-    Vector12d joint_velocities;
-    Vector12d foot_forces;
-    for (int i = 0; i < NUM_OF_LEG; i++)
-    {
-        joint_positions(3*i+0) = a1_state -> position[3*i+0];
-        joint_positions(3*i+1) = a1_state -> position[3*i+1];
-        joint_positions(3*i+2) = a1_state -> position[3*i+2];
-
-        //get dt
-        double dt = 0;
-        if (prev_t == -1) {
-            joint_velocities(3*i+0) = 0.0;
-            joint_velocities(3*i+1) = 0.0;
-            joint_velocities(3*i+2) = 0.0;
-
-        } else {
-            dt = t-prev_t;
-            joint_velocities(3*i+0) = (joint_positions(3*i+0) - prev_joint_positions(3*i+0))/dt;
-            joint_velocities(3*i+1) = (joint_positions(3*i+1) - prev_joint_positions(3*i+1))/dt;
-            joint_velocities(3*i+2) = (joint_positions(3*i+2) - prev_joint_positions(3*i+2))/dt;
-        }
-        foot_forces(3*i+0) = 0.0;
-        foot_forces(3*i+1) = 0.0;
-        foot_forces(3*i+2) = a1_state -> effort[12+i];
-    }
-    estimator.inputLeg(t, joint_positions, joint_velocities, foot_forces);
-    prev_t = t;
-    prev_joint_positions = joint_positions;
-}
-
-
 void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
 {
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> featureFrame;
@@ -243,66 +203,110 @@ void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
     return;
 }
 
-// void imu_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-// {
-//     if (switch_msg->data == true)
-//     {
-//         //ROS_WARN("use IMU!");
-//         estimator.changeSensorType(1, STEREO);
-//     }
-//     else
-//     {
-//         //ROS_WARN("disable IMU!");
-//         estimator.changeSensorType(0, STEREO);
-//     }
-//     return;
-// }
+// we assume IMU and leg have the same timestamp 
+void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msgs::JointState::ConstPtr& joint_msg) {
 
-// void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
-// {
-//     if (switch_msg->data == true)
-//     {
-//         //ROS_WARN("use stereo!");
-//         estimator.changeSensorType(USE_IMU, 1);
-//     }
-//     else
-//     {
-//         //ROS_WARN("use mono camera (left)!");
-//         estimator.changeSensorType(USE_IMU, 0);
-//     }
-//     return;
-// }
+    // std::cout<<"sensor_callback"<<std::endl;
+    double t = imu_msg->header.stamp.toSec();
 
-// ground truth call back
+    // assemble sensor data
+    Eigen::Vector3d acc = Eigen::Vector3d(imu_msg->linear_acceleration.x, imu_msg->linear_acceleration.y, imu_msg->linear_acceleration.z);
+    Eigen::Vector3d ang_vel = Eigen::Vector3d(imu_msg->angular_velocity.x, imu_msg->angular_velocity.y, imu_msg->angular_velocity.z);
 
-// void mocap_callback(const geometry_msgs::PoseStampedConstPtr &gt_msg) {
-//     Eigen::Vector3d position(gt_msg->pose.position.x,
-//                              gt_msg->pose.position.y,
-//                              gt_msg->pose.position.z);
-//     Eigen::Quaterniond orientation(gt_msg->pose.orientation.w,
-//                                    gt_msg->pose.orientation.x,
-//                                    gt_msg->pose.orientation.y,
-//                                    gt_msg->pose.orientation.z);
-//     Eigen::Vector3d velocity(0,
-//                              0,
-//                              0);
-//     estimator.receiveGroundTruthData(position, orientation, velocity);
-// }
+    Eigen::Matrix<double, NUM_DOF,1> joint_pos;
+    Eigen::Matrix<double, NUM_DOF,1> joint_vel;
+    Eigen::Matrix<double, NUM_LEG,1> plan_contacts;
+    for (int i = 0; i < NUM_DOF; ++i) {
+        joint_pos[i] = joint_msg->position[i];
+        joint_vel[i] = joint_msg->velocity[i];
+    }
+    for (int i = 0; i < NUM_LEG; ++i) {
+        plan_contacts[i] = joint_msg->velocity[NUM_DOF + i];
+        // foot_force[i] = joint_foot_msg.effort[NUM_DOF + i];
+    }
 
-// void gt_callback(const nav_msgs::OdometryConstPtr &gt_msg) {
-//     Eigen::Vector3d position(gt_msg->pose.pose.position.x,
-//                              gt_msg->pose.pose.position.y,
-//                              gt_msg->pose.pose.position.z);
-//     Eigen::Quaterniond orientation(gt_msg->pose.pose.orientation.w,
-//                                    gt_msg->pose.pose.orientation.x,
-//                                    gt_msg->pose.pose.orientation.y,
-//                                    gt_msg->pose.pose.orientation.z);
-//     Eigen::Vector3d velocity(0,
-//                              0,
-//                              0);
-//     estimator.receiveGroundTruthData(position, orientation, velocity);
+    double dt;
+    data.input_imu(acc, ang_vel);
+    data.input_leg(joint_pos, joint_vel, plan_contacts);
 
-// }
+    if ( !kf.is_inited() && first_sensor_received == false ) {
+        // the callback is called the first time, filter may not be inited
+        dt = 0;
+        curr_t = t;
+        data.input_dt(dt);
+        // init the filter 
+        kf.init_filter(data);
+    } else if ( !kf.is_inited()) {
+        // filter may not be inited even after the callback is called multiple times
+        dt = t- curr_t;
+        data.input_dt(dt);
+        curr_t = t;
+    } else {
+        dt = t- curr_t;
+        
+        data.input_dt(dt);
+        kf.update_filter(data);
+        curr_t = t;
+    }
+
+    // get filtered data from data and kf to estimator
+    estimator.inputIMU(t, data.acc, data.ang_vel);
+
+    // estimator.inputLeg(t, data.joint_pos, data.joint_vel, data.plan_contacts);
+    estimator.inputLeg(t, data.joint_pos, data.joint_vel, kf.get_contacts());
+
+
+    // debug print filtered data
+    sensor_msgs::Imu filterd_imu_msg;
+    sensor_msgs::JointState filterd_joint_msg;
+    filterd_imu_msg.header.stamp = ros::Time::now();
+    filterd_imu_msg.linear_acceleration.x = data.acc[0];
+    filterd_imu_msg.linear_acceleration.y = data.acc[1];
+    filterd_imu_msg.linear_acceleration.z = data.acc[2];
+
+    filterd_imu_msg.angular_velocity.x = data.ang_vel[0];
+    filterd_imu_msg.angular_velocity.y = data.ang_vel[1];
+    filterd_imu_msg.angular_velocity.z = data.ang_vel[2];
+
+    filterd_joint_msg.header.stamp = ros::Time::now();
+
+    filterd_joint_msg.name = {"FL0", "FL1", "FL2",
+                           "FR0", "FR1", "FR2",
+                           "RL0", "RL1", "RL2",
+                           "RR0", "RR1", "RR2",
+                           "FL_foot", "FR_foot", "RL_foot", "RR_foot"};
+    filterd_joint_msg.position.resize(NUM_DOF + NUM_LEG);
+    filterd_joint_msg.velocity.resize(NUM_DOF + NUM_LEG);
+    filterd_joint_msg.effort.resize(NUM_DOF + NUM_LEG);
+    for (int i = 0; i < NUM_DOF; ++i) {
+        filterd_joint_msg.position[i] = data.joint_pos[i];
+        filterd_joint_msg.velocity[i] = data.joint_vel[i];
+    }
+    Eigen::Vector4d estimated_contact = kf.get_contacts();
+    for (int i = 0; i < NUM_LEG; ++i) {
+        filterd_joint_msg.velocity[NUM_DOF+i] = estimated_contact[i];
+    }
+    filterd_imu_pub.publish(filterd_imu_msg);
+    filterd_joint_pub.publish(filterd_joint_msg);
+
+    Eigen::Matrix<double, EKF_STATE_SIZE,1> kf_state = kf.get_state();
+    nav_msgs::Odometry filterd_pos_msg;
+    filterd_pos_msg.header.stamp = ros::Time::now();
+    filterd_pos_msg.pose.pose.position.x = kf_state[0];
+    filterd_pos_msg.pose.pose.position.y = kf_state[1];
+    filterd_pos_msg.pose.pose.position.z = kf_state[2];
+    filterd_pos_msg.twist.twist.linear.x = kf_state[3];
+    filterd_pos_msg.twist.twist.linear.y = kf_state[4];
+    filterd_pos_msg.twist.twist.linear.z = kf_state[5];
+
+    filterd_pos_pub.publish(filterd_pos_msg);
+
+    first_sensor_received = true;
+    return;
+
+}
+
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vilo");
@@ -329,22 +333,29 @@ int main(int argc, char **argv)
 
     ROS_WARN("waiting for image and imu...");
 
-    registerPub(n);
-
+    /* subscriber */
     ros::Subscriber sub_feature = n.subscribe("/feature_tracker/feature", 2000, feature_callback);
     ros::Subscriber sub_img0 = n.subscribe(IMAGE0_TOPIC, 100, img0_callback);
     ros::Subscriber sub_img1 = n.subscribe(IMAGE1_TOPIC, 100, img1_callback);
     ros::Subscriber sub_restart = n.subscribe("/vins_restart", 100, restart_callback);
-    // ros::Subscriber sub_imu_switch = n.subscribe("/vins_imu_switch", 100, imu_switch_callback);
-    // ros::Subscriber sub_cam_switch = n.subscribe("/vins_cam_switch", 100, cam_switch_callback);
 
-    // sync IMU and leg
-    ros::Subscriber sub_imu = n.subscribe(IMU_TOPIC, 2000, imu_callback, ros::TransportHints().tcpNoDelay());
-    ros::Subscriber sub_leg_msg = n.subscribe(LEG_TOPIC, 100, leg_state_callback);
+    // sync IMU and leg, we assume that IMU and leg, although come as two separate topics, are actually has the same time stamp
+    message_filters::Subscriber<sensor_msgs::Imu> imu_sub;
+    message_filters::Subscriber<sensor_msgs::JointState> joint_state_sub;
+    imu_sub.subscribe(n, IMU_TOPIC, 30);
+    joint_state_sub.subscribe(n, LEG_TOPIC, 30);
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Imu, sensor_msgs::JointState> MySyncPolicy;
+    // ExactTime takes a queue size as its constructor argument, hence MySyncPolicy(10)
+    message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(30), imu_sub, joint_state_sub);
 
-    // receive mocap pose 
-    // ros::Subscriber sub_mocap_msg = n.subscribe("/mocap_node/mocap/pose", 100, mocap_callback);
-    // ros::Subscriber sub_isaac_gt_msg = n.subscribe("/isaac_a1/gt_body_pose", 100, gt_callback);
+    sync.registerCallback(boost::bind(&sensor_callback, _1, _2));
+    
+    /* publishers */
+    filterd_imu_pub = n.advertise<sensor_msgs::Imu>("/a1_filterd_imu", 30);
+    filterd_joint_pub = n.advertise<sensor_msgs::JointState>("/a1_filterd_joint", 30);
+    filterd_pos_pub = n.advertise<nav_msgs::Odometry>("/a1_filterd_pos", 30);
+    registerPub(n);
+
 
     std::thread sync_thread{sync_process};
     ros::spin();

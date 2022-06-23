@@ -5,7 +5,7 @@
     <!-- VINS config -->
     <param name="vilo_config_file" type="string" value="$(find vilo)/config/hardware_a1_vilo_config.yaml" />
     
-    <node name="vilo" pkg="vilo" type="vilo_feature_track_test"
+    <node name="vilo" pkg="vilo" type="vilo"
             args="$(find vilo)/config/hardware_a1_vilo_config.yaml" output="screen"/>
     <!-- <node name="vinsloopfusion" pkg="loop_fusion" type="loop_fusion_node"
             args="$(find vilo)/config/hardware_a1_vilo_config.yaml" /> -->

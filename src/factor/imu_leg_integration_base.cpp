@@ -4,8 +4,8 @@
 
 #include "imu_leg_integration_base.h"
 
-IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vector3d &_acc_0, const Vector3d &_gyr_0, const Ref<const Vector12d>& _phi_0,
-                                             const Ref<const Vector12d>& _dphi_0, const Ref<const Vector12d>& _c_0,
+IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vector3d &_acc_0, const Vector3d &_gyr_0, const Ref<const Vector_dof>& _phi_0,
+                                             const Ref<const Vector_dof>& _dphi_0, const Ref<const Vector_leg>& _c_0,
                                              const Vector3d &_linearized_ba, const Vector3d &_linearized_bg,
                                              const Ref<const Vector_rho>& _linearized_rho,
                                              std::vector<Eigen::VectorXd> _rho_fix_list, const Eigen::Vector3d &_p_br,  const Eigen::Matrix3d &_R_br)
@@ -49,7 +49,7 @@ IMULegIntegrationBase::IMULegIntegrationBase(const Vector3d &_base_v, const Vect
 }
 
 void IMULegIntegrationBase::push_back(double dt, const Eigen::Vector3d &acc, const Eigen::Vector3d &gyr,
-                                      const Ref<const Vector12d>& phi, const Ref<const Vector12d>& dphi, const Ref<const Vector12d>& c) {
+                                      const Ref<const Vector_dof>& phi, const Ref<const Vector_dof>& dphi, const Ref<const Vector_leg>& c) {
     dt_buf.push_back(dt);
     acc_buf.push_back(acc);
     gyr_buf.push_back(gyr);
@@ -87,7 +87,7 @@ void IMULegIntegrationBase::repropagate(const Eigen::Vector3d &_linearized_ba, c
 
 
 void IMULegIntegrationBase::propagate(double _dt, const Vector3d &_acc_1, const Vector3d &_gyr_1,
-                                      const Ref<const Vector12d>& _phi_1, const Ref<const Vector12d>& _dphi_1, const Ref<const Vector12d>& _c_1) {
+                                      const Ref<const Vector_dof>& _phi_1, const Ref<const Vector_dof>& _dphi_1, const Ref<const Vector_leg>& _c_1) {
     dt = _dt;
     acc_1 = _acc_1;
     gyr_1 = _gyr_1;
@@ -137,18 +137,18 @@ void IMULegIntegrationBase::propagate(double _dt, const Vector3d &_acc_1, const 
 
 
 void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
-                                                const Vector3d &_acc_1, const Vector3d &_gyr_1,
-                                                const Ref<const Vector12d> &_phi_0, const Ref<const Vector12d> &_dphi_0,
-                                                const Ref<const Vector12d> &_c_0, const Ref<const Vector12d> &_phi_1,
-                                                const Ref<const Vector12d> &_dphi_1, const Ref<const Vector12d> &_c_1,
-                                                const Vector3d &delta_p, const Quaterniond &delta_q,
-                                                const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon, Vector3d &sum_delta_epsilon,
-                                                const Vector3d &linearized_ba, const Vector3d &linearized_bg,
-                                                const Ref<const Vector_rho> &linearized_rho, Vector3d &result_delta_p,
-                                                Quaterniond &result_delta_q, Vector3d &result_delta_v,
-                                                vector<Eigen::Vector3d> &result_delta_epsilon, Vector3d &result_sum_delta_epsilon,
-                                                Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
-                                                Vector_rho &result_linearized_rho, bool update_jacobian) {
+        const Vector3d &_acc_1, const Vector3d &_gyr_1,
+        const Ref<const Vector_dof> &_phi_0, const Ref<const Vector_dof> &_dphi_0,
+        const Ref<const Vector_leg> &_c_0, const Ref<const Vector_dof> &_phi_1,
+        const Ref<const Vector_dof> &_dphi_1, const Ref<const Vector_leg> &_c_1,
+        const Vector3d &delta_p, const Quaterniond &delta_q,
+        const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon, Vector3d &sum_delta_epsilon,
+        const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+        const Ref<const Vector_rho> &linearized_rho, Vector3d &result_delta_p,
+        Quaterniond &result_delta_q, Vector3d &result_delta_v,
+        vector<Eigen::Vector3d> &result_delta_epsilon, Vector3d &result_sum_delta_epsilon,
+        Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
+        Vector_rho &result_linearized_rho, bool update_jacobian) {
     Vector3d un_acc_0 = delta_q * (_acc_0 - linearized_ba);
     Vector3d un_gyr = 0.5 * (_gyr_0 + _gyr_1) - linearized_bg;
     result_delta_q = delta_q * Quaterniond(1, un_gyr(0) * _dt / 2, un_gyr(1) * _dt / 2, un_gyr(2) * _dt / 2);
@@ -181,35 +181,38 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     // from foot contact force infer a contact flag
     // calculate variance
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        // get z directional contact force ( contact foot sensor reading)
-        double force_mag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
+//         // get z directional contact force ( contact foot sensor reading)
+        // double flag = 0.5 * (_c_0(j) + _c_1(j));
+        double flag = _c_1(j);
+        foot_contact_flag[j] = flag >= 0.5? 1.0: 0.0;
 
-//        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
-        if (force_mag < foot_force_min[j]) {
-            foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
-        }
-        if (force_mag > foot_force_max[j]) {
-            foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
-        }
-        // exponential decay, max force decays faster
-        foot_force_min[j] *= 0.9991;
-        foot_force_max[j] *= 0.997;
-        foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
+// //        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
+//         if (force_mag < foot_force_min[j]) {
+//             foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
+//         }
+//         if (force_mag > foot_force_max[j]) {
+//             foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
+//         }
+//         // exponential decay, max force decays faster
+//         foot_force_min[j] *= 0.9991;
+//         foot_force_max[j] *= 0.997;
+//         foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
 
 
-        foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
+//         foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
 
-        // get z force variance
-        foot_force_window_idx[j] ++;
-        foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
-        foot_force_window(j, foot_force_window_idx[j]) = force_mag;
-        Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
-        foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
+//         // get z force variance
+//         foot_force_window_idx[j] ++;
+//         foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
+//         foot_force_window(j, foot_force_window_idx[j]) = force_mag;
+//         Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
+//         foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
 
-        if (foot_contact_flag[j] < 0.5) {
-            integration_contact_flag[j] = false;
-        }
+//         if (foot_contact_flag[j] < 0.5) {
+//             integration_contact_flag[j] = false;
+//         }
     }
+//     double contact_flag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
 //    std::cout << "foot force process" << std::endl;
 //    std::cout << "foot_force_max " << foot_force_max.transpose() << std::endl;
 //    std::cout << "foot_force_contact_threshold " << foot_force_contact_threshold.transpose() << std::endl;
@@ -252,20 +255,21 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector12d uncertainties;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        double n1 = V_N_MAX*(1-foot_contact_flag[j])+V_N_MIN;
-        double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
-        Eigen::Vector3d n3; n3.setZero();
-        Eigen::Vector3d tmp = lo_veocities.col(j) - delta_v;
-        for (int k = 0; k < 3; k++) {
-//            if (fabs(tmp(k)) < 0.2) {
-                n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
-//            } else {
-//                n3(k) = 10e10;
-//            }
+        double n1 = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN;
+//         double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
+//         Eigen::Vector3d n3; n3.setZero();
+//         Eigen::Vector3d tmp = lo_veocities.col(j) - delta_v;
+//         for (int k = 0; k < 3; k++) {
+// //            if (fabs(tmp(k)) < 0.2) {
+//                 n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
+// //            } else {
+// //                n3(k) = 10e10;
+// //            }
 
-        }
-        Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
-        n = n + n3;
+//         }
+        Eigen::Vector3d n = n1*Eigen::Vector3d::Ones();
+        // n += n2*Eigen::Vector3d::Ones();
+        // n = n + n3;
         // we only believe
         uncertainties.segment<3>(3*j) = n;
     }
@@ -273,7 +277,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        rho_uncertainty[j] = 0.001 * foot_contact_flag[j] + 0.00001;
+        rho_uncertainty[j] = 0.0001 * foot_contact_flag[j] + 0.000001;
     }
 
     // use uncertainty to combine LO velocity
@@ -323,10 +327,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            uncertainties(0), uncertainties(1),  5*uncertainties(2),
-            uncertainties(3), uncertainties(4),  5*uncertainties(5),
-            uncertainties(6), uncertainties(7),  5*uncertainties(8),
-            uncertainties(9), uncertainties(10), 5*uncertainties(11),
+            uncertainties(0), uncertainties(1),  uncertainties(2),
+            uncertainties(3), uncertainties(4),  uncertainties(5),
+            uncertainties(6), uncertainties(7),  uncertainties(8),
+            uncertainties(9), uncertainties(10), uncertainties(11),
             rho_uncertainty[0], rho_uncertainty[1], rho_uncertainty[2], rho_uncertainty[3];
 
 
@@ -574,15 +578,16 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 //    std::cout << "noise_diag" << noise_diag.diagonal().segment<12>(30).transpose() << std::endl;
 }
 
-void IMULegIntegrationBase::checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
-                                                const Vector3d &_acc_1, const Vector3d &_gyr_1,
-                                                const Ref<const Vector12d> &_phi_0, const Ref<const Vector12d> &_dphi_0,
-                                                const Ref<const Vector12d> &_c_0, const Ref<const Vector12d> &_phi_1,
-                                                const Ref<const Vector12d> &_dphi_1, const Ref<const Vector12d> &_c_1,
-                                                const Vector3d &delta_p, const Quaterniond &delta_q,
-                                                const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
-                                                const Vector3d &linearized_ba, const Vector3d &linearized_bg,
-                                                const Ref<const Vector_rho> &linearized_rho) {
+void IMULegIntegrationBase::checkJacobian(double _dt, 
+        const Vector3d &_acc_0, const Vector3d &_gyr_0,
+        const Vector3d &_acc_1, const Vector3d &_gyr_1,
+        const Ref<const Vector_dof> &_phi_0, const Ref<const Vector_dof> &_dphi_0,
+        const Ref<const Vector_leg> &_c_0, const Ref<const Vector_dof> &_phi_1,
+        const Ref<const Vector_dof> &_dphi_1, const Ref<const Vector_leg> &_c_1,
+        const Vector3d &delta_p, const Quaterniond &delta_q,
+        const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
+        const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+        const Ref<const Vector_rho> &linearized_rho) {
     Vector3d result_delta_p;
     Quaterniond result_delta_q;
     Vector3d result_delta_v;

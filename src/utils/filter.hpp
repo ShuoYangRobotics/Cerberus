@@ -2,7 +2,8 @@
 // This filter comes from
 // https://github.com/google-research/tiny-differentiable-simulator/blob/master/examples/whole_body_control/com_velocity_estimator.hpp
 // hence we must include Apache License 2.0 too
-#pragma once
+#ifndef FILTER_H
+#define FILTER_H
 
 #include <cassert>
 #include <iostream>
@@ -61,3 +62,5 @@ class MovingWindowFilter {
     sum_ = new_sum;
   }
 };
+
+#endif

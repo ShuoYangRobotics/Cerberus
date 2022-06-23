@@ -91,6 +91,7 @@ extern int FLOW_BACK;
 void readParameters(std::string config_file);
 
 #define NUM_OF_LEG 4
+#define NUM_OF_DOF 12
 // parameters in the leg kinematics  and imu_leg_integration_base
 #define RHO_OPT_SIZE  1
 #define TOTAL_RHO_OPT_SIZE  4   //4xRHO_OPT_SIZE
@@ -102,6 +103,9 @@ void readParameters(std::string config_file);
 
 typedef Eigen::Matrix<double, 12, 1> Vector12d; //4xRHO_OPT_SIZE
 typedef Eigen::Matrix<double, 4, 1> Vector_rho; //4xRHO_OPT_SIZE
+
+typedef Eigen::Matrix<double, NUM_OF_LEG, 1> Vector_leg;
+typedef Eigen::Matrix<double, NUM_OF_DOF, 1> Vector_dof;
 
 enum SIZE_PARAMETERIZATION
 {

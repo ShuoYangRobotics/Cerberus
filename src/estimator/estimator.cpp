@@ -31,11 +31,11 @@ void Estimator::clearState() {
     while(!featureBuf.empty())
         featureBuf.pop();
     while(!legAngBufList.empty())
-        legAngBufList.pop_back();
+        legAngBufList.pop();
     while(!legAngVelBufList.empty())
-        legAngVelBufList.pop_back();
-    while(!footForceBufList.empty())
-        footForceBufList.pop_back();
+        legAngVelBufList.pop();
+    while(!contactFlagBufList.empty())
+        contactFlagBufList.pop();
 
     prevTime = -1;
     curTime = 0;
@@ -105,16 +105,6 @@ void Estimator::clearState() {
     f_manager.clearState();
 
     failure_occur = 0;
-
-    // init the filters for processing input sensor data
-    for (int i = 0; i < 3; i++) {
-        acc_filters.push_back(MovingWindowFilter(5));
-        gyro_filters.push_back(MovingWindowFilter(5));
-    }
-    for (int i = 0; i < 12; i++) {
-        joint_ang_filters.push_back(MovingWindowFilter(6));
-        joint_vel_filters.push_back(MovingWindowFilter(6));
-    }
 
     mProcess.unlock();
 }
@@ -253,16 +243,9 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
     mBuf.lock();
-    Vector3d filtered_linearAcceleration;
-    Vector3d filtered_angularVelocity;
 
-    for (int i = 0; i < 3; i++) {
-        filtered_linearAcceleration[i] = acc_filters[i].CalculateAverage(linearAcceleration[i]);
-        filtered_angularVelocity[i] = gyro_filters[i].CalculateAverage(angularVelocity[i]);
-    }
-
-    accBuf.push(make_pair(t, filtered_linearAcceleration));
-    gyrBuf.push(make_pair(t, filtered_angularVelocity));
+    accBuf.push(make_pair(t, linearAcceleration));
+    gyrBuf.push(make_pair(t, angularVelocity));
     //printf("input imu with time %f \n", t);
     mBuf.unlock();
 
@@ -277,32 +260,22 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     }
 }
 
-void Estimator::inputLeg(double t, const Eigen::Ref<const Vector12d>& jointAngles,
-                         const Eigen::Ref<const Vector12d>& jointVels, const Eigen::Ref<const Vector12d>& footForces)
+void Estimator::inputLeg(double t, const Eigen::Ref<const Vector_dof>& jointAngles,
+                         const Eigen::Ref<const Vector_dof>& jointVels, const Eigen::Ref<const Vector_leg>& contact_flags)
 {
     mBuf.lock();
     leg_msg_counter ++;
 
 //    if (leg_msg_counter % 2 == 0) {
-        Vector12d filtered_jointAngles;
-        Vector12d filtered_jointVels;
-
-        for (int i = 0; i < 12; i++) {
-            filtered_jointAngles[i] = joint_ang_filters[i].CalculateAverage(jointAngles[i]);
-            filtered_jointVels[i] = joint_vel_filters[i].CalculateAverage(jointVels[i]);
-        }
-
-        legAngBufList.push_back(make_pair(t, jointAngles));
-        legAngVelBufList.push_back(make_pair(t, jointVels));
-
-        footForceBufList.push_back(make_pair(t, footForces));
+        legAngBufList.push(make_pair(t, jointAngles));
+        legAngVelBufList.push(make_pair(t, jointVels));
+        contactFlagBufList.push(make_pair(t, contact_flags));
 //    }
 //    std::cout << "input foot force" << footForces.transpose() << std::endl;
 //    printf("input leg joint state and foot force with time %f \n", t);
     mBuf.unlock();
 }
 
-// do not understand who will publish this (maybe other loop fusion stuff)
 void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame)
 {
     mBuf.lock();
@@ -360,170 +333,57 @@ bool Estimator::IMUAvailable(double t)
         return false;
 }
 
-// assume leg measurement has no delay, align Leg mesaurement with IMU measurement
-bool Estimator::getIMUAndLegInterval(double t0, double t1, double t_delay,
-                                     vector<pair<double, Eigen::Vector3d>> &accVector,
-                                     vector<pair<double, Eigen::Vector3d>> &gyrVector,
-                                     vector<pair<double, Vector12d>> &jointAngVector,
-                                     vector<pair<double, Vector12d>> &jointVelVector,
-                                     vector<pair<double, Vector12d>> &footForceVector)
+// assume leg measurement aligns with IMU measurement very well
+bool Estimator::getIMUAndLegInterval(double t0, double t1,
+    vector<pair<double, Eigen::Vector3d>> &accVector,
+    vector<pair<double, Eigen::Vector3d>> &gyrVector,
+    vector<pair<double, Vector_dof>> &jointAngVector,
+    vector<pair<double, Vector_dof>> &jointVelVector,
+    vector<pair<double, Vector_leg>> &contactFlagVector)
 {
-    // debug
-//    std::cout << std::setprecision(5) << "times: " << t0 << "  ---  " << t1 << std::endl;
-//
-//    std::cout << "before change " << std::endl;
-//    std::cout << std::setprecision(5) << "acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
-//    std::cout << std::setprecision(5) << "lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
-//    std::cout << " buf size: " << accBuf.size()  << "  ---  " << legAngBufList.size() << std::endl;
-    if (accBuf.empty())
+    if(accBuf.empty())
     {
-        printf("not receive imu\n");
+        printf("not receive imu nor leg\n");
         return false;
     }
-    if (legAngBufList.empty())
-    {
-        printf("not receive leg \n");
-        return false;
-    }
-//    printf("get imu from %f %f\n", t0, t1);
-//    printf("imu front time %f   imu end time %f\n", accBuf.front().first, accBuf.back().first);
     // must have more IMU than image
     if(t1 <= accBuf.back().first)
     {
-        while (!accBuf.empty() && accBuf.front().first <= t0)
+        while (accBuf.front().first <= t0)
         {
             accBuf.pop();
             gyrBuf.pop();
+            legAngBufList.pop();
+            legAngVelBufList.pop();
+            contactFlagBufList.pop();
         }
-        // leave at least one element in legAngBufList, if IMU topic and the leg topic are very fast, this will sometimes result in less accurate leg measurement
-        while (legAngBufList.size() > 1 && legAngBufList.front().first < t0)
-        {
-            legAngBufList.pop_front();
-            legAngVelBufList.pop_front();
-            footForceBufList.pop_front();
-        }
-        int starting_idx = 0; // this is used to speed up lerpLegSensors
-        Eigen::Matrix<double, 12, 3> lerpMtx;
         while (accBuf.front().first < t1)
         {
-            // TODO: does this t_delay matters?
-//            double leg_search_time = accBuf.front().first - t_delay;
-            double leg_search_time = accBuf.front().first;
             accVector.push_back(accBuf.front());
             accBuf.pop();
             gyrVector.push_back(gyrBuf.front());
             gyrBuf.pop();
-            // lerp
-            // angle - only push once, push a 12d vector
-            starting_idx = 0;
-            lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
-//                if (starting_idx > 0)
-//                {
-//                    legAngBufList.erase(legAngBufList.begin(),legAngBufList.begin()+starting_idx-1);
-//                    legAngVelBufList.erase(legAngVelBufList.begin(),legAngVelBufList.begin()+starting_idx-1);
-//                    footForceBufList.erase(footForceBufList.begin(),footForceBufList.begin()+starting_idx-1);
-//                }
-
-            jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
-            jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
-            footForceVector.push_back(make_pair(leg_search_time, lerpMtx.col(2)));
+            jointAngVector.push_back(legAngBufList.front());
+            legAngBufList.pop();
+            jointVelVector.push_back(legAngVelBufList.front());
+            legAngVelBufList.pop();
+            contactFlagVector.push_back(contactFlagBufList.front());
+            contactFlagBufList.pop();
         }
         accVector.push_back(accBuf.front());
         gyrVector.push_back(gyrBuf.front());
-
-        double leg_search_time = accBuf.front().first;
-        starting_idx = 0;
-        lerpMtx = Utility::lerpLegSensors(leg_search_time, starting_idx, legAngBufList, legAngVelBufList, footForceBufList);
-
-        jointAngVector.push_back(make_pair(leg_search_time, lerpMtx.col(0)));
-        jointVelVector.push_back(make_pair(leg_search_time, lerpMtx.col(1)));
-        footForceVector.push_back(make_pair(leg_search_time, lerpMtx.col(2)));
-//        std::cout << accVector.size() << std::endl;
-//        std::cout << footForceVector.size() << std::endl;
-
+        jointAngVector.push_back(legAngBufList.front());
+        jointVelVector.push_back(legAngVelBufList.front());
+        contactFlagVector.push_back(contactFlagBufList.front());
     }
     else
     {
         printf("wait for imu and leg\n");
         return false;
     }
-
-//    std::cout << "after change " << std::endl;
-//
-//    std::cout << std::setprecision(20) << "time of acc vectors : " << jointAngVector.front().first  << "  ---  " << jointAngVector.back().first << std::endl;
-//
-//    std::cout << std::setprecision(20) << "time of leg vectors : " << jointAngVector.front().first  << "  ---  " << jointAngVector.back().first << std::endl;
-//
-//    std::cout << std::setprecision(20) << "rest acc buf time: " << accBuf.front().first  << "  ---  " << accBuf.back().first << std::endl;
-//    std::cout << std::setprecision(20) << "rest lef  buf time: " << legAngBufList.front().first  << "  ---  " << legAngBufList.back().first << std::endl;
-//
-//    std::cout << " rest acc buff size "<< accBuf.size() << std::endl;
-//    std::cout << " rest leg buff size "<< legAngBufList.size() << std::endl;
     return true;
+    
 }
-
-// jointAngVector, jointVelVector, footForceVector
-//bool Estimator::getLegInterval(double t0, double t1,
-//                               vector<pair<double, Eigen::VectorXd>> &jointAngVector,
-//                               vector<pair<double, Eigen::VectorXd>> &jointVelVector,
-//                               vector<pair<double, Eigen::VectorXd>> &footForceVector)
-//{
-//    if(legAngBufList[0].empty())
-//    {
-//        printf("not receive leg measurements\n");
-//        return false;
-//    }
-////    printf("get leg from %f %f\n", t0, t1);
-////    printf("leg front time %f   leg end time %f\n", legAngBufList[0].front().first, legAngBufList[0].back().first);
-//    // must have more leg data than image
-//    if(t1 <= legAngBufList[0].back().first)
-//    {
-//        while (legAngBufList[0].front().first <= t0)
-//        {
-//            for (int i = 0; i < NUM_OF_LEG; i++)
-//            {
-//                legAngBufList[i].pop();
-//                legAngVelBufList[i].pop();
-//                footForceBufList[i].pop();
-//            }
-//        }
-//        while (legAngBufList[0].front().first < t1)
-//        {
-//            // angle - only push once, push a 12d vector
-//            Eigen::VectorXd ang_vec(3*NUM_OF_LEG); ang_vec.setZero();
-//            jointAngVector.push_back(make_pair(legAngBufList[0].front().first, ang_vec));
-//            for (int i = 0; i < NUM_OF_LEG; i++)
-//            {
-//                jointAngVector.back().second.segment<3>(3 * i) = legAngBufList[i].front().second;
-//                legAngBufList[i].pop();
-//            }
-//            // velocity - only push once, push a 12d vector
-//            Eigen::VectorXd vel_vec(3*NUM_OF_LEG); vel_vec.setZero();
-//            jointVelVector.push_back(make_pair(legAngVelBufList[0].front().first, vel_vec));
-//            for (int i = 0; i < NUM_OF_LEG; i++)
-//            {
-//                jointVelVector.back().second.segment<3>(3 * i) = legAngVelBufList[i].front().second;
-//                legAngVelBufList[i].pop();
-//            }
-//            // foot force - only push once, push a 12d vector
-//            Eigen::VectorXd force_vec(3*NUM_OF_LEG); force_vec.setZero();
-//            footForceVector.push_back(make_pair(footForceBufList[0].front().first, force_vec));
-//            for (int i = 0; i < NUM_OF_LEG; i++)
-//            {
-//                footForceVector.back().second.segment<3>(3 * i) = footForceBufList[i].front().second;
-//                footForceBufList[i].pop();
-//            }
-//        }
-//        // get IMU interval has a final push here, we do not do it
-//    }
-//    else
-//    {
-//        printf("wait for leg\n");
-//        return false;
-//    }
-//    return true;
-//}
-
 
 // in MULTIPLE_THREAD mode, this function will be called periodically
 void Estimator::processMeasurements()
@@ -535,7 +395,8 @@ void Estimator::processMeasurements()
         vector<pair<double, Eigen::Vector3d>> accVector, gyrVector;
 
         // vector of time index, Vector12d for ang, vel Vector4d for footForce
-        vector<pair<double, Vector12d>> jointAngVector, jointVelVector, footForceVector;
+        vector<pair<double, Vector_dof>> jointAngVector, jointVelVector;
+        vector<pair<double, Vector_leg>>  contactFlagVector;
 
         if(!featureBuf.empty())
         {
@@ -548,7 +409,7 @@ void Estimator::processMeasurements()
                     break;
                 else
                 {
-                    printf("wait for imu ... \n");
+                    printf("wait for imu and leg ... \n");
                     if (! MULTIPLE_THREAD)
                         return;
                     std::chrono::milliseconds dura(5);
@@ -561,7 +422,7 @@ void Estimator::processMeasurements()
 
             // TODO: get leg info and IMU together
             if (USE_LEG && USE_IMU) {
-                getIMUAndLegInterval(prevTime, curTime, td, accVector, gyrVector, jointAngVector, jointVelVector, footForceVector);
+                getIMUAndLegInterval(prevTime, curTime, accVector, gyrVector, jointAngVector, jointVelVector, contactFlagVector);
             } else if(USE_IMU)
                 getIMUInterval(prevTime, curTime, accVector, gyrVector);
 
@@ -587,81 +448,13 @@ void Estimator::processMeasurements()
                         dt = curTime - accVector[i - 1].first;
                     else
                         dt = accVector[i].first - accVector[i - 1].first;
-//                    processIMU(accVector[i].first, dt, accVector[i].second, gyrVector[i].second);
 
                     processIMULeg(accVector[i].first, dt, accVector[i].second, gyrVector[i].second,
-                                  jointAngVector[i].second, jointVelVector[i].second, footForceVector[i].second);
+                                  jointAngVector[i].second, jointVelVector[i].second, contactFlagVector[i].second);
                 }
 
-                // calculate leg odometry as a comparison to ground truth
-//                std::vector<Eigen::Vector3d> fi,fi_correct;
-//                std::vector<Eigen::Matrix3d> Ji,Ji_correct;
-//                std::vector<Eigen::Vector3d> vi,vi_correct;
-//                std::vector<double> vel_weight;
-//                Vector3d w_0_x = gyrVector[0].second - Bgs[frame_count];
-//                Matrix3d R_w_0_x;
-//                R_w_0_x<<0, -w_0_x(2), w_0_x(1),
-//                        w_0_x(2), 0, -w_0_x(0),
-//                        -w_0_x(1), w_0_x(0), 0;
-//                for (int j = 0; j < NUM_OF_LEG; j++) {
-//                    fi.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(3 * j), Eigen::Vector3d::Zero(),
-//                                           rho_fix_list[j]));
-//                    // calculate jacobian of each leg
-//                    Ji.push_back(
-//                            a1_kin.jac(jointAngVector[0].second.segment<3>(3 * j), Eigen::Vector3d::Zero(), rho_fix_list[j]));
-//
-//                    // calculate vm
-//                    vi.push_back(-R_br * Ji[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi[j]));
-//                    // see which leg is on the groud by looking at the foot contact flag calculated in il_pre_integrations[frame_count]
-//                    vel_weight.push_back(
-//                                il_pre_integrations[frame_count]->foot_contact_flag[j]
-//                            );
-//                    foot_contact_flag[j] = il_pre_integrations[frame_count]->foot_contact_flag[j];
-//                }
-//                double total_vel_weight = 0;
-//                for (int j = 0; j < NUM_OF_LEG; j++) total_vel_weight += vel_weight[j];
-//                lo_velocity.setZero();
-//                for (int j = 0; j < NUM_OF_LEG; j++) {
-//                    lo_velocity += vel_weight[j]*Rs[frame_count]*vi[j];
-//                    lo_velocity_each_leg.segment<3>(3 * j) = Rs[frame_count]*vi[j];
-//                }
-//                lo_velocity /= total_vel_weight;
-//
-//
-//                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(0), Rho1[frame_count],
-//                                               rho_fix_list[0]));
-//                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(3), Rho2[frame_count],
-//                                               rho_fix_list[1]));
-//                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(6), Rho3[frame_count],
-//                                               rho_fix_list[2]));
-//                fi_correct.push_back(a1_kin.fk(jointAngVector[0].second.segment<3>(9), Rho4[frame_count],
-//                                               rho_fix_list[3]));
-//                Ji_correct.push_back(
-//                        a1_kin.jac(jointAngVector[0].second.segment<3>(0), Rho1[frame_count], rho_fix_list[0]));
-//                Ji_correct.push_back(
-//                        a1_kin.jac(jointAngVector[0].second.segment<3>(3), Rho2[frame_count], rho_fix_list[1]));
-//                Ji_correct.push_back(
-//                        a1_kin.jac(jointAngVector[0].second.segment<3>(6), Rho3[frame_count], rho_fix_list[2]));
-//                Ji_correct.push_back(
-//                        a1_kin.jac(jointAngVector[0].second.segment<3>(9), Rho4[frame_count], rho_fix_list[3]));
-//
-//                lo_velocity_with_bias.setZero();
-//                for (int j = 0; j < NUM_OF_LEG; j++) {
-//
-//                    vi_correct.push_back(-R_br * Ji_correct[j] * jointVelVector[0].second.segment<3>(3 * j) - R_w_0_x * (p_br + R_br * fi_correct[j]));
-//                    lo_velocity_with_bias += vel_weight[j]*Rs[frame_count]*vi_correct[j];
-//                    lo_velocity_with_bias_each_leg.segment<3>(3 * j) = Rs[frame_count]*vi_correct[j];
-//                }
-//                lo_velocity_with_bias /= total_vel_weight;
-                // look at delta_epsilon of  as lo velocity measurement
-                for (int j = 0; j < NUM_OF_LEG; j++) {
-                    lo_velocity_with_bias_each_leg.segment<3>(3 * j) =
-                            Rs[frame_count]*(il_pre_integrations[frame_count] -> delta_epsilon[j]/il_pre_integrations[frame_count]->sum_dt);
-//                    std::cout << il_pre_integrations[frame_count] -> delta_epsilon[j] << endl;
-//                    std::cout << il_pre_integrations[frame_count] -> sum_dt << endl;
-                    foot_contact_flag[j] = il_pre_integrations[frame_count]->foot_contact_flag[j];
-                }
-                lo_velocity_with_bias = Rs[frame_count]*(il_pre_integrations[frame_count] -> sum_delta_epsilon/il_pre_integrations[frame_count]->sum_dt);
+                /* many debug print goes here */
+
             }
             else if(USE_IMU)
             {
@@ -784,8 +577,8 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
 
 void Estimator::processIMULeg(double t, double dt,
                    const Vector3d &linear_acceleration, const Vector3d &angular_velocity,
-                   const Ref<const Vector12d> &joint_angle, const Ref<const Vector12d> &joint_velocity,
-                   const Ref<const Vector12d> &foot_contact)
+                   const Ref<const Vector_dof> &joint_angle, const Ref<const Vector_dof> &joint_velocity,
+                   const Ref<const Vector_leg> &foot_contact)
 {
     if (!first_imu)
     {
@@ -810,7 +603,7 @@ void Estimator::processIMULeg(double t, double dt,
         tmp.segment<RHO_OPT_SIZE>(2*RHO_OPT_SIZE) = Rho3[frame_count];
         tmp.segment<RHO_OPT_SIZE>(3*RHO_OPT_SIZE) = Rho4[frame_count];
         il_pre_integrations[frame_count] = new IMULegIntegrationBase{Rs[frame_count].transpose()*Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
-                                                                     Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
+        Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
     }
 
     if (frame_count != 0)
@@ -1041,245 +834,6 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         updateLatestStates();
     }  
 }
-
-//bool Estimator::initialStructure()
-//{
-//    TicToc t_sfm;
-//    //check imu observibility
-//    {
-//        map<double, ImageFrame>::iterator frame_it;
-//        Vector3d sum_g;
-//        for (frame_it = all_image_frame.begin(), frame_it++; frame_it != all_image_frame.end(); frame_it++)
-//        {
-//            double dt = frame_it->second.pre_integration->sum_dt;
-//            Vector3d tmp_g = frame_it->second.pre_integration->delta_v / dt;
-//            sum_g += tmp_g;
-//        }
-//        Vector3d aver_g;
-//        aver_g = sum_g * 1.0 / ((int)all_image_frame.size() - 1);
-//        double var = 0;
-//        for (frame_it = all_image_frame.begin(), frame_it++; frame_it != all_image_frame.end(); frame_it++)
-//        {
-//            double dt = frame_it->second.pre_integration->sum_dt;
-//            Vector3d tmp_g = frame_it->second.pre_integration->delta_v / dt;
-//            var += (tmp_g - aver_g).transpose() * (tmp_g - aver_g);
-//            //cout << "frame g " << tmp_g.transpose() << endl;
-//        }
-//        var = sqrt(var / ((int)all_image_frame.size() - 1));
-//        //ROS_WARN("IMU variation %f!", var);
-//        if(var < 0.25)
-//        {
-//            ROS_INFO("IMU excitation not enouth!");
-//            //return false;
-//        }
-//    }
-//    // global sfm
-//    Quaterniond Q[frame_count + 1];
-//    Vector3d T[frame_count + 1];
-//    map<int, Vector3d> sfm_tracked_points;
-//    vector<SFMFeature> sfm_f;
-//    for (auto &it_per_id : f_manager.feature)
-//    {
-//        int imu_j = it_per_id.start_frame - 1;
-//        SFMFeature tmp_feature;
-//        tmp_feature.state = false;
-//        tmp_feature.id = it_per_id.feature_id;
-//        for (auto &it_per_frame : it_per_id.feature_per_frame)
-//        {
-//            imu_j++;
-//            Vector3d pts_j = it_per_frame.point;
-//            tmp_feature.observation.push_back(make_pair(imu_j, Eigen::Vector2d{pts_j.x(), pts_j.y()}));
-//        }
-//        sfm_f.push_back(tmp_feature);
-//    }
-//    Matrix3d relative_R;
-//    Vector3d relative_T;
-//    int l;
-//    if (!relativePose(relative_R, relative_T, l))
-//    {
-//        ROS_INFO("Not enough features or parallax; Move device around");
-//        return false;
-//    }
-//    GlobalSFM sfm;
-//    if(!sfm.construct(frame_count + 1, Q, T, l,
-//              relative_R, relative_T,
-//              sfm_f, sfm_tracked_points))
-//    {
-//        ROS_DEBUG("global SFM failed!");
-//        marginalization_flag = MARGIN_OLD;
-//        return false;
-//    }
-//
-//    //solve pnp for all frame
-//    map<double, ImageFrame>::iterator frame_it;
-//    map<int, Vector3d>::iterator it;
-//    frame_it = all_image_frame.begin( );
-//    for (int i = 0; frame_it != all_image_frame.end( ); frame_it++)
-//    {
-//        // provide initial guess
-//        cv::Mat r, rvec, t, D, tmp_r;
-//        if((frame_it->first) == Headers[i])
-//        {
-//            frame_it->second.is_key_frame = true;
-//            frame_it->second.R = Q[i].toRotationMatrix() * RIC[0].transpose();
-//            frame_it->second.T = T[i];
-//            i++;
-//            continue;
-//        }
-//        if((frame_it->first) > Headers[i])
-//        {
-//            i++;
-//        }
-//        Matrix3d R_inital = (Q[i].inverse()).toRotationMatrix();
-//        Vector3d P_inital = - R_inital * T[i];
-//        cv::eigen2cv(R_inital, tmp_r);
-//        cv::Rodrigues(tmp_r, rvec);
-//        cv::eigen2cv(P_inital, t);
-//
-//        frame_it->second.is_key_frame = false;
-//        vector<cv::Point3f> pts_3_vector;
-//        vector<cv::Point2f> pts_2_vector;
-//        for (auto &id_pts : frame_it->second.points)
-//        {
-//            int feature_id = id_pts.first;
-//            for (auto &i_p : id_pts.second)
-//            {
-//                it = sfm_tracked_points.find(feature_id);
-//                if(it != sfm_tracked_points.end())
-//                {
-//                    Vector3d world_pts = it->second;
-//                    cv::Point3f pts_3(world_pts(0), world_pts(1), world_pts(2));
-//                    pts_3_vector.push_back(pts_3);
-//                    Vector2d img_pts = i_p.second.head<2>();
-//                    cv::Point2f pts_2(img_pts(0), img_pts(1));
-//                    pts_2_vector.push_back(pts_2);
-//                }
-//            }
-//        }
-//        cv::Mat K = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-//        if(pts_3_vector.size() < 6)
-//        {
-//            cout << "pts_3_vector size " << pts_3_vector.size() << endl;
-//            ROS_DEBUG("Not enough points for solve pnp !");
-//            return false;
-//        }
-//        if (! cv::solvePnP(pts_3_vector, pts_2_vector, K, D, rvec, t, 1))
-//        {
-//            ROS_DEBUG("solve pnp fail!");
-//            return false;
-//        }
-//        cv::Rodrigues(rvec, r);
-//        MatrixXd R_pnp,tmp_R_pnp;
-//        cv::cv2eigen(r, tmp_R_pnp);
-//        R_pnp = tmp_R_pnp.transpose();
-//        MatrixXd T_pnp;
-//        cv::cv2eigen(t, T_pnp);
-//        T_pnp = R_pnp * (-T_pnp);
-//        frame_it->second.R = R_pnp * RIC[0].transpose();
-//        frame_it->second.T = T_pnp;
-//    }
-//    if (visualInitialAlign())
-//        return true;
-//    else
-//    {
-//        ROS_INFO("misalign visual structure with IMU");
-//        return false;
-//    }
-//
-//}
-//
-//bool Estimator::visualInitialAlign()
-//{
-//    TicToc t_g;
-
-//    VectorXd x;
-//    //solve scale
-//    bool result = VisualIMUAlignment(all_image_frame, Bgs, g, x);
-//    if(!result)
-//    {
-//        ROS_DEBUG("solve g failed!");
-//        return false;
-//    }
-//
-//    // change state
-//    for (int i = 0; i <= frame_count; i++)
-//    {
-//        Matrix3d Ri = all_image_frame[Headers[i]].R;
-//        Vector3d Pi = all_image_frame[Headers[i]].T;
-//        Ps[i] = Pi;
-//        Rs[i] = Ri;
-//        all_image_frame[Headers[i]].is_key_frame = true;
-//    }
-//
-//    double s = (x.tail<1>())(0);
-//    for (int i = 0; i <= WINDOW_SIZE; i++)
-//    {
-//        pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]);
-//    }
-//    for (int i = frame_count; i >= 0; i--)
-//        Ps[i] = s * Ps[i] - Rs[i] * TIC[0] - (s * Ps[0] - Rs[0] * TIC[0]);
-//    int kv = -1;
-//    map<double, ImageFrame>::iterator frame_i;
-//    for (frame_i = all_image_frame.begin(); frame_i != all_image_frame.end(); frame_i++)
-//    {
-//        if(frame_i->second.is_key_frame)
-//        {
-//            kv++;
-//            Vs[kv] = frame_i->second.R * x.segment<3>(kv * 3);
-//        }
-//    }
-//
-//    Matrix3d R0 = Utility::g2R(g);
-//    double yaw = Utility::R2ypr(R0 * Rs[0]).x();
-//    R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
-//    g = R0 * g;
-//    //Matrix3d rot_diff = R0 * Rs[0].transpose();
-//    Matrix3d rot_diff = R0;
-//    for (int i = 0; i <= frame_count; i++)
-//    {
-//        Ps[i] = rot_diff * Ps[i];
-//        Rs[i] = rot_diff * Rs[i];
-//        Vs[i] = rot_diff * Vs[i];
-//    }
-//    ROS_DEBUG_STREAM("g0     " << g.transpose());
-//    ROS_DEBUG_STREAM("my R0  " << Utility::R2ypr(Rs[0]).transpose());
-//
-//    f_manager.clearDepth();
-//    f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
-//
-//    return true;
-//}
-//
-//bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
-//{
-//    // find previous frame which contians enough correspondance and parallex with newest frame
-//    for (int i = 0; i < WINDOW_SIZE; i++)
-//    {
-//        vector<pair<Vector3d, Vector3d>> corres;
-//        corres = f_manager.getCorresponding(i, WINDOW_SIZE);
-//        if (corres.size() > 20)
-//        {
-//            double sum_parallax = 0;
-//            double average_parallax;
-//            for (int j = 0; j < int(corres.size()); j++)
-//            {
-//                Vector2d pts_0(corres[j].first(0), corres[j].first(1));
-//                Vector2d pts_1(corres[j].second(0), corres[j].second(1));
-//                double parallax = (pts_0 - pts_1).norm();
-//                sum_parallax = sum_parallax + parallax;
-//
-//            }
-//            average_parallax = 1.0 * sum_parallax / int(corres.size());
-//            if(average_parallax * 460 > 30 && m_estimator.solveRelativeRT(corres, relative_R, relative_T))
-//            {
-//                l = i;
-//                ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * 460, l);
-//                return true;
-//            }
-//        }
-//    }
-//    return false;
-//}
 
 void Estimator::vector2double()
 {
@@ -2013,13 +1567,12 @@ void Estimator::slideWindow()
                     double tmp_dt = dt_buf[frame_count][i];
                     Vector3d tmp_linear_acceleration = linear_acceleration_buf[frame_count][i];
                     Vector3d tmp_angular_velocity = angular_velocity_buf[frame_count][i];
-                    Vector12d tmp_joint_angle = joint_angle_buf[frame_count][i];
-                    Vector12d tmp_joint_velocity = joint_velocity_buf[frame_count][i];
-                    Vector12d tmp_foot_contact = foot_contact_buf[frame_count][i];
+                    Vector_dof tmp_joint_angle = joint_angle_buf[frame_count][i];
+                    Vector_dof tmp_joint_velocity = joint_velocity_buf[frame_count][i];
+                    Vector_leg tmp_foot_contact = foot_contact_buf[frame_count][i];
 
-//                    pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration, tmp_angular_velocity);
-                    il_pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration, tmp_angular_velocity,
-                                                                    tmp_joint_angle, tmp_joint_velocity, tmp_foot_contact);
+                    il_pre_integrations[frame_count - 1]->push_back(tmp_dt, tmp_linear_acceleration,                    
+                        tmp_angular_velocity, tmp_joint_angle, tmp_joint_velocity, tmp_foot_contact);
 
                     dt_buf[frame_count - 1].push_back(tmp_dt);
                     linear_acceleration_buf[frame_count - 1].push_back(tmp_linear_acceleration);
