@@ -278,7 +278,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        rho_uncertainty[j] = 0.0001 * foot_contact_flag[j] + 0.000001;
+        rho_uncertainty[j] = 0.000001 * foot_contact_flag[j] + 0.00000001;
     }
 
     // use uncertainty to combine LO velocity
@@ -318,9 +318,9 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     }
 
     noise_diag.diagonal() <<
-            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N_Z * ACC_N_Z),
             (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
-            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N * ACC_N),
+            (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N_Z * ACC_N_Z),
             (GYR_N * GYR_N), (GYR_N * GYR_N), (GYR_N * GYR_N),
             (ACC_W * ACC_W), (ACC_W * ACC_W), (ACC_W * ACC_W),
             (GYR_W * GYR_W), (GYR_W * GYR_W), (GYR_W * GYR_W),

@@ -12,7 +12,7 @@
 
 double INIT_DEPTH;
 double MIN_PARALLAX;
-double ACC_N, ACC_W;
+double ACC_N, ACC_N_Z, ACC_W;
 double GYR_N, GYR_W;
 
 std::vector<Eigen::Matrix3d> RIC;
@@ -124,6 +124,7 @@ void readParameters(std::string config_file)
         fsSettings["imu_topic"] >> IMU_TOPIC;
         printf("IMU_TOPIC: %s\n", IMU_TOPIC.c_str());
         ACC_N = fsSettings["acc_n"];
+        ACC_N_Z = fsSettings["acc_n_z"];
         ACC_W = fsSettings["acc_w"];
         GYR_N = fsSettings["gyr_n"];
         GYR_W = fsSettings["gyr_w"];

@@ -28,7 +28,7 @@ extern double INIT_DEPTH;
 extern double MIN_PARALLAX;
 extern int ESTIMATE_EXTRINSIC;
 
-extern double ACC_N, ACC_W;
+extern double ACC_N, ACC_N_Z, ACC_W;
 extern double GYR_N, GYR_W;
 
 extern std::vector<Eigen::Matrix3d> RIC;     // num of cam, imu to camera rotation

@@ -16,6 +16,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <ros/console.h>
 #include <sensor_msgs/Imu.h>
@@ -342,8 +343,8 @@ int main(int argc, char **argv)
     // sync IMU and leg, we assume that IMU and leg, although come as two separate topics, are actually has the same time stamp
     message_filters::Subscriber<sensor_msgs::Imu> imu_sub;
     message_filters::Subscriber<sensor_msgs::JointState> joint_state_sub;
-    imu_sub.subscribe(n, IMU_TOPIC, 30);
-    joint_state_sub.subscribe(n, LEG_TOPIC, 30);
+    imu_sub.subscribe(n, IMU_TOPIC, 200);
+    joint_state_sub.subscribe(n, LEG_TOPIC, 200);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Imu, sensor_msgs::JointState> MySyncPolicy;
     // ExactTime takes a queue size as its constructor argument, hence MySyncPolicy(10)
     message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(30), imu_sub, joint_state_sub);
