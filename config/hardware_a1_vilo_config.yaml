@@ -20,14 +20,16 @@ use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
 optimize_leg_bias: 0
-joint_angle_n: 0.001
-joint_velocity_n: 0.001
+joint_angle_n: 0.000001
+joint_velocity_n: 0.000001
 leg_bias_xy_n: 0.5
 leg_bias_z_n:  0.5
 # contact model
 v_n_force_thres_ratio: 0.8
-v_n_min: 1e-4
-v_n_max: 1e10
+v_n_min_xy: 0.001
+v_n_min_z: 0.005
+v_n_min: 0.005
+v_n_max: 900.0
 # v_n_w1: 0.333
 # v_n_w2: 0.333
 # v_n_w3: 0.333
@@ -80,7 +82,7 @@ keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
 
 #imu parameters       The more accurate parameters you provide, the better performance
 acc_n: 0.5          # accelerometer measurement noise standard deviation. #0.2   0.04
-gyr_n: 0.01         # gyroscope measurement noise standard deviation.     #0.05  0.004
+gyr_n: 0.05         # gyroscope measurement noise standard deviation.     #0.05  0.004
 acc_w: 0.0004         # accelerometer bias random work noise standard deviation.  #0.002
 gyr_w: 0.0002       # gyroscope bias random work noise standard deviation.     #4.0e-5
 g_norm: 9.805         # gravity magnitude

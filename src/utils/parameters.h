@@ -60,6 +60,8 @@ extern double DPHI_N;
 extern double RHO_XY_N;
 extern double RHO_Z_N;
 extern double V_N_FORCE_THRES_RATIO;
+extern double V_N_MIN_XY;
+extern double V_N_MIN_Z;
 extern double V_N_MIN;
 extern double V_N_MAX;
 extern double V_N_W1;

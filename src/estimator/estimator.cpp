@@ -1124,20 +1124,20 @@ void Estimator::optimization()
                                                para_Pose[j], para_SpeedBias[j], para_LegBias[j]);
 
 
-            std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
-                                                                      para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
-            std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
-            Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
-            double **raw_jacobians = new double *[block_sizes.size()];
-            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
-            jacobians.resize(block_sizes.size());
-            for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
-            {
-                jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
-                raw_jacobians[xx] = jacobians[xx].data();
-                //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
-            }
-            imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
+            // std::vector<double *> parameter_blocks = vector<double *>{para_Pose[i], para_SpeedBias[i], para_LegBias[i],
+            //                                                           para_Pose[j], para_SpeedBias[j], para_LegBias[j]};
+            // std::vector<int> block_sizes = imu_leg_factor->parameter_block_sizes();
+            // Eigen::VectorXd residuals; residuals.resize(imu_leg_factor->num_residuals());
+            // double **raw_jacobians = new double *[block_sizes.size()];
+            // std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> jacobians;
+            // jacobians.resize(block_sizes.size());
+            // for (int xx = 0; xx < static_cast<int>(block_sizes.size()); xx++)
+            // {
+            //     jacobians[xx].resize(imu_leg_factor->num_residuals(), block_sizes[xx]);
+            //     raw_jacobians[xx] = jacobians[xx].data();
+            //     //dim += block_sizes[i] == 7 ? 6 : block_sizes[i];
+            // }
+            // imu_leg_factor -> Evaluate(parameter_blocks.data(), residuals.data(), raw_jacobians);
 //            std::cout << "residual between frame " << i << " and " << j << std::endl;
 //            std::cout << residuals.transpose() << std::endl;
 //            imu_leg_factor -> checkJacobian(parameter_blocks.data());
@@ -1210,7 +1210,7 @@ void Estimator::optimization()
     ceres::Solver::Options options;
 
     options.linear_solver_type = ceres::DENSE_SCHUR;
-    //options.num_threads = 2;
+    // options.num_threads = 8;
     options.trust_region_strategy_type = ceres::DOGLEG;
     options.max_num_iterations = NUM_ITERATIONS;
     //options.use_explicit_schur_complement = true;

@@ -255,7 +255,8 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector12d uncertainties;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        double n1 = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN;
+        double n_xy = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN_XY;
+        double n_z = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN_Z;
 //         double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
 //         Eigen::Vector3d n3; n3.setZero();
 //         Eigen::Vector3d tmp = lo_veocities.col(j) - delta_v;
@@ -267,7 +268,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 // //            }
 
 //         }
-        Eigen::Vector3d n = n1*Eigen::Vector3d::Ones();
+        Eigen::Vector3d n(n_xy, n_xy, n_z);
         // n += n2*Eigen::Vector3d::Ones();
         // n = n + n3;
         // we only believe

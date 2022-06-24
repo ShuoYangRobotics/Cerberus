@@ -51,6 +51,8 @@ double RHO_XY_N;
 double RHO_Z_N;
 
 double V_N_FORCE_THRES_RATIO;
+double V_N_MIN_XY;
+double V_N_MIN_Z;
 double V_N_MIN;
 double V_N_MAX;
 double V_N_W1;
@@ -144,6 +146,8 @@ void readParameters(std::string config_file)
         RHO_Z_N = fsSettings["leg_bias_z_n"];
 
         V_N_FORCE_THRES_RATIO = fsSettings["v_n_force_thres_ratio"];
+        V_N_MIN_XY = fsSettings["v_n_min_xy"];
+        V_N_MIN_Z = fsSettings["v_n_min_z"];
         V_N_MIN = fsSettings["v_n_min"];
         V_N_MAX = fsSettings["v_n_max"];
         V_N_W1 = fsSettings["v_n_w1"];
