@@ -44,6 +44,7 @@ std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
 std::string LEG_TOPIC;
 int OPTIMIZE_LEG_BIAS;
+int CONTACT_SENSOR_TYPE;
 // temporarily write some parameters here
 double PHI_N;
 double DPHI_N;
@@ -140,6 +141,11 @@ void readParameters(std::string config_file)
 
         OPTIMIZE_LEG_BIAS = fsSettings["optimize_leg_bias"];
         printf("leg optimize_leg_bias %d\n", OPTIMIZE_LEG_BIAS);
+
+
+        CONTACT_SENSOR_TYPE = fsSettings["contact_sensor_type"];
+        printf("contact sensor type %d\n", CONTACT_SENSOR_TYPE);
+
 
         PHI_N = fsSettings["joint_angle_n"];
         DPHI_N = fsSettings["joint_velocity_n"];

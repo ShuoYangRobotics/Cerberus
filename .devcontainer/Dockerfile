@@ -92,6 +92,8 @@ RUN echo 'root:2022quad' | chpasswd
 
 CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
 
+# for sharing vpg keys
+RUN apt-get update && apt-get install gnupg2 -y
 
 # docker build -t a1_vins_image .
 

@@ -92,6 +92,8 @@ cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
 }
 
 // extract images with same timestamp from two topics
+int record_counter = 0;
+int record_counter_interval = 50;
 void sync_process()
 {
     while(1)
@@ -149,6 +151,46 @@ void sync_process()
             if(!image.empty())
                 estimator.inputImage(time, image);
         }
+        record_counter++;
+        if (record_counter % record_counter_interval == 0) 
+        {
+            // write result to file
+            ofstream foutC(VINS_RESULT_PATH, ios::app);
+            foutC.setf(ios::fixed, ios::floatfield);
+            foutC.precision(0);
+            double time = ros::Time::now().toSec();
+            foutC << time * 1e9 << ",";           // 1
+            foutC.precision(5);
+
+            // vilo: convert IMU position to robot body position
+            Quaterniond tmp_Q;
+            tmp_Q = Quaterniond(estimator.Rs[WINDOW_SIZE]);
+            Eigen::Vector3d p_wb(estimator.Ps[WINDOW_SIZE].x(), estimator.Ps[WINDOW_SIZE].y(), estimator.Ps[WINDOW_SIZE].z());
+            Eigen::Vector3d v_wb(estimator.Vs[WINDOW_SIZE].x(), estimator.Vs[WINDOW_SIZE].y(), estimator.Vs[WINDOW_SIZE].z());
+            Eigen::Vector3d omega = estimator.latest_gyr_0 - estimator.latest_Bg;
+            Eigen::Vector3d p_wr = p_wb + tmp_Q.toRotationMatrix()*estimator.R_br*estimator.p_br;
+
+            Eigen::Vector3d v_wr = v_wb + tmp_Q.toRotationMatrix()*Utility::skewSymmetric(omega)*estimator.R_br*estimator.p_br;
+
+            // kf 
+            Eigen::Matrix<double, EKF_STATE_SIZE,1> kf_state = kf.get_state();
+            foutC
+                << p_wr.x() << ","                                // 2
+                << p_wr.y() << ","                                // 3
+                << p_wr.z() << ","                                // 4
+                << v_wr.x() << ","                                // 5
+                << v_wr.y() << ","                                // 6
+                << v_wr.z() << ","                                // 7
+                << kf_state[0] << ","                                // 8
+                << kf_state[1] << ","                                // 9
+                << kf_state[2] << ","                                // 10
+                << kf_state[3] << ","                                // 8
+                << kf_state[4] << ","                                // 9
+                << kf_state[5] << ","                                // 10
+                << endl;
+            foutC.close();
+        }
+
 
         std::chrono::milliseconds dura(2);
         std::this_thread::sleep_for(dura);
@@ -253,8 +295,12 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
     // get filtered data from data and kf to estimator
     estimator.inputIMU(t, data.acc, data.ang_vel);
 
-    // estimator.inputLeg(t, data.joint_pos, data.joint_vel, data.plan_contacts);
-    estimator.inputLeg(t, data.joint_pos, data.joint_vel, kf.get_contacts());
+    if (CONTACT_SENSOR_TYPE == 0) {
+        estimator.inputLeg(t, data.joint_pos, data.joint_vel, kf.get_contacts());
+    } else if (CONTACT_SENSOR_TYPE == 1) {
+        estimator.inputLeg(t, data.joint_pos, data.joint_vel, data.plan_contacts);
+    }
+    
 
 
     // debug print filtered data

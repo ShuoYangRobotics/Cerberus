@@ -8,7 +8,7 @@ num_of_cam: 2
 imu_topic: "/hardware_a1/imu"
 image0_topic: "/camera_forward/infra1/image_rect_raw"
 image1_topic: "/camera_forward/infra2/image_rect_raw"
-output_path: "/home/shuoy/nv_work/unitree_ws/src/tightly-coupled-visual-inertial-leg-odometry/output"
+output_path: "/root/vins_ws/src/vilo/bags/output"
 
 cam0_calib: "left.yaml"
 cam1_calib: "right.yaml"
@@ -56,7 +56,8 @@ keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
 
 #imu parameters       The more accurate parameters you provide, the better performance
 acc_n: 0.5          # accelerometer measurement noise standard deviation. #0.2   0.04
-gyr_n: 0.01         # gyroscope measurement noise standard deviation.     #0.05  0.004
+acc_n_z: 2.0
+gyr_n: 0.05         # gyroscope measurement noise standard deviation.     #0.05  0.004
 acc_w: 0.0004         # accelerometer bias random work noise standard deviation.  #0.002
 gyr_w: 0.0002       # gyroscope bias random work noise standard deviation.     #4.0e-5
 g_norm: 9.805         # gravity magnitude

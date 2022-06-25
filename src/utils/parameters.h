@@ -54,6 +54,7 @@ extern std::string LEG_TOPIC;
 extern int NUM_OF_LEG;
 extern int USE_LEG;
 extern int OPTIMIZE_LEG_BIAS;
+extern int CONTACT_SENSOR_TYPE;
 // temporarily write some parameters here
 extern double PHI_N;
 extern double DPHI_N;
