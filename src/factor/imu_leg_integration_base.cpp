@@ -180,38 +180,44 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     // from foot contact force infer a contact flag
     // calculate variance
-    for (int j = 0; j < NUM_OF_LEG; j++) {
-//         // get z directional contact force ( contact foot sensor reading)
-        // double flag = 0.5 * (_c_0(j) + _c_1(j));
-        double flag = _c_1(j);
-        foot_contact_flag[j] = flag >= 0.5? 1.0: 0.0;
+    if (CONTACT_SENSOR_TYPE == 0 || CONTACT_SENSOR_TYPE == 1) {
+        for (int j = 0; j < NUM_OF_LEG; j++) {
+                double flag = _c_1(j);
+                foot_contact_flag[j] = flag >= 0.5? 1.0: 0.0;
+        }
+    } else if (CONTACT_SENSOR_TYPE == 2) {
+        for (int j = 0; j < NUM_OF_LEG; j++) {
+                // get z directional contact force ( contact foot sensor reading)
+                double force_mag = 0.5 * (_c_0(j) + _c_1(j));
 
-// //        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
-//         if (force_mag < foot_force_min[j]) {
-//             foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
-//         }
-//         if (force_mag > foot_force_max[j]) {
-//             foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
-//         }
-//         // exponential decay, max force decays faster
-//         foot_force_min[j] *= 0.9991;
-//         foot_force_max[j] *= 0.997;
-//         foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
+        //        force_mag = std::max(std::min(force_mag, 1000.0),-300.0); // limit the range of the force mag
+                if (force_mag < foot_force_min[j]) {
+                    foot_force_min[j] = 0.9*foot_force_min[j] + 0.1*force_mag;
+                }
+                if (force_mag > foot_force_max[j]) {
+                    foot_force_max[j] = 0.9*foot_force_max[j] + 0.1*force_mag;
+                }
+                // exponential decay, max force decays faster
+                foot_force_min[j] *= 0.9991;
+                foot_force_max[j] *= 0.997;
+                foot_force_contact_threshold[j] = foot_force_min[j] + V_N_FORCE_THRES_RATIO*(foot_force_max[j]-foot_force_min[j]);
 
 
-//         foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
+                foot_contact_flag[j] = 1.0/(1+exp(-V_N_TERM1_STEEP*(force_mag-foot_force_contact_threshold[j])));
 
-//         // get z force variance
-//         foot_force_window_idx[j] ++;
-//         foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
-//         foot_force_window(j, foot_force_window_idx[j]) = force_mag;
-//         Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
-//         foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
+                // get z force variance
+                foot_force_window_idx[j] ++;
+                foot_force_window_idx[j] %= FOOT_VAR_WINDOW_SIZE;
+                foot_force_window(j, foot_force_window_idx[j]) = force_mag;
+                Eigen::Matrix<double, 1, FOOT_VAR_WINDOW_SIZE> ys = foot_force_window.row(j);
+                foot_force_var[j] = (ys.array() - ys.mean()).square().sum() / (ys.size() - 1);
 
-//         if (foot_contact_flag[j] < 0.5) {
-//             integration_contact_flag[j] = false;
-//         }
+                if (foot_contact_flag[j] < 0.5) {
+                    integration_contact_flag[j] = false;
+                }
+        }
     }
+
 //     double contact_flag = 0.5 * (_c_0(3*j+2) + _c_1(3*j+2));
 //    std::cout << "foot force process" << std::endl;
 //    std::cout << "foot_force_max " << foot_force_max.transpose() << std::endl;
@@ -254,27 +260,49 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     }
 
     Vector12d uncertainties;
-    for (int j = 0; j < NUM_OF_LEG; j++) {
-        double n_xy = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN_XY;
-        double n_z = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN_Z;
-//         double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
-//         Eigen::Vector3d n3; n3.setZero();
-//         Eigen::Vector3d tmp = lo_veocities.col(j) - delta_v;
-//         for (int k = 0; k < 3; k++) {
-// //            if (fabs(tmp(k)) < 0.2) {
-//                 n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
-// //            } else {
-// //                n3(k) = 10e10;
-// //            }
 
-//         }
-        Eigen::Vector3d n(n_xy, n_xy, n_z);
-        // n += n2*Eigen::Vector3d::Ones();
-        // n = n + n3;
-        // we only believe
-        uncertainties.segment<3>(3*j) = n;
+    if (CONTACT_SENSOR_TYPE == 0 || CONTACT_SENSOR_TYPE == 1) {
+        for (int j = 0; j < NUM_OF_LEG; j++) {
+                double n_xy = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN_XY;
+                double n_z = V_N_MAX*(1-foot_contact_flag[j])+foot_contact_flag[j]*V_N_MIN_Z;
+        //         double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
+        //         Eigen::Vector3d n3; n3.setZero();
+        //         Eigen::Vector3d tmp = lo_veocities.col(j) - delta_v;
+        //         for (int k = 0; k < 3; k++) {
+        // //            if (fabs(tmp(k)) < 0.2) {
+        //                 n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
+        // //            } else {
+        // //                n3(k) = 10e10;
+        // //            }
+
+        //         }
+                Eigen::Vector3d n(n_xy, n_xy, n_z);
+                // n += n2*Eigen::Vector3d::Ones();
+                // n = n + n3;
+                // we only believe
+                uncertainties.segment<3>(3*j) = n;
+        }
+        //    std::cout << uncertainties.transpose() << std::endl;
+    } else if (CONTACT_SENSOR_TYPE == 2) {
+        for (int j = 0; j < NUM_OF_LEG; j++) {
+                double n1 = V_N_MAX*(1-foot_contact_flag[j])+V_N_MIN;
+                double n2 = V_N_TERM2_VAR_RESCALE*foot_force_var[j];
+                Eigen::Vector3d n3; n3.setZero();
+                Eigen::Vector3d tmp = lo_veocities.col(j) - delta_v;
+                for (int k = 0; k < 3; k++) {
+        //            if (fabs(tmp(k)) < 0.2) {
+                        n3(k) = V_N_TERM3_DISTANCE_RESCALE*std::pow(tmp(k),2);
+        //            } else {
+        //                n3(k) = 10e10;
+        //            }
+
+                }
+                Eigen::Vector3d n = n1*Eigen::Vector3d::Ones() + n2*Eigen::Vector3d::Ones();
+                n = n + n3;
+                // we only believe
+                uncertainties.segment<3>(3*j) = n;    
+        }   
     }
-//    std::cout << uncertainties.transpose() << std::endl;
 
     Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {

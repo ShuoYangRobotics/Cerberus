@@ -28,7 +28,8 @@ int ESTIMATE_EXTRINSIC;
 int ESTIMATE_TD;
 int ROLLING_SHUTTER;
 std::string EX_CALIB_RESULT_PATH;
-std::string VINS_RESULT_PATH;
+std::string DATASET_NAME;
+std::string VILO_RESULT_PATH;
 std::string OUTPUT_FOLDER;
 std::string IMU_TOPIC;
 int ROW, COL;
@@ -137,6 +138,7 @@ void readParameters(std::string config_file)
     if(USE_LEG)
     {
         fsSettings["leg_topic"] >> LEG_TOPIC;
+        fsSettings["dataset_name"] >> DATASET_NAME;
         printf("LEG_TOPIC: %s\n", LEG_TOPIC.c_str());
 
         OPTIMIZE_LEG_BIAS = fsSettings["optimize_leg_bias"];
@@ -178,12 +180,16 @@ void readParameters(std::string config_file)
 
     fsSettings["output_path"] >> OUTPUT_FOLDER;
     if (OPTIMIZE_LEG_BIAS) {
-        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + "-lc-" + to_string(VINS_LOWER_LEG_LENGTH) + ".csv";
+        VILO_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wb"+ Utility::GetCurrentTimeForFileName() + 
+        "-" + DATASET_NAME + "-"
+        "-c-" + to_string(CONTACT_SENSOR_TYPE) + ".csv";
     } else {
-        VINS_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wob"+ Utility::GetCurrentTimeForFileName() + "-lc-" + to_string(VINS_LOWER_LEG_LENGTH) + ".csv";
+        VILO_RESULT_PATH = OUTPUT_FOLDER + "/vilo_wob"+ Utility::GetCurrentTimeForFileName() + 
+        "-" + DATASET_NAME + "-"
+        "-c-" + to_string(CONTACT_SENSOR_TYPE) + ".csv";
     }
-    std::cout << "result path " << VINS_RESULT_PATH << std::endl;
-    std::ofstream fout(VINS_RESULT_PATH, std::ios::out);
+    std::cout << "result path " << VILO_RESULT_PATH << std::endl;
+    std::ofstream fout(VILO_RESULT_PATH, std::ios::out);
     fout.close();
 
     ESTIMATE_EXTRINSIC = fsSettings["estimate_extrinsic"];

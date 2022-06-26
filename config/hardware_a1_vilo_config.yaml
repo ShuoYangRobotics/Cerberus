@@ -16,6 +16,7 @@ image_width: 640
 image_height: 480
 
 # leg related
+dataset_name: "stadium"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
@@ -24,7 +25,7 @@ optimize_leg_bias: 0
 joint_angle_n: 0.000001
 joint_velocity_n: 0.000001
 
-contact_sensor_type:   1        # 0 use KF output; 1 use plan contact; 2 use foot force sensor reading (then a complicated force model is needed)
+contact_sensor_type:   2        # 0 use KF output; 1 use plan contact; 2 use foot force sensor reading (then a complicated force model is needed)
 
 leg_bias_xy_n: 0.5
 leg_bias_z_n:  0.5

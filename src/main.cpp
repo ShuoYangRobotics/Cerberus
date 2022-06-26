@@ -155,7 +155,7 @@ void sync_process()
         if (record_counter % record_counter_interval == 0) 
         {
             // write result to file
-            ofstream foutC(VINS_RESULT_PATH, ios::app);
+            ofstream foutC(VILO_RESULT_PATH, ios::app);
             foutC.setf(ios::fixed, ios::floatfield);
             foutC.precision(0);
             double time = ros::Time::now().toSec();
@@ -184,9 +184,12 @@ void sync_process()
                 << kf_state[0] << ","                                // 8
                 << kf_state[1] << ","                                // 9
                 << kf_state[2] << ","                                // 10
-                << kf_state[3] << ","                                // 8
-                << kf_state[4] << ","                                // 9
-                << kf_state[5] << ","                                // 10
+                << kf_state[3] << ","                                // 11
+                << kf_state[4] << ","                                // 12
+                << kf_state[5] << ","                                // 13
+                << data.opti_pos[0] << ","                                // 14
+                << data.opti_pos[1] << ","                                // 15
+                << data.opti_pos[2] << ","                                // 16
                 << endl;
             foutC.close();
         }
@@ -259,13 +262,14 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
     Eigen::Matrix<double, NUM_DOF,1> joint_pos;
     Eigen::Matrix<double, NUM_DOF,1> joint_vel;
     Eigen::Matrix<double, NUM_LEG,1> plan_contacts;
+    Eigen::Matrix<double, NUM_LEG,1> foot_force_sensor_readings;
     for (int i = 0; i < NUM_DOF; ++i) {
         joint_pos[i] = joint_msg->position[i];
         joint_vel[i] = joint_msg->velocity[i];
     }
     for (int i = 0; i < NUM_LEG; ++i) {
         plan_contacts[i] = joint_msg->velocity[NUM_DOF + i];
-        // foot_force[i] = joint_foot_msg.effort[NUM_DOF + i];
+        foot_force_sensor_readings[i] = joint_msg->effort[NUM_DOF + i];
     }
 
     double dt;
@@ -299,6 +303,8 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
         estimator.inputLeg(t, data.joint_pos, data.joint_vel, kf.get_contacts());
     } else if (CONTACT_SENSOR_TYPE == 1) {
         estimator.inputLeg(t, data.joint_pos, data.joint_vel, data.plan_contacts);
+    } else if (CONTACT_SENSOR_TYPE == 2) {
+        estimator.inputLeg(t, data.joint_pos, data.joint_vel, foot_force_sensor_readings);
     }
     
 
@@ -354,6 +360,34 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
 }
 
 
+// if optitrack data is available, use it as ground truth
+// notice this is sort of an asynchronous callback
+double opti_dt = 0;
+double opti_curr_t = 0;
+ros::Publisher filterd_opti_vel_pub;
+bool opti_callback_first_received = false;
+void opti_callback(const geometry_msgs::PoseStamped::ConstPtr& opti_msg) {
+    std::cout<<"opti_callback"<<std::endl;
+    double opti_t = opti_msg->header.stamp.toSec();
+
+    Eigen::Matrix<double, 3, 1> opti_pos; 
+    opti_pos << opti_msg->pose.position.x, opti_msg->pose.position.y, opti_msg->pose.position.z;
+
+    // update sensor data
+    if (opti_callback_first_received == false) {
+        opti_curr_t = opti_t;
+        opti_dt = 0;
+        data.input_opti_dt(opti_dt);
+        data.input_opti_pos(opti_pos);
+    } else {
+        // only send data to KF if it is initialized and optitrack generates reliable vel data
+
+        opti_dt = opti_t - opti_curr_t;
+        data.input_opti_dt(opti_dt);
+        data.input_opti_pos(opti_pos);
+    }
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "vilo");
@@ -385,6 +419,8 @@ int main(int argc, char **argv)
     ros::Subscriber sub_img0 = n.subscribe(IMAGE0_TOPIC, 100, img0_callback);
     ros::Subscriber sub_img1 = n.subscribe(IMAGE1_TOPIC, 100, img1_callback);
     ros::Subscriber sub_restart = n.subscribe("/vins_restart", 100, restart_callback);
+    // optitrack as ground truth
+    ros::Subscriber opti_sub = n.subscribe("/mocap_node/Robot_1/pose", 30, opti_callback);
 
     // sync IMU and leg, we assume that IMU and leg, although come as two separate topics, are actually has the same time stamp
     message_filters::Subscriber<sensor_msgs::Imu> imu_sub;
