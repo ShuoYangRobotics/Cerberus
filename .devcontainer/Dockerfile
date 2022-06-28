@@ -15,6 +15,7 @@ RUN   if [ "x$(nproc)" = "x1" ] ; then export USE_PROC=1 ; \
       libsuitesparse-dev \
       python-catkin-tools \
       ros-${ROS_DISTRO}-cv-bridge \
+      ros-${ROS_DISTRO}-robot-state-publisher \
       ros-${ROS_DISTRO}-image-transport \
       ros-${ROS_DISTRO}-message-filters \
       ros-${ROS_DISTRO}-tf && \

@@ -17,7 +17,15 @@
     <node pkg="tf" type="static_transform_publisher" name="body_to_a1_body"
           args="-0.0 0.0 -0.0 0.0 0.0 0.0 /body /a1_body 1000" />
 
+    <node pkg="tf" type="static_transform_publisher" name="base_to_a1_body"
+          args="-0.0 0.0 -0.0 0.0 0.0 0.0 /a1_body /base  1000" />
+
     <!-- <node pkg="tf" type="static_transform_publisher" name="camera_to_downward_camera"
           args="0.0 0.1152 0.0  0.0 0.0 -0.785398 /camera /camera_downward_depth_optical_frame 1000" />    -->
+
+    <!-- visualization using robot description -->
+    <param name="robot_description" textfile="$(find vilo)/urdf/a1_description/urdf/a1.urdf" />
+    <remap from="/joint_states" to="/a1_filterd_joint" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
 
 </launch>

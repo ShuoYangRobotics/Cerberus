@@ -323,10 +323,11 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
 
     filterd_joint_msg.header.stamp = ros::Time::now();
 
-    filterd_joint_msg.name = {"FL0", "FL1", "FL2",
-                           "FR0", "FR1", "FR2",
-                           "RL0", "RL1", "RL2",
-                           "RR0", "RR1", "RR2",
+    // use joint names in urdf so we can visualize the robot
+    filterd_joint_msg.name = {"FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+                           "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                           "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                           "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
                            "FL_foot", "FR_foot", "RL_foot", "RR_foot"};
     filterd_joint_msg.position.resize(NUM_DOF + NUM_LEG);
     filterd_joint_msg.velocity.resize(NUM_DOF + NUM_LEG);
@@ -367,7 +368,7 @@ double opti_curr_t = 0;
 ros::Publisher filterd_opti_vel_pub;
 bool opti_callback_first_received = false;
 void opti_callback(const geometry_msgs::PoseStamped::ConstPtr& opti_msg) {
-    std::cout<<"opti_callback"<<std::endl;
+    // std::cout<<"opti_callback"<<std::endl;
     double opti_t = opti_msg->header.stamp.toSec();
 
     Eigen::Matrix<double, 3, 1> opti_pos; 
