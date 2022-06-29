@@ -16,11 +16,11 @@ image_width: 640
 image_height: 480
 
 # leg related
-dataset_name: "stadium"    # to keep track of datasets
+dataset_name: "1330"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
-optimize_leg_bias: 0
+optimize_leg_bias: 1
 
 joint_angle_n: 0.00001
 joint_velocity_n: 0.00001
