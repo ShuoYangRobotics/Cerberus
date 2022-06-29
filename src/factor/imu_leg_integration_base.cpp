@@ -306,7 +306,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        rho_uncertainty[j] = 1e-9 * foot_contact_flag[j] + 1e-12;
+        rho_uncertainty[j] = 1e-8 * foot_contact_flag[j] + 1e-11;
     }
 
     // use uncertainty to combine LO velocity
@@ -341,7 +341,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
     if (foot_contact_flag.sum()<1e-6) {
-        rho_uncertainty.setConstant(1e-12);
+        rho_uncertainty.setConstant(1e-11);
         uncertainties.setConstant(10e10);
     }
 

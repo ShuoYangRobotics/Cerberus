@@ -16,7 +16,7 @@ image_width: 640
 image_height: 480
 
 # leg related
-dataset_name: "1330"    # to keep track of datasets
+dataset_name: "stadium"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
@@ -31,8 +31,8 @@ leg_bias_xy_n: 0.5
 leg_bias_z_n:  0.5
 # contact model
 v_n_force_thres_ratio: 0.8
-v_n_min_xy: 0.0001
-v_n_min_z: 0.0005
+v_n_min_xy: 0.001
+v_n_min_z: 0.005
 v_n_min: 0.005
 v_n_max: 900.0
 # v_n_w1: 0.333
