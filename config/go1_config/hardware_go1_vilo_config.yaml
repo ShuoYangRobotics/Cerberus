@@ -17,7 +17,7 @@ image_height: 240
    
 
 # leg related
-dataset_name: "ghc"    # to keep track of datasets
+dataset_name: "mainquad"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
@@ -56,7 +56,7 @@ body_T_cam0: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d
-   data: [ 0,  0,  1, 0.10076, 
+   data: [ 0,  0,  1, 0.24, 
           -1,  0,  0, 0.025, 
            0, -1,  0, 0.1114, 
            0., 0., 0., 1. ]
@@ -65,7 +65,7 @@ body_T_cam1: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d
-   data: [ 0,  0,  1, 0.10076, 
+   data: [ 0,  0,  1, 0.24, 
           -1,  0,  0, -0.025, 
            0, -1,  0, 0.1114,  
            0., 0., 0., 1. ]
