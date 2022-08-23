@@ -190,6 +190,10 @@ void sync_process()
                 << data.opti_pos[0] << ","                                // 14
                 << data.opti_pos[1] << ","                                // 15
                 << data.opti_pos[2] << ","                                // 16
+                << estimator.Rho1[WINDOW_SIZE] << ","                                // 17
+                << estimator.Rho2[WINDOW_SIZE] << ","                                // 18
+                << estimator.Rho3[WINDOW_SIZE] << ","                                // 19
+                << estimator.Rho4[WINDOW_SIZE] << ","                                // 20
                 << endl;
             foutC.close();
         }

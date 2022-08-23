@@ -59,25 +59,26 @@ extern int CONTACT_SENSOR_TYPE;
 // temporarily write some parameters here
 extern double PHI_N;
 extern double DPHI_N;
-extern double RHO_XY_N;
-extern double RHO_Z_N;
-extern double V_N_FORCE_THRES_RATIO;
+extern double RHO_C_N;
+extern double RHO_NC_N;
+
 extern double V_N_MIN_XY;
 extern double V_N_MIN_Z;
 extern double V_N_MIN;
 extern double V_N_MAX;
-extern double V_N_W1;
-extern double V_N_W2;
-extern double V_N_W3;
+// extern double V_N_W1;
+// extern double V_N_W2;
+// extern double V_N_W3;
+extern double V_N_FORCE_THRES_RATIO;
 extern double V_N_TERM1_STEEP;
-extern double V_N_TERM2_BOUND_FORCE;
-extern double V_N_TERM3_VEL_DIFF_XY;
-extern double V_N_TERM3_VEL_DIFF_Z;
+// extern double V_N_TERM2_BOUND_FORCE;
+// extern double V_N_TERM3_VEL_DIFF_XY;
+// extern double V_N_TERM3_VEL_DIFF_Z;
 extern double V_N_TERM2_VAR_RESCALE;
 extern double V_N_TERM3_DISTANCE_RESCALE;
-extern double V_N_FINAL_RATIO;
+// extern double V_N_FINAL_RATIO;
 
-extern double VINS_LOWER_LEG_LENGTH;
+extern double VILO_LOWER_LEG_LENGTH;
 
 extern int MULTIPLE_THREAD;
 // pts_gt for debug purpose;

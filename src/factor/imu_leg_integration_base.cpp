@@ -306,7 +306,7 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     Vector4d rho_uncertainty;
     for (int j = 0; j < NUM_OF_LEG; j++) {
-        rho_uncertainty[j] = 1e-8 * foot_contact_flag[j] + 1e-11;
+        rho_uncertainty[j] = RHO_C_N * foot_contact_flag[j] + RHO_NC_N;
     }
 
     // use uncertainty to combine LO velocity
@@ -341,8 +341,8 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
 
     // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
     if (foot_contact_flag.sum()<1e-6) {
-        rho_uncertainty.setConstant(1e-11);
-        uncertainties.setConstant(10e10);
+        rho_uncertainty.setConstant(RHO_NC_N);
+        uncertainties.setConstant(1e5);
     }
 
     noise_diag.diagonal() <<
@@ -356,11 +356,14 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            uncertainties(0), uncertainties(1),  uncertainties(2),
-            uncertainties(3), uncertainties(4),  uncertainties(5),
-            uncertainties(6), uncertainties(7),  uncertainties(8),
-            uncertainties(9), uncertainties(10), uncertainties(11),
-            rho_uncertainty[0], rho_uncertainty[1], rho_uncertainty[2], rho_uncertainty[3];
+            uncertainties(0)*uncertainties(0), uncertainties(1)*uncertainties(1),  uncertainties(2)*uncertainties(2),
+            uncertainties(3)*uncertainties(3), uncertainties(4)*uncertainties(4),  uncertainties(5)*uncertainties(5),
+            uncertainties(6)*uncertainties(6), uncertainties(7)*uncertainties(7),  uncertainties(8)*uncertainties(8),
+            uncertainties(9)*uncertainties(9), uncertainties(10)*uncertainties(10), uncertainties(11)*uncertainties(11),
+            rho_uncertainty[0]*rho_uncertainty[0], 
+            rho_uncertainty[1]*rho_uncertainty[1], 
+            rho_uncertainty[2]*rho_uncertainty[2], 
+            rho_uncertainty[3]*rho_uncertainty[3];
 
 
     if(update_jacobian)

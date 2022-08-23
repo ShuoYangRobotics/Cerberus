@@ -30,7 +30,7 @@ RUN   if [ "x$(nproc)" = "x1" ] ; then export USE_PROC=1 ; \
       rm -rf ../../ceres-solver && \
       mkdir -p $CATKIN_WS/src/VINS-Fusion/
 
-# Add VINS-Fusion
+# Add VINS-Fusion as baseline
 WORKDIR $CATKIN_WS/src
 # use the following line if you only have this dockerfile
 RUN git clone https://github.com/HKUST-Aerial-Robotics/VINS-Fusion.git

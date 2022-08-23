@@ -142,7 +142,7 @@ void Estimator::setParameter()
     leg_offset_y[0] = 0.047;  leg_offset_y[1] = -0.047;  leg_offset_y[2] = 0.047;   leg_offset_y[3] = -0.047;
     motor_offset[0] = 0.0838; motor_offset[1] = -0.0838; motor_offset[2] = 0.0838;  motor_offset[3] = -0.0838;
     upper_leg_length[0] = upper_leg_length[1] = upper_leg_length[2] = upper_leg_length[3] = 0.21;
-    lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = VINS_LOWER_LEG_LENGTH;
+    lower_leg_length[0] = lower_leg_length[1] = lower_leg_length[2] = lower_leg_length[3] = VILO_LOWER_LEG_LENGTH;
 
     for (int i = 0; i < NUM_OF_LEG; i++) {
         Eigen::VectorXd rho_fix(RHO_FIX_SIZE); rho_fix << leg_offset_x[i],leg_offset_y[i],motor_offset[i],upper_leg_length[i];
@@ -151,10 +151,10 @@ void Estimator::setParameter()
 
     for (int i = 0; i < WINDOW_SIZE + 1; i++)
     {
-        Rho1[i] = VINS_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho2[i] = VINS_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho3[i] = VINS_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
-        Rho4[i] = VINS_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho1[i] = VILO_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho2[i] = VILO_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho3[i] = VILO_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
+        Rho4[i] = VILO_LOWER_LEG_LENGTH*Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Ones();
     }
 
     mProcess.unlock();

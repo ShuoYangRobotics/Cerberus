@@ -10,13 +10,14 @@ image0_topic: "/camera_forward/infra1/image_rect_raw"
 image1_topic: "/camera_forward/infra2/image_rect_raw"
 output_path: "/root/vins_ws/src/vilo/bags/output"
 
-cam0_calib: "left.yaml"
-cam1_calib: "right.yaml"
-image_width: 640
-image_height: 480
+cam0_calib: "go1_realsense_left.yaml"
+cam1_calib: "go1_realsense_right.yaml"
+image_width: 424
+image_height: 240
+   
 
 # leg related
-dataset_name: "1330"    # to keep track of datasets
+dataset_name: "ghc"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
