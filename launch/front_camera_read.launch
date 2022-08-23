@@ -9,11 +9,14 @@
     <!-- camera_forward settings   -->
     <arg name="cf_initial_reset"              default="false"/>
 
-    <arg name="cf_depth_width"         default="640"/>
-    <arg name="cf_depth_height"        default="480"/>
+    <arg name="cf_depth_width"         default="424"/>
+    <arg name="cf_depth_height"        default="240"/>
 
-    <arg name="cf_color_width"         default="640"/>
-    <arg name="cf_color_height"        default="480"/>
+    <arg name="cf_color_width"         default="424"/>
+    <arg name="cf_color_height"        default="240"/>
+
+    <arg name="cf_infra_width"         default="424"/>
+    <arg name="cf_infra_height"        default="240"/>
 
     <arg name="cf_depth_fps"           default="6"/>
     <arg name="cf_infra_fps"           default="15"/>
@@ -52,6 +55,8 @@
             <arg name="color_height"              value="$(arg cf_color_height)"/>
             <arg name="enable_color"              value="$(arg cf_enable_color)"/>
 
+            <arg name="infra_width"               value="$(arg cf_infra_width)"/>
+            <arg name="infra_height"              value="$(arg cf_infra_height)"/>
             <arg name="enable_infra1"             value="$(arg cf_enable_infra1)"/>
             <arg name="enable_infra2"             value="$(arg cf_enable_infra2)"/>
 
