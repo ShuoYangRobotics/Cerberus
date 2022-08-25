@@ -8,6 +8,7 @@
 #include<cmath>
 
 #include <Eigen/Sparse>
+#include <Eigen/SVD>
 
 #include "../utils/utility.h"
 #include "../utils/parameters.h"

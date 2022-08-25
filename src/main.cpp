@@ -253,9 +253,13 @@ void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
     return;
 }
 
+int counter = 0; 
 // we assume IMU and leg have the same timestamp 
 void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msgs::JointState::ConstPtr& joint_msg) {
 
+    counter++;
+    // if (counter % 2 == 0) 
+    //     return;
     // std::cout<<"sensor_callback"<<std::endl;
     double t = imu_msg->header.stamp.toSec();
 

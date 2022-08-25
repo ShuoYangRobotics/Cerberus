@@ -16,19 +16,19 @@ image_width: 640
 image_height: 480
 
 # leg related
-dataset_name: "1330"    # to keep track of datasets
+dataset_name: "street_with_bias"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
-optimize_leg_bias: 1
+optimize_leg_bias: 0
 
 joint_angle_n: 0.0001
 joint_velocity_n: 0.0002
 
 contact_sensor_type:   0        # 0 use KF output; 1 use plan contact; 2 use foot force sensor reading (then a complicated force model is needed)
 
-leg_bias_c_n: 0.00005
-leg_bias_nc_n:  0.000001
+leg_bias_c_n: 0.05
+leg_bias_nc_n:  0.00001
 # contact model
 # v_n_force_thres_ratio: 0.8
 v_n_min_xy: 0.0316
