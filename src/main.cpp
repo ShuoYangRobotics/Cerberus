@@ -281,7 +281,7 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
         plan_contacts[i] = joint_msg->velocity[NUM_DOF + i];
         foot_force_sensor_readings[i] = joint_msg->effort[NUM_DOF + i];
         // for go 1, plan contacts are not available, use sensordata to process foot force to get contact
-        data.input_foot_force(foot_force_sensor_readings);
+        // data.input_foot_force(foot_force_sensor_readings);
     }
 
     double dt;
