@@ -182,8 +182,11 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     // calculate variance
     if (CONTACT_SENSOR_TYPE == 0 || CONTACT_SENSOR_TYPE == 1) {
         for (int j = 0; j < NUM_OF_LEG; j++) {
-                double flag = _c_1(j);
-                foot_contact_flag[j] = flag >= 0.5? 1.0: 0.0;
+            double flag = _c_1(j);
+            foot_contact_flag[j] = flag >= 0.5? 1.0: 0.0;
+            if (foot_contact_flag[j] < 0.5) {
+                integration_contact_flag[j] = false;
+            }
         }
     } else if (CONTACT_SENSOR_TYPE == 2) {
         for (int j = 0; j < NUM_OF_LEG; j++) {
@@ -260,31 +263,31 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     }
 
     // calculate gi, hi, the kappa, eta in paper 
-for (int j = 0; j < NUM_OF_LEG; j++) {
-        // calculate derivative of fk wrt rho
-        dfdrhoi.push_back( a1_kin.dfk_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]) );
-        dfdrhoip1.push_back( a1_kin.dfk_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]) );
-        // calculate g
-        Eigen::Matrix<double, 9, RHO_OPT_SIZE> dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
-        Eigen::Matrix<double, 3, 9> kron_dphi0; kron_dphi0.setZero();
-        kron_dphi0(0,0) = kron_dphi0(1,1) = kron_dphi0(2,2) = _dphi_0(0+3*j);
-        kron_dphi0(0,3) = kron_dphi0(1,4) = kron_dphi0(2,5) = _dphi_0(1+3*j);
-        kron_dphi0(0,6) = kron_dphi0(1,7) = kron_dphi0(2,8) = _dphi_0(2+3*j);
-        gi.push_back( -delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdrho0 + R_w_0_x*R_br*dfdrhoi[j]) );
+    for (int j = 0; j < NUM_OF_LEG; j++) {
+            // calculate derivative of fk wrt rho
+            dfdrhoi.push_back( a1_kin.dfk_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]) );
+            dfdrhoip1.push_back( a1_kin.dfk_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]) );
+            // calculate g
+            Eigen::Matrix<double, 9, RHO_OPT_SIZE> dJdrho0 = a1_kin.dJ_drho(_phi_0.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 3, 9> kron_dphi0; kron_dphi0.setZero();
+            kron_dphi0(0,0) = kron_dphi0(1,1) = kron_dphi0(2,2) = _dphi_0(0+3*j);
+            kron_dphi0(0,3) = kron_dphi0(1,4) = kron_dphi0(2,5) = _dphi_0(1+3*j);
+            kron_dphi0(0,6) = kron_dphi0(1,7) = kron_dphi0(2,8) = _dphi_0(2+3*j);
+            gi.push_back( -delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdrho0 + R_w_0_x*R_br*dfdrhoi[j]) );
 
-        Eigen::Matrix<double, 9, RHO_OPT_SIZE> dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
-        Eigen::Matrix<double, 3, 9> kron_dphi1; kron_dphi1.setZero();
-        kron_dphi1(0,0) = kron_dphi1(1,1) = kron_dphi1(2,2) = _dphi_1(0+3*j);
-        kron_dphi1(0,3) = kron_dphi1(1,4) = kron_dphi1(2,5) = _dphi_1(1+3*j);
-        kron_dphi1(0,6) = kron_dphi1(1,7) = kron_dphi1(2,8) = _dphi_1(2+3*j);
-        gip1.push_back( -result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdrho1+ R_w_1_x*R_br*dfdrhoip1[j]) );
+            Eigen::Matrix<double, 9, RHO_OPT_SIZE> dJdrho1 = a1_kin.dJ_drho(_phi_1.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
+            Eigen::Matrix<double, 3, 9> kron_dphi1; kron_dphi1.setZero();
+            kron_dphi1(0,0) = kron_dphi1(1,1) = kron_dphi1(2,2) = _dphi_1(0+3*j);
+            kron_dphi1(0,3) = kron_dphi1(1,4) = kron_dphi1(2,5) = _dphi_1(1+3*j);
+            kron_dphi1(0,6) = kron_dphi1(1,7) = kron_dphi1(2,8) = _dphi_1(2+3*j);
+            gip1.push_back( -result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdrho1+ R_w_1_x*R_br*dfdrhoip1[j]) );
 
-        // calculate h
-        Eigen::Matrix<double, 9, 3> dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
-        hi.push_back( delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdphi0 + R_w_0_x*R_br*Ji[j]) );
-        Eigen::Matrix<double, 9, 3> dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
-        hip1.push_back( result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdphi1 + R_w_1_x*R_br*Jip1[j]) );
-}
+            // calculate h
+            Eigen::Matrix<double, 9, 3> dJdphi0 = a1_kin.dJ_dq(_phi_0.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
+            hi.push_back( delta_q.toRotationMatrix()*(R_br*kron_dphi0*dJdphi0 + R_w_0_x*R_br*Ji[j]) );
+            Eigen::Matrix<double, 9, 3> dJdphi1 = a1_kin.dJ_dq(_phi_1.segment<3>(3*j), linearized_rho.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j), rho_fix_list[j]);
+            hip1.push_back( result_delta_q.toRotationMatrix()*(R_br*kron_dphi1*dJdphi1 + R_w_1_x*R_br*Jip1[j]) );
+    }
     Vector12d uncertainties;
 
     if (CONTACT_SENSOR_TYPE == 0 || CONTACT_SENSOR_TYPE == 1) {
@@ -310,7 +313,7 @@ for (int j = 0; j < NUM_OF_LEG; j++) {
                 // LUI noise!
                 Eigen::MatrixXd tmp = gi[j];
                 Eigen::JacobiSVD<Eigen::MatrixXd> svd(tmp);
-                double weight = 10./(1+exp(10*(svd.singularValues().mean()-0.1)));
+                double weight = 10./(1+exp(10*(svd.singularValues().mean()-5.0)));
                 uncertainties.segment<3>(3*j) += weight*Eigen::Vector3d::Ones();
                 
         }
@@ -372,10 +375,10 @@ for (int j = 0; j < NUM_OF_LEG; j++) {
     result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
 
     // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
-    if (foot_contact_flag.sum()<1e-6) {
-        rho_uncertainty.setConstant(RHO_NC_N);
-        uncertainties.setConstant(1e5);
-    }
+    // if (foot_contact_flag.sum()<1e-6) {
+    //     rho_uncertainty.setConstant(RHO_NC_N);
+    //     uncertainties.setConstant(1e5);
+    // }
 
     noise_diag.diagonal() <<
             (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N_Z * ACC_N_Z),
@@ -1054,13 +1057,13 @@ IMULegIntegrationBase::evaluate(const Vector3d &Pi, const Quaterniond &Qi, const
     // TODO: if during this period leg is always in the air, set residual be 0
 
     for (int j = 0; j < NUM_OF_LEG; j++) {
-//        if (integration_contact_flag[j] == true) {
+    //    if (integration_contact_flag[j] == true) {
             residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Qi.inverse() * (Pj - Pi) - corrected_delta_epsilon[j];
             residuals.block<RHO_OPT_SIZE, 1>(ILO_RHO1+RHO_OPT_SIZE*j, 0) = rhoj.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j) - rhoi.segment<RHO_OPT_SIZE>(RHO_OPT_SIZE*j);
-//        } else {
-//            residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Eigen::Vector3d::Zero();
-//            residuals.block<RHO_OPT_SIZE, 1>(ILO_RHO1+RHO_OPT_SIZE*j, 0) = Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Zero();
-//        }
+    //    } else {
+    //        residuals.block<3, 1>(ILO_EPS1+3*j, 0) = Eigen::Vector3d::Zero();
+    //        residuals.block<RHO_OPT_SIZE, 1>(ILO_RHO1+RHO_OPT_SIZE*j, 0) = Eigen::Matrix<double, RHO_OPT_SIZE, 1>::Zero();
+    //    }
     }
     residuals.block<3, 1>(ILO_BA, 0) = Baj - Bai;
     residuals.block<3, 1>(ILO_BG, 0) = Bgj - Bgi;

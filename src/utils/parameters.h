@@ -51,6 +51,8 @@ extern int ROW, COL;
 extern int NUM_OF_CAM;
 extern int STEREO;
 extern int USE_IMU;
+
+extern std::string ROBOT_TYPE;
 extern std::string LEG_TOPIC;
 extern int NUM_OF_LEG;
 extern int USE_LEG;

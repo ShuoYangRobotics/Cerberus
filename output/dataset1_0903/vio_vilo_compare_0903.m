@@ -1,4 +1,4 @@
-folder = '/home/biorobotics/tightly-coupled-visual-inertial-leg-odometry/output/dataset1_0903/';
+folder = '/home/shuoyang/Documents/tightly-coupled-visual-inertial-leg-odometry/output/dataset1_0903/';
 % name convention
 %  vio - vins-fushion
 %  vilo - wob      vilo no bias correction
@@ -6,9 +6,9 @@ folder = '/home/biorobotics/tightly-coupled-visual-inertial-leg-odometry/output/
 %  vilo - wb2      vilo with baseline bias correction
 
 % read vio, vilo wob,  vilo wb,
-vio_file = strcat(folder,'vio');
-vio_wob_file = strcat(folder,'vilo_wlwob_forward_backward');
-vio_wb_file = strcat(folder,'vilo_wlwb_forward_backward');
+vio_file = strcat(folder,'vio_0903_forward_reidx_with_gt');
+vio_wob_file = strcat(folder,'vio_wlwb_0903_forward_backward_reidx_with_gt2_best');
+vio_wb_file = strcat(folder,'vio_wlwb_0903_forward_backward_reidx_with_gt2_best');
 
 % read table 
 vio_Tab = readtable(vio_file);

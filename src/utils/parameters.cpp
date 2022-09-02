@@ -43,6 +43,9 @@ map<int, Eigen::Vector3d> pts_gt;
 std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
 std::string FISHEYE_MASK;
 std::vector<std::string> CAM_NAMES;
+
+std::string ROBOT_TYPE;
+
 std::string LEG_TOPIC;
 int OPTIMIZE_LEG_BIAS;
 int CONTACT_SENSOR_TYPE;
@@ -138,6 +141,8 @@ void readParameters(std::string config_file)
     printf("USE_LEG: %d\n", USE_LEG);
     if(USE_LEG)
     {
+        fsSettings["robot_type"] >> ROBOT_TYPE;
+
         fsSettings["leg_topic"] >> LEG_TOPIC;
         fsSettings["dataset_name"] >> DATASET_NAME;
         printf("LEG_TOPIC: %s\n", LEG_TOPIC.c_str());

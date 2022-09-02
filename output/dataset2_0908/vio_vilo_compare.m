@@ -1,4 +1,4 @@
-folder = '/home/shuoy/nv_work/unitree_ws/src/tightly-coupled-visual-inertial-leg-odometry/output/dataset2_0908/';
+folder = '/home/shuoyang/Documents/tightly-coupled-visual-inertial-leg-odometry/output/dataset2_0908/';
 % name convention
 %  vio - vins-fushion
 %  vilo - wob      vilo no bias correction

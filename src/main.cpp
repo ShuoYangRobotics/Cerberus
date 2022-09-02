@@ -267,6 +267,8 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
     Eigen::Vector3d acc = Eigen::Vector3d(imu_msg->linear_acceleration.x, imu_msg->linear_acceleration.y, imu_msg->linear_acceleration.z);
     Eigen::Vector3d ang_vel = Eigen::Vector3d(imu_msg->angular_velocity.x, imu_msg->angular_velocity.y, imu_msg->angular_velocity.z);
 
+
+
     Eigen::Matrix<double, NUM_DOF,1> joint_pos;
     Eigen::Matrix<double, NUM_DOF,1> joint_vel;
     Eigen::Matrix<double, NUM_LEG,1> plan_contacts;
@@ -278,11 +280,18 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
     for (int i = 0; i < NUM_LEG; ++i) {
         plan_contacts[i] = joint_msg->velocity[NUM_DOF + i];
         foot_force_sensor_readings[i] = joint_msg->effort[NUM_DOF + i];
+        // for go 1, plan contacts are not available, use sensordata to process foot force to get contact
+        data.input_foot_force(foot_force_sensor_readings);
     }
 
     double dt;
     data.input_imu(acc, ang_vel);
-    data.input_leg(joint_pos, joint_vel, plan_contacts);
+    if (ROBOT_TYPE == "go1") {
+        data.input_leg(joint_pos, joint_vel, data.plan_contacts);
+    } else {
+        data.input_leg(joint_pos, joint_vel, plan_contacts);
+    }
+
 
     if ( !kf.is_inited() && first_sensor_received == false ) {
         // the callback is called the first time, filter may not be inited
@@ -346,7 +355,13 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
     }
     Eigen::Vector4d estimated_contact = kf.get_contacts();
     for (int i = 0; i < NUM_LEG; ++i) {
-        filterd_joint_msg.velocity[NUM_DOF+i] = estimated_contact[i];
+        if (CONTACT_SENSOR_TYPE == 0) {
+            filterd_joint_msg.velocity[NUM_DOF+i] = estimated_contact[i];
+        } else if (CONTACT_SENSOR_TYPE == 1) {
+            filterd_joint_msg.velocity[NUM_DOF+i] = data.plan_contacts[i];
+        } else if (CONTACT_SENSOR_TYPE == 2) {
+            filterd_joint_msg.velocity[NUM_DOF+i] = foot_force_sensor_readings[i];
+        }
     }
     filterd_imu_pub.publish(filterd_imu_msg);
     filterd_joint_pub.publish(filterd_joint_msg);

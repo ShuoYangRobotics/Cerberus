@@ -1,4 +1,4 @@
-folder = '/home/shuoy/nv_work/unitree_ws/src/tightly-coupled-visual-inertial-leg-odometry/output/dataset11_0903/';
+folder = '/home/shuoyang/Documents/tightly-coupled-visual-inertial-leg-odometry/output/dataset11_0903/';
 % name convention
 %  vio - vins-fushion
 %  vilo - wob      vilo no bias correction
@@ -114,7 +114,7 @@ vio_wb_pos_x = vio_wb_pos_x + gt_pos_x(1) - vio_wb_pos_x(1);
 vio_wb_pos_y = vio_wb_pos_y + gt_pos_y(1) - vio_wb_pos_y(1);
 vio_wb_pos_z = vio_wb_pos_z + gt_pos_z(1) - vio_wb_pos_z(1);
 % rotate data
-angle = -4.2/180*pi;
+angle = -4/180*pi;
 R = [cos(angle)   -sin(angle)  0;
     sin(angle)    cos(angle)  0;
     0                   0     1];
