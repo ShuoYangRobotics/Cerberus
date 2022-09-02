@@ -1,5 +1,9 @@
 FROM ros:melodic-perception
 
+# fixed a key issue using the method mentioned in https://github.com/PRBonn/bonnetal/commit/0ab883b8356954c3e57a07a73c30bbac8f035a05
+RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
+  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654 && \
+  apt update 
 
 ENV CERES_VERSION="1.14.0"
 ENV CATKIN_WS=/root/vins_ws
@@ -13,15 +17,17 @@ RUN   if [ "x$(nproc)" = "x1" ] ; then export USE_PROC=1 ; \
       libeigen3-dev \
       libgoogle-glog-dev \
       libsuitesparse-dev \
-      python-catkin-tools \
+      python3-catkin-tools \
+      git \
       ros-${ROS_DISTRO}-cv-bridge \
       ros-${ROS_DISTRO}-robot-state-publisher \
       ros-${ROS_DISTRO}-image-transport \
       ros-${ROS_DISTRO}-message-filters \
       ros-${ROS_DISTRO}-tf && \
-      rm -rf /var/lib/apt/lists/* && \
+      rm -rf /var/lib/apt/lists/*
+
       # Build and install Ceres
-      git clone https://ceres-solver.googlesource.com/ceres-solver && \
+RUN   git clone https://ceres-solver.googlesource.com/ceres-solver && \
       cd ceres-solver && \
       git checkout tags/${CERES_VERSION} && \
       mkdir build && cd build && \
@@ -30,7 +36,7 @@ RUN   if [ "x$(nproc)" = "x1" ] ; then export USE_PROC=1 ; \
       rm -rf ../../ceres-solver && \
       mkdir -p $CATKIN_WS/src/VINS-Fusion/
 
-# Add VINS-Fusion as baseline
+# Add VINS-Fusion
 WORKDIR $CATKIN_WS/src
 # use the following line if you only have this dockerfile
 RUN git clone https://github.com/HKUST-Aerial-Robotics/VINS-Fusion.git
