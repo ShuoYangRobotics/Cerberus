@@ -81,23 +81,23 @@ RUN make install
 
 
 ### run docker as a ssh daemon
-RUN apt-get update \
-  && apt-get install -y ssh 
-RUN touch /etc/ssh/sshd_config_test_clion
-RUN ( \
-    echo 'LogLevel DEBUG2'; \
-    echo 'PermitRootLogin yes'; \
-    echo 'PasswordAuthentication yes'; \
-    echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
-    echo 'Port 2237'; \
-  ) > /etc/ssh/sshd_config_test_clion \
-  && mkdir /run/sshd
+# RUN apt-get update \
+#   && apt-get install -y ssh 
+# RUN touch /etc/ssh/sshd_config_test_clion
+# RUN ( \
+#     echo 'LogLevel DEBUG2'; \
+#     echo 'PermitRootLogin yes'; \
+#     echo 'PasswordAuthentication yes'; \
+#     echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
+#     echo 'Port 2237'; \
+#   ) > /etc/ssh/sshd_config_test_clion \
+#   && mkdir /run/sshd
 
-# Change the password 'password' to something more secure
-RUN useradd -m user && yes password | passwd user
-RUN echo 'root:2022quad' | chpasswd
+# # Change the password 'password' to something more secure
+# RUN useradd -m user && yes password | passwd user
+# RUN echo 'root:2022quad' | chpasswd
 
-CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
+# CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
 
 # for sharing vpg keys
 RUN apt-get update && apt-get install gnupg2 -y

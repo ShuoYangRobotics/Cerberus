@@ -16,35 +16,36 @@ image_width: 640
 image_height: 480
 
 # leg related
-dataset_name: "street_with_bias"    # to keep track of datasets
+robot_type: "a1"   # should be go1 or a1 
+dataset_name: "stadium"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_a1/joint_foot"
-optimize_leg_bias: 0
+optimize_leg_bias: 1
 
-joint_angle_n: 0.0001
-joint_velocity_n: 0.0002
+joint_angle_n: 0.00001
+joint_velocity_n: 0.00001
 
 contact_sensor_type:   0        # 0 use KF output; 1 use plan contact; 2 use foot force sensor reading (then a complicated force model is needed)
 
-leg_bias_c_n: 0.05
-leg_bias_nc_n:  0.00001
+leg_bias_c_n:   0.00000001
+leg_bias_nc_n:  0.00000000001
 # contact model
-# v_n_force_thres_ratio: 0.8
-v_n_min_xy: 0.0316
-v_n_min_z: 0.0707
-v_n_min: 0.0707
-v_n_max: 30.0
+v_n_force_thres_ratio: 0.8
+v_n_min_xy: 0.001
+v_n_min_z: 0.005
+v_n_min: 0.005
+v_n_max: 900.0
 # v_n_w1: 0.333
 # v_n_w2: 0.333
 # v_n_w3: 0.333
-# v_n_term1_steep: 10
+v_n_term1_steep: 10
 v_n_term2_var_rescale: 1.0e-6
 v_n_term3_distance_rescale: 1.0e-3
-# v_n_final_ratio: 0.1
+v_n_final_ratio: 0.1
 
 # leg kinematics parameter
-lower_leg_length: 0.2
+lower_leg_length: 0.21
 
 
 # Extrinsic parameter between IMU and Camera.

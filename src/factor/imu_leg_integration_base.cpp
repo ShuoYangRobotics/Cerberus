@@ -311,10 +311,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
                 // we only believe
                 uncertainties.segment<3>(3*j) = n;
                 // LUI noise!
-                Eigen::MatrixXd tmp = gi[j];
-                Eigen::JacobiSVD<Eigen::MatrixXd> svd(tmp);
-                double weight = 10./(1+exp(10*(svd.singularValues().mean()-5.0)));
-                uncertainties.segment<3>(3*j) += weight*Eigen::Vector3d::Ones();
+                // Eigen::MatrixXd tmp = gi[j];
+                // Eigen::JacobiSVD<Eigen::MatrixXd> svd(tmp);
+                // double weight = 10./(1+exp(10*(svd.singularValues().mean()-5.0)));
+                // uncertainties.segment<3>(3*j) += weight*Eigen::Vector3d::Ones();
                 
         }
         //    std::cout << uncertainties.transpose() << std::endl;
@@ -375,10 +375,10 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
     result_sum_delta_epsilon = sum_delta_epsilon + average_delta_epsilon;
 
     // abnormal case: all four feet are not on ground, in this case the residual must be all 0, we give them small uncertainty to prevent
-    // if (foot_contact_flag.sum()<1e-6) {
-    //     rho_uncertainty.setConstant(RHO_NC_N);
-    //     uncertainties.setConstant(1e5);
-    // }
+    if (foot_contact_flag.sum()<1e-6) {
+        rho_uncertainty.setConstant(RHO_NC_N);
+        uncertainties.setConstant(10e10);
+    }
 
     noise_diag.diagonal() <<
             (ACC_N * ACC_N), (ACC_N * ACC_N), (ACC_N_Z * ACC_N_Z),
@@ -391,14 +391,11 @@ void IMULegIntegrationBase::midPointIntegration(double _dt, const Vector3d &_acc
             (PHI_N * PHI_N), (PHI_N * PHI_N), (PHI_N * PHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
             (DPHI_N * DPHI_N), (DPHI_N * DPHI_N), (DPHI_N * DPHI_N),
-            uncertainties(0)*uncertainties(0), uncertainties(1)*uncertainties(1),  uncertainties(2)*uncertainties(2),
-            uncertainties(3)*uncertainties(3), uncertainties(4)*uncertainties(4),  uncertainties(5)*uncertainties(5),
-            uncertainties(6)*uncertainties(6), uncertainties(7)*uncertainties(7),  uncertainties(8)*uncertainties(8),
-            uncertainties(9)*uncertainties(9), uncertainties(10)*uncertainties(10), uncertainties(11)*uncertainties(11),
-            rho_uncertainty[0]*rho_uncertainty[0], 
-            rho_uncertainty[1]*rho_uncertainty[1], 
-            rho_uncertainty[2]*rho_uncertainty[2], 
-            rho_uncertainty[3]*rho_uncertainty[3];
+            uncertainties(0), uncertainties(1),  uncertainties(2),
+            uncertainties(3), uncertainties(4),  uncertainties(5),
+            uncertainties(6), uncertainties(7),  uncertainties(8),
+            uncertainties(9), uncertainties(10), uncertainties(11),
+            rho_uncertainty[0], rho_uncertainty[1], rho_uncertainty[2], rho_uncertainty[3];
 
 
     if(update_jacobian)
