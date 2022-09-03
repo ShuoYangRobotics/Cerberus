@@ -24,7 +24,7 @@ class IMULegIntegrationBase
 {
 public:
     IMULegIntegrationBase() = delete;
-    IMULegIntegrationBase(const Eigen::Vector3d &_base_v, const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
+    IMULegIntegrationBase(const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
                           const Ref<const Vector_dof> &_phi_0, const Ref<const Vector_dof> &_dphi_0, const Ref<const Vector_leg> &_c_0,
                           const Eigen::Vector3d &_linearized_ba, const Eigen::Vector3d &_linearized_bg, const Ref<const Vector_rho> &_linearized_rho,
                           std::vector<Eigen::VectorXd> _rho_fix_list, const Eigen::Vector3d &_p_br, const Eigen::Matrix3d &_R_br);
@@ -58,15 +58,15 @@ public:
                              Vector3d &result_linearized_ba, Vector3d &result_linearized_bg,
                              Vector_rho &result_linearized_rho, bool update_jacobian);
 
-    void checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
-                       const Vector3d &_acc_1, const Vector3d &_gyr_1,
-                       const Ref<const Vector_dof> &_phi_0, const Ref<const Vector_dof> &_dphi_0,
-                       const Ref<const Vector_leg> &_c_0, const Ref<const Vector_dof> &_phi_1,
-                       const Ref<const Vector_dof> &_dphi_1, const Ref<const Vector_leg> &_c_1,
-                       const Vector3d &delta_p, const Quaterniond &delta_q,
-                       const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
-                       const Vector3d &linearized_ba, const Vector3d &linearized_bg,
-                       const Ref<const Vector_rho> &linearized_rho);
+    // void checkJacobian(double _dt, const Vector3d &_acc_0, const Vector3d &_gyr_0,
+    //                    const Vector3d &_acc_1, const Vector3d &_gyr_1,
+    //                    const Ref<const Vector_dof> &_phi_0, const Ref<const Vector_dof> &_dphi_0,
+    //                    const Ref<const Vector_leg> &_c_0, const Ref<const Vector_dof> &_phi_1,
+    //                    const Ref<const Vector_dof> &_dphi_1, const Ref<const Vector_leg> &_c_1,
+    //                    const Vector3d &delta_p, const Quaterniond &delta_q,
+    //                    const Vector3d &delta_v, const vector<Eigen::Vector3d> &delta_epsilon,
+    //                    const Vector3d &linearized_ba, const Vector3d &linearized_bg,
+    //                    const Ref<const Vector_rho> &linearized_rho);
 
     // state size
 

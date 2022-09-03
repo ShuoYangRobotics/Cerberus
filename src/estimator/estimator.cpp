@@ -614,7 +614,7 @@ void Estimator::processIMULeg(double t, double dt,
         tmp.segment<RHO_OPT_SIZE>(1 * RHO_OPT_SIZE) = Rho2[frame_count];
         tmp.segment<RHO_OPT_SIZE>(2 * RHO_OPT_SIZE) = Rho3[frame_count];
         tmp.segment<RHO_OPT_SIZE>(3 * RHO_OPT_SIZE) = Rho4[frame_count];
-        il_pre_integrations[frame_count] = new IMULegIntegrationBase{Rs[frame_count].transpose() * Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
+        il_pre_integrations[frame_count] = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                      Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
     }
 
@@ -682,7 +682,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     tmp.segment<RHO_OPT_SIZE>(1 * RHO_OPT_SIZE) = Rho2[frame_count];
     tmp.segment<RHO_OPT_SIZE>(2 * RHO_OPT_SIZE) = Rho3[frame_count];
     tmp.segment<RHO_OPT_SIZE>(3 * RHO_OPT_SIZE) = Rho4[frame_count];
-    tmp_il_pre_integration = new IMULegIntegrationBase{Rs[frame_count].transpose() * Vs[frame_count], acc_0, gyr_0, phi_0, dphi_0, c_0,
+    tmp_il_pre_integration = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                        Bas[frame_count], Bgs[frame_count], tmp, rho_fix_list, p_br, R_br};
 
     // we do not really use this
@@ -1530,7 +1530,7 @@ void Estimator::slideWindow()
                 tmp.segment<RHO_OPT_SIZE>(1 * RHO_OPT_SIZE) = Rho2[WINDOW_SIZE];
                 tmp.segment<RHO_OPT_SIZE>(2 * RHO_OPT_SIZE) = Rho3[WINDOW_SIZE];
                 tmp.segment<RHO_OPT_SIZE>(3 * RHO_OPT_SIZE) = Rho4[WINDOW_SIZE];
-                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose() * Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
+                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                              Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
@@ -1611,7 +1611,7 @@ void Estimator::slideWindow()
                 tmp.segment<RHO_OPT_SIZE>(1 * RHO_OPT_SIZE) = Rho2[WINDOW_SIZE];
                 tmp.segment<RHO_OPT_SIZE>(2 * RHO_OPT_SIZE) = Rho3[WINDOW_SIZE];
                 tmp.segment<RHO_OPT_SIZE>(3 * RHO_OPT_SIZE) = Rho4[WINDOW_SIZE];
-                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{Rs[WINDOW_SIZE].transpose() * Vs[WINDOW_SIZE], acc_0, gyr_0, phi_0, dphi_0, c_0,
+                il_pre_integrations[WINDOW_SIZE] = new IMULegIntegrationBase{acc_0, gyr_0, phi_0, dphi_0, c_0,
                                                                              Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE], tmp, rho_fix_list, p_br, R_br};
 
                 dt_buf[WINDOW_SIZE].clear();
