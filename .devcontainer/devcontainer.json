@@ -15,8 +15,8 @@
 				"--device=/dev/bus",  "--volume=/dev/serial:/dev/serial:ro",
 				"--volume=${userHome}/.gitconfig:/etc/gitconfig",
 		        "--name=a1_vins_docker_vscode"],
-	"workspaceMount": "source=${localWorkspaceFolder},target=/root/vins_ws/src/vilo,type=bind",
-	"workspaceFolder": "/root/vins_ws/src/vilo"
+	"workspaceMount": "source=${localWorkspaceFolder},target=/root/vilo_ws/src/vilo,type=bind",
+	"workspaceFolder": "/root/vilo_ws/src/vilo"
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 

@@ -13,6 +13,10 @@ Here are two videos comparing the performance of the VILO and the VINS-Fusion:
 ## Installation
 use Docker and VSCode ''Remote - Containers''. A dockerfile that configures an individual development environment is shown in .devcontainer/Dockerfile.
 
+The state estimation result can be visualized using Rviz. If the user's computer already has ROS installed then open Rviz directly and load config file config/rviz/vilo_rviz_config.rviz. 
+
+If the user's computer does not have ROS installed, the user can use Rviz inside the docker. However in order to see the Rviz interface the computer must have graphic driver and xhost properly configured. 
+
 
 ## Dataset
 A Google drive folder https://drive.google.com/drive/folders/13GsFDaBkDrslOl9BfE4AJnOn3ECDXVnc
@@ -24,7 +28,8 @@ contains several dataset to test the VILO.
 2. indoor_with_ground_truth_1.bag. The robot moves forward and back quickly. Groundtruh data is 
 
 ## Test On Dataset
-Since the Remote container 
+Since we directly map the code into a location inside the docker (/root/vilo_ws). If we download dataset rosbag to 
+${PATH_TO_CODE_REPO}/bags, the bag file will appear in the docker container as well (/root/vilo_ws/src/vilo/bags)
 
 ```
 roslaunch a1_launch hardware_a1_vilo_together.launch
@@ -32,6 +37,7 @@ roslaunch a1_launch hardware_a1_vilo_together.launch
 rosbag play --clock -r 0.5 outdoor_snow.bag
 ```
 Notice the rosbag play should be slow down for slow computers, otherwise the VILO cannot finish computation in time. 
+
 ## Sensor Setup
 The VILO can only works properly when sensor topics are received correctly and all sensor transformations are set properly. 
 

@@ -8,7 +8,7 @@ num_of_cam: 2
 imu_topic: "/hardware_a1/imu"
 image0_topic: "/camera_forward/infra1/image_rect_raw"
 image1_topic: "/camera_forward/infra2/image_rect_raw"
-output_path: "/root/vins_ws/src/vilo/bags/output"
+output_path: "/root/vilo_ws/src/vilo/bags/output"
 
 cam0_calib: "a1_realsense_left.yaml"
 cam1_calib: "a1_realsense_right.yaml"

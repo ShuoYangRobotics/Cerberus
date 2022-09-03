@@ -6,7 +6,7 @@ RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main"
   apt update 
 
 ENV CERES_VERSION="1.14.0"
-ENV CATKIN_WS=/root/vins_ws
+ENV CATKIN_WS=/root/vilo_ws
 
       # set up thread number for building
 RUN   if [ "x$(nproc)" = "x1" ] ; then export USE_PROC=1 ; \
@@ -85,7 +85,7 @@ RUN apt-get update && apt-get install gnupg2 -y
 # docker run -d \
 # --network host \
 # --cap-add=IPC_LOCK --cap-add=sys_nice \
-# -v ${PATH_TO_THIS_CODE}/tightly-coupled-visual-inertial-leg-odometry:/root/vins_ws/src/vilo \
+# -v ${PATH_TO_THIS_CODE}/tightly-coupled-visual-inertial-leg-odometry:/root/vilo_ws/src/vilo \
 # --device /dev/input \
 # --name vilo_container \
 # vilo_image
