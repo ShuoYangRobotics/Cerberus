@@ -3,12 +3,12 @@
 <launch>
 
     <!-- VINS config -->
-    <param name="vins_config_file" type="string" value="$(find vilo)/config/hardware_a1_vins_config.yaml" />
+    <param name="vins_config_file" type="string" value="$(find vilo)/config/a1_config/hardware_a1_vins_config.yaml" />
     
     <node name="vinsfusion" pkg="vins" type="vins_node"
-            args="$(find vilo)/config/hardware_a1_vins_config.yaml" output="screen"/>
+            args="$(find vilo)/config/a1_config/hardware_a1_vins_config.yaml" output="screen"/>
     <node name="vinsloopfusion" pkg="loop_fusion" type="loop_fusion_node"
-            args="$(find vilo)/config/hardware_a1_vins_config.yaml" />
+            args="$(find vilo)/config/a1_config/hardware_a1_vins_config.yaml" />
 
     <!-- new config when the robot chassis is on the ground, imu is 142mm above the ground, publish a fix transformation -->
     <node pkg="tf" type="static_transform_publisher" name="ground_to_world"

@@ -1,0 +1,104 @@
+%YAML:1.0
+
+#common parameters
+#support: 1 imu 1 cam; 1 imu 2 cam: 2 cam; 
+imu: 1         
+num_of_cam: 2  
+
+imu_topic: "/hardware_a1/imu"
+image0_topic: "/camera_forward/infra1/image_rect_raw"
+image1_topic: "/camera_forward/infra2/image_rect_raw"
+output_path: "/root/vins_ws/src/vilo/bags/output"
+
+cam0_calib: "a1_realsense_left.yaml"
+cam1_calib: "a1_realsense_right.yaml"
+image_width: 640
+image_height: 480
+
+# leg related
+robot_type: "a1"   # should be go1 or a1 
+dataset_name: "stadium"    # to keep track of datasets
+use_leg_odom: 1
+num_of_leg: 4
+leg_topic: "/hardware_a1/joint_foot"
+optimize_leg_bias: 1
+
+joint_angle_n: 0.00001
+joint_velocity_n: 0.00001
+
+contact_sensor_type:   0        # 0 use KF output; 1 use plan contact; 2 use foot force sensor reading (then a complicated force model is needed)
+
+leg_bias_c_n:   0.00000001
+leg_bias_nc_n:  0.00000000001
+# contact model
+v_n_force_thres_ratio: 0.8
+v_n_min_xy: 0.001
+v_n_min_z: 0.005
+v_n_min: 0.005
+v_n_max: 900.0
+# v_n_w1: 0.333
+# v_n_w2: 0.333
+# v_n_w3: 0.333
+v_n_term1_steep: 10
+v_n_term2_var_rescale: 1.0e-6
+v_n_term3_distance_rescale: 1.0e-3
+v_n_final_ratio: 0.1
+
+# leg kinematics parameter
+lower_leg_length: 0.21
+
+
+# Extrinsic parameter between IMU and Camera.
+estimate_extrinsic: 1   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
+                        # 1  Have an initial guess about extrinsic parameters. We will optimize around your initial guess.
+
+body_T_cam0: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [ 0,  0,  1, 0.10076, 
+          -1,  0,  0, 0.025, 
+           0, -1,  0, 0.1114, 
+           0., 0., 0., 1. ]
+
+body_T_cam1: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [ 0,  0,  1, 0.10076, 
+          -1,  0,  0, -0.025, 
+           0, -1,  0, 0.1114,  
+           0., 0., 0., 1. ]
+
+#Multiple thread support
+multiple_thread: 1
+
+#feature traker paprameters
+max_cnt: 120            # max feature number in feature tracking
+min_dist: 10           # min distance between two features 
+freq: 15                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image 
+F_threshold: 1.0        # ransac threshold (pixel)
+show_track: 1           # publish tracking image as topic
+flow_back: 1            # perform forward and backward optical flow to improve feature tracking accuracy
+
+#optimization parameters
+max_solver_time: 0.1  # max solver itration time (ms), to guarantee real time
+max_num_iterations: 12   # max solver itrations, to guarantee real time
+keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
+
+#imu parameters       The more accurate parameters you provide, the better performance
+acc_n: 0.9          # accelerometer measurement noise standard deviation. #0.2   0.04
+acc_n_z: 2.5
+gyr_n: 0.05         # gyroscope measurement noise standard deviation.     #0.05  0.004
+acc_w: 0.0004         # accelerometer bias random work noise standard deviation.  #0.002
+gyr_w: 0.0002       # gyroscope bias random work noise standard deviation.     #4.0e-5
+g_norm: 9.805         # gravity magnitude
+
+#unsynchronization parameters
+estimate_td: 0                      # online estimate time offset between camera and imu
+td: 0.00240                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
+
+#loop closure parameters
+load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
+pose_graph_save_path: "/root/vins_ws/src/vilo/bags/output/pose_graph/" # save and load path
+save_image: 0                   # save image in pose graph for visualization prupose; you can close this function by setting 0 

@@ -38,4 +38,5 @@ output/
 .vscode/
 build/
 
-bags/
+bags/*
+output/*
