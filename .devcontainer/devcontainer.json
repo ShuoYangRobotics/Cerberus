@@ -13,7 +13,7 @@
 	"runArgs": ["--network=host", "--cap-add=IPC_LOCK", 
 		        "--cap-add=sys_nice","--device=/dev/input",
 				"--device=/dev/bus",  "--volume=/dev/serial:/dev/serial:ro",
-				"--volume=/home/gzy/.gitconfig:/etc/gitconfig",
+				"--volume=${userHome}/.gitconfig:/etc/gitconfig",
 		        "--name=a1_vins_docker_vscode"],
 	"workspaceMount": "source=${localWorkspaceFolder},target=/root/vins_ws/src/vilo,type=bind",
 	"workspaceFolder": "/root/vins_ws/src/vilo"

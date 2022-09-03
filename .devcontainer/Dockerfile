@@ -20,6 +20,7 @@ RUN   if [ "x$(nproc)" = "x1" ] ; then export USE_PROC=1 ; \
       python3-catkin-tools \
       git \
       ros-${ROS_DISTRO}-cv-bridge \
+      ros-${ROS_DISTRO}-rviz \
       ros-${ROS_DISTRO}-robot-state-publisher \
       ros-${ROS_DISTRO}-image-transport \
       ros-${ROS_DISTRO}-message-filters \
@@ -38,10 +39,7 @@ RUN   git clone https://ceres-solver.googlesource.com/ceres-solver && \
 
 # Add VINS-Fusion
 WORKDIR $CATKIN_WS/src
-# use the following line if you only have this dockerfile
 RUN git clone https://github.com/HKUST-Aerial-Robotics/VINS-Fusion.git
-
-#TODO: add visualizer
 
 # Build VINS-Fusion
 WORKDIR $CATKIN_WS
@@ -50,6 +48,7 @@ RUN echo "source ${CATKIN_WS}/devel/setup.bash" >> /root/.bashrc
 
 
 # change timezone (this is very important otherwise many ROS topic time will be strange)
+# TODO: please modify it to your timezone accordingly
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -64,10 +63,8 @@ RUN mkdir ${SUPPORT_WS}/casadi/build && cd ${SUPPORT_WS}/casadi/build
 RUN cmake -DWITH_CPLEX=OFF -DWITH_KNITRO=OFF -DWITH_OOQP=OFF -DWITH_SNOPT=OFF ${SUPPORT_WS}/casadi
 RUN make -j8
 RUN make install
-# /usr/local/lib/casadi/
-# /usr/local/include/casadi
 
-# filter for 
+# filter for processing sensor data
 WORKDIR $SUPPORT_WS
 RUN git clone https://github.com/ShuoYangRobotics/gram_savitzky_golay.git
 WORKDIR ${SUPPORT_WS}/gram_savitzky_golay 
@@ -80,34 +77,15 @@ RUN make
 RUN make install
 
 
-### run docker as a ssh daemon
-# RUN apt-get update \
-#   && apt-get install -y ssh 
-# RUN touch /etc/ssh/sshd_config_test_clion
-# RUN ( \
-#     echo 'LogLevel DEBUG2'; \
-#     echo 'PermitRootLogin yes'; \
-#     echo 'PasswordAuthentication yes'; \
-#     echo 'Subsystem sftp /usr/lib/openssh/sftp-server'; \
-#     echo 'Port 2237'; \
-#   ) > /etc/ssh/sshd_config_test_clion \
-#   && mkdir /run/sshd
-
-# # Change the password 'password' to something more secure
-# RUN useradd -m user && yes password | passwd user
-# RUN echo 'root:2022quad' | chpasswd
-
-# CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
-
 # for sharing vpg keys
 RUN apt-get update && apt-get install gnupg2 -y
 
-# docker build -t a1_vins_image .
+# docker build -t vilo_image .
 
 # docker run -d \
 # --network host \
 # --cap-add=IPC_LOCK --cap-add=sys_nice \
-# -v /home/shuoyang/Documents/tightly-coupled-visual-inertial-leg-odometry:/root/vins_ws/src/vilo \
+# -v ${PATH_TO_THIS_CODE}/tightly-coupled-visual-inertial-leg-odometry:/root/vins_ws/src/vilo \
 # --device /dev/input \
-# --name a1_vins_container \
-# a1_vins_image
+# --name vilo_container \
+# vilo_image
