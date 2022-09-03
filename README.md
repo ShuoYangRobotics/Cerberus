@@ -21,24 +21,27 @@ If the user's computer does not have ROS installed, the user can use Rviz inside
 ## Dataset
 A Google drive folder https://drive.google.com/drive/folders/13GsFDaBkDrslOl9BfE4AJnOn3ECDXVnc
 
-contains several dataset to test the VILO. 
+contains several dataset to test the VILO. Download them to \${PATH_TO_CODE_REPO}/bags. Since we directly map the code into a location inside the docker (/root/vilo_ws). If we download dataset rosbag to 
+\${PATH_TO_CODE_REPO}/bags, the bag file will appear in the docker container as well (/root/vilo_ws/src/vilo/bags). 
 
-1. outdoor_snow.bag. The bag contains sensor data collected during the snow walking run shown in the second video above. 
+### List of bags and how to run them
+Connect to remote container, make sure you have bags in /root/vilo_ws/src/vilo/bag
 
-2. indoor_with_ground_truth_1.bag. The robot moves forward and back quickly. Groundtruh data is 
-
-## Test On Dataset
-Since we directly map the code into a location inside the docker (/root/vilo_ws). If we download dataset rosbag to 
-${PATH_TO_CODE_REPO}/bags, the bag file will appear in the docker container as well (/root/vilo_ws/src/vilo/bags)
-
+1. stree.bag. We use the following command to run this bag
+```shell
+roslaunch vilo run_street_bag.launch
 ```
-roslaunch a1_launch hardware_a1_vilo_together.launch
-# wait for a few seconds
-rosbag play --clock -r 0.5 outdoor_snow.bag
-```
-Notice the rosbag play should be slow down for slow computers, otherwise the VILO cannot finish computation in time. 
+2. campus.bag
+3. track.bag
 
-## Sensor Setup
+
+4. outdoor_snow.bag. The bag contains sensor data collected during the snow walking run shown in the second video above. 
+
+5. indoor_with_ground_truth_1.bag. The robot moves forward and back quickly. Groundtruh data is 
+
+Notice the rosbag play should be slow down for slow computers, otherwise the VILO cannot finish computation in time. In the launch files we play them at 0.5x original speed.
+
+## Custom Sensor Setup
 The VILO can only works properly when sensor topics are received correctly and all sensor transformations are set properly. 
 
 We use the "outdoor_snow.bag" dataset to overview the sensor data frequency and format. Command "rosbag info outdoor_snow.bag" shows the following information
