@@ -38,7 +38,8 @@
 
 #include "../legKinematics/A1Kinematics.h"
 
-class Estimator {
+class Estimator
+{
 public:
     Estimator();
     ~Estimator();
@@ -47,7 +48,7 @@ public:
     // interface
     void initFirstPose(Eigen::Vector3d p, Eigen::Matrix3d r);
     void inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity);
-    void inputLeg(double t, const Eigen::Ref<const Vector_dof>& jointAngles, const Eigen::Ref<const Vector_dof>& jointVels, const Eigen::Ref<const Vector_leg>& footForces);
+    void inputLeg(double t, const Eigen::Ref<const Vector_dof> &jointAngles, const Eigen::Ref<const Vector_dof> &jointVels, const Eigen::Ref<const Vector_leg> &footForces);
     void inputFeature(double t, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &featureFrame);
     void inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1 = cv::Mat());
     void processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity);
@@ -60,12 +61,11 @@ public:
     void processMeasurements();
     void changeSensorType(int use_imu, int use_stereo);
 
-
     // internal
     void clearState();
-//    bool initialStructure();
-//    bool visualInitialAlign();
-//    bool relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l);
+    //    bool initialStructure();
+    //    bool visualInitialAlign();
+    //    bool relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l);
     void slideWindow();
     void slideWindowNew();
     void slideWindowOld();
@@ -74,24 +74,24 @@ public:
     void double2vector();
     bool failureDetection();
     bool getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector,
-                                              vector<pair<double, Eigen::Vector3d>> &gyrVector);
-    bool getIMUAndLegInterval(double t0, double t1, 
-                        vector<pair<double, Eigen::Vector3d>> &accVector,
-                        vector<pair<double, Eigen::Vector3d>> &gyrVector,
-                        vector<pair<double, Vector_dof>> &jointAngVector,
-                        vector<pair<double, Vector_dof>> &jointVelVector,
-                        vector<pair<double, Vector_leg>> &contactFlagVector);
-//    bool getLegInterval(double t0, double t1,
-//                                   vector<pair<double, Eigen::VectorXd>> &jointAngVector,
-//                                   vector<pair<double, Eigen::VectorXd>> &jointVelVector,
-//                                   vector<pair<double, Eigen::VectorXd>> &contactFlagVector);
+                        vector<pair<double, Eigen::Vector3d>> &gyrVector);
+    bool getIMUAndLegInterval(double t0, double t1,
+                              vector<pair<double, Eigen::Vector3d>> &accVector,
+                              vector<pair<double, Eigen::Vector3d>> &gyrVector,
+                              vector<pair<double, Vector_dof>> &jointAngVector,
+                              vector<pair<double, Vector_dof>> &jointVelVector,
+                              vector<pair<double, Vector_leg>> &contactFlagVector);
+    //    bool getLegInterval(double t0, double t1,
+    //                                   vector<pair<double, Eigen::VectorXd>> &jointAngVector,
+    //                                   vector<pair<double, Eigen::VectorXd>> &jointVelVector,
+    //                                   vector<pair<double, Eigen::VectorXd>> &contactFlagVector);
     void getPoseInWorldFrame(Eigen::Matrix4d &T);
     void getPoseInWorldFrame(int index, Eigen::Matrix4d &T);
     void predictPtsInNextFrame();
     void outliersRejection(set<int> &removeIndex);
     double reprojectionError(Matrix3d &Ri, Vector3d &Pi, Matrix3d &rici, Vector3d &tici,
-                                     Matrix3d &Rj, Vector3d &Pj, Matrix3d &ricj, Vector3d &ticj,
-                                     double depth, Vector3d &uvi, Vector3d &uvj);
+                             Matrix3d &Rj, Vector3d &Pj, Matrix3d &ricj, Vector3d &ticj,
+                             double depth, Vector3d &uvi, Vector3d &uvj);
     void updateLatestStates();
     void fastPredictIMU(double t, Eigen::Vector3d linear_acceleration, Eigen::Vector3d angular_velocity);
     bool IMUAvailable(double t);
@@ -122,7 +122,7 @@ public:
     queue<pair<double, Vector_dof>> legAngVelBufList;
     queue<pair<double, Vector_leg>> contactFlagBufList;
 
-    queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
+    queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>>>> featureBuf;
     double prevTime, curTime;
     bool openExEstimation;
 
@@ -132,22 +132,21 @@ public:
     FeatureTracker featureTracker;
 
     SolverFlag solver_flag;
-    MarginalizationFlag  marginalization_flag;
+    MarginalizationFlag marginalization_flag;
     Vector3d g;
-
 
     // the actual solved results, Ps Vs Rs are the pose of the imu link
     Matrix3d ric[2];
     Vector3d tic[2];
-    Vector3d        Ps[(WINDOW_SIZE + 1)];
-    Vector3d        Vs[(WINDOW_SIZE + 1)];
-    Matrix3d        Rs[(WINDOW_SIZE + 1)];
-    Vector3d        Bas[(WINDOW_SIZE + 1)];
-    Vector3d        Bgs[(WINDOW_SIZE + 1)];
-    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho1[(WINDOW_SIZE + 1)];
-    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho2[(WINDOW_SIZE + 1)];
-    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho3[(WINDOW_SIZE + 1)];
-    Eigen::Matrix<double, RHO_OPT_SIZE, 1>        Rho4[(WINDOW_SIZE + 1)];
+    Vector3d Ps[(WINDOW_SIZE + 1)];
+    Vector3d Vs[(WINDOW_SIZE + 1)];
+    Matrix3d Rs[(WINDOW_SIZE + 1)];
+    Vector3d Bas[(WINDOW_SIZE + 1)];
+    Vector3d Bgs[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1> Rho1[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1> Rho2[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1> Rho3[(WINDOW_SIZE + 1)];
+    Eigen::Matrix<double, RHO_OPT_SIZE, 1> Rho4[(WINDOW_SIZE + 1)];
     double td;
 
     Matrix3d back_R0, last_R, last_R0;
@@ -155,7 +154,7 @@ public:
     double Headers[(WINDOW_SIZE + 1)];
 
     IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)];
-    IMULegIntegrationBase * il_pre_integrations[(WINDOW_SIZE + 1)];
+    IMULegIntegrationBase *il_pre_integrations[(WINDOW_SIZE + 1)];
     Vector3d acc_0, gyr_0;
     Vector_dof phi_0, dphi_0;
     Vector_leg c_0;
@@ -168,7 +167,6 @@ public:
     vector<Vector_leg> foot_contact_buf[(WINDOW_SIZE + 1)];
 
     int leg_msg_counter;
-
 
     int frame_count;
     int sum_of_outlier, sum_of_back, sum_of_front, sum_of_invalid;
@@ -186,7 +184,6 @@ public:
     vector<Vector3d> margin_cloud;
     vector<Vector3d> key_poses;
     double initial_timestamp;
-
 
     // variable of optimization
     double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];
@@ -210,7 +207,7 @@ public:
     Eigen::Vector3d initP;
     Eigen::Matrix3d initR;
 
-    double latest_time;  // used in fastPredictIMU to get dt from last function call
+    double latest_time; // used in fastPredictIMU to get dt from last function call
     // used in fastPredictIMU and updateLatestStates
     Eigen::Vector3d latest_P, latest_V, latest_Ba, latest_Bg, latest_acc_0, latest_gyr_0;
     Eigen::Quaterniond latest_Q;
@@ -244,5 +241,4 @@ public:
     Vector4d foot_contact_flag;
 };
 
-
-#endif //VILENS_ESTIMATOR_H
+#endif // VILENS_ESTIMATOR_H

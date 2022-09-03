@@ -34,10 +34,10 @@
 // global variables
 Estimator estimator;
 
-// kf for estimating contact 
+// kf for estimating contact
 // sensor process to filter imu and leg data
 A1SensorData data;
-A1KFCombineLOWithFoot kf;  // Kalman filter Baseline 3 with foot
+A1KFCombineLOWithFoot kf; // Kalman filter Baseline 3 with foot
 double curr_t;
 
 // debug print filtered data
@@ -53,7 +53,6 @@ queue<sensor_msgs::ImageConstPtr> img0_buf;
 queue<sensor_msgs::ImageConstPtr> img1_buf;
 std::mutex m_buf;
 
-
 void img0_callback(const sensor_msgs::ImageConstPtr &img_msg)
 {
     m_buf.lock();
@@ -67,7 +66,6 @@ void img1_callback(const sensor_msgs::ImageConstPtr &img_msg)
     img1_buf.push(img_msg);
     m_buf.unlock();
 }
-
 
 cv::Mat getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
 {
@@ -96,9 +94,9 @@ int record_counter = 0;
 int record_counter_interval = 50;
 void sync_process()
 {
-    while(1)
+    while (1)
     {
-        if(STEREO)
+        if (STEREO)
         {
             cv::Mat image0, image1;
             std_msgs::Header header;
@@ -109,12 +107,12 @@ void sync_process()
                 double time0 = img0_buf.front()->header.stamp.toSec();
                 double time1 = img1_buf.front()->header.stamp.toSec();
                 // 0.003s sync tolerance
-                if(time0 < time1 - 0.003)
+                if (time0 < time1 - 0.003)
                 {
                     img0_buf.pop();
                     printf("throw img0\n");
                 }
-                else if(time0 > time1 + 0.003)
+                else if (time0 > time1 + 0.003)
                 {
                     img1_buf.pop();
                     printf("throw img1\n");
@@ -127,11 +125,11 @@ void sync_process()
                     img0_buf.pop();
                     image1 = getImageFromMsg(img1_buf.front());
                     img1_buf.pop();
-                    //printf("find img0 and img1\n");
+                    // printf("find img0 and img1\n");
                 }
             }
             m_buf.unlock();
-            if(!image0.empty())
+            if (!image0.empty())
                 estimator.inputImage(time, image0, image1);
         }
         else
@@ -140,7 +138,7 @@ void sync_process()
             std_msgs::Header header;
             double time = 0;
             m_buf.lock();
-            if(!img0_buf.empty())
+            if (!img0_buf.empty())
             {
                 time = img0_buf.front()->header.stamp.toSec();
                 header = img0_buf.front()->header;
@@ -148,18 +146,18 @@ void sync_process()
                 img0_buf.pop();
             }
             m_buf.unlock();
-            if(!image.empty())
+            if (!image.empty())
                 estimator.inputImage(time, image);
         }
         record_counter++;
-        if (record_counter % record_counter_interval == 0) 
+        if (record_counter % record_counter_interval == 0)
         {
             // write result to file
             ofstream foutC(VILO_RESULT_PATH, ios::app);
             foutC.setf(ios::fixed, ios::floatfield);
             foutC.precision(0);
             double time = ros::Time::now().toSec();
-            foutC << time * 1e9 << ",";           // 1
+            foutC << time * 1e9 << ","; // 1
             foutC.precision(5);
 
             // vilo: convert IMU position to robot body position
@@ -168,36 +166,35 @@ void sync_process()
             Eigen::Vector3d p_wb(estimator.Ps[WINDOW_SIZE].x(), estimator.Ps[WINDOW_SIZE].y(), estimator.Ps[WINDOW_SIZE].z());
             Eigen::Vector3d v_wb(estimator.Vs[WINDOW_SIZE].x(), estimator.Vs[WINDOW_SIZE].y(), estimator.Vs[WINDOW_SIZE].z());
             Eigen::Vector3d omega = estimator.latest_gyr_0 - estimator.latest_Bg;
-            Eigen::Vector3d p_wr = p_wb + tmp_Q.toRotationMatrix()*estimator.R_br*estimator.p_br;
+            Eigen::Vector3d p_wr = p_wb + tmp_Q.toRotationMatrix() * estimator.R_br * estimator.p_br;
 
-            Eigen::Vector3d v_wr = v_wb + tmp_Q.toRotationMatrix()*Utility::skewSymmetric(omega)*estimator.R_br*estimator.p_br;
+            Eigen::Vector3d v_wr = v_wb + tmp_Q.toRotationMatrix() * Utility::skewSymmetric(omega) * estimator.R_br * estimator.p_br;
 
-            // kf 
-            Eigen::Matrix<double, EKF_STATE_SIZE,1> kf_state = kf.get_state();
+            // kf
+            Eigen::Matrix<double, EKF_STATE_SIZE, 1> kf_state = kf.get_state();
             foutC
-                << p_wr.x() << ","                                // 2
-                << p_wr.y() << ","                                // 3
-                << p_wr.z() << ","                                // 4
-                << v_wr.x() << ","                                // 5
-                << v_wr.y() << ","                                // 6
-                << v_wr.z() << ","                                // 7
-                << kf_state[0] << ","                                // 8
-                << kf_state[1] << ","                                // 9
-                << kf_state[2] << ","                                // 10
-                << kf_state[3] << ","                                // 11
-                << kf_state[4] << ","                                // 12
-                << kf_state[5] << ","                                // 13
-                << data.opti_pos[0] << ","                                // 14
-                << data.opti_pos[1] << ","                                // 15
-                << data.opti_pos[2] << ","                                // 16
-                << estimator.Rho1[WINDOW_SIZE] << ","                                // 17
-                << estimator.Rho2[WINDOW_SIZE] << ","                                // 18
-                << estimator.Rho3[WINDOW_SIZE] << ","                                // 19
-                << estimator.Rho4[WINDOW_SIZE] << ","                                // 20
+                << p_wr.x() << ","                    // 2
+                << p_wr.y() << ","                    // 3
+                << p_wr.z() << ","                    // 4
+                << v_wr.x() << ","                    // 5
+                << v_wr.y() << ","                    // 6
+                << v_wr.z() << ","                    // 7
+                << kf_state[0] << ","                 // 8
+                << kf_state[1] << ","                 // 9
+                << kf_state[2] << ","                 // 10
+                << kf_state[3] << ","                 // 11
+                << kf_state[4] << ","                 // 12
+                << kf_state[5] << ","                 // 13
+                << data.opti_pos[0] << ","            // 14
+                << data.opti_pos[1] << ","            // 15
+                << data.opti_pos[2] << ","            // 16
+                << estimator.Rho1[WINDOW_SIZE] << "," // 17
+                << estimator.Rho2[WINDOW_SIZE] << "," // 18
+                << estimator.Rho3[WINDOW_SIZE] << "," // 19
+                << estimator.Rho4[WINDOW_SIZE] << "," // 20
                 << endl;
             foutC.close();
         }
-
 
         std::chrono::milliseconds dura(2);
         std::this_thread::sleep_for(dura);
@@ -218,18 +215,18 @@ void feature_callback(const sensor_msgs::PointCloudConstPtr &feature_msg)
         double p_v = feature_msg->channels[3].values[i];
         double velocity_x = feature_msg->channels[4].values[i];
         double velocity_y = feature_msg->channels[5].values[i];
-        if(feature_msg->channels.size() > 5)
+        if (feature_msg->channels.size() > 5)
         {
             double gx = feature_msg->channels[6].values[i];
             double gy = feature_msg->channels[7].values[i];
             double gz = feature_msg->channels[8].values[i];
             pts_gt[feature_id] = Eigen::Vector3d(gx, gy, gz);
-            //printf("receive pts gt %d %f %f %f\n", feature_id, gx, gy, gz);
+            // printf("receive pts gt %d %f %f %f\n", feature_id, gx, gy, gz);
         }
         ROS_ASSERT(z == 1);
         Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
         xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
-        featureFrame[feature_id].emplace_back(camera_id,  xyz_uv_velocity);
+        featureFrame[feature_id].emplace_back(camera_id, xyz_uv_velocity);
     }
     double t = feature_msg->header.stamp.toSec();
     estimator.inputFeature(t, featureFrame);
@@ -242,9 +239,9 @@ void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
     {
         ROS_WARN("restart the estimator!");
         m_buf.lock();
-        while(!feature_buf.empty())
+        while (!feature_buf.empty())
             feature_buf.pop();
-        while(!imu_buf.empty())
+        while (!imu_buf.empty())
             imu_buf.pop();
         m_buf.unlock();
         estimator.clearState();
@@ -253,61 +250,64 @@ void restart_callback(const std_msgs::BoolConstPtr &restart_msg)
     return;
 }
 
-int counter = 0; 
-// we assume IMU and leg have the same timestamp 
-void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msgs::JointState::ConstPtr& joint_msg) {
+int counter = 0;
+// we assume IMU and leg have the same timestamp
+void sensor_callback(const sensor_msgs::Imu::ConstPtr &imu_msg, const sensor_msgs::JointState::ConstPtr &joint_msg)
+{
 
     counter++;
-    // if (counter % 2 == 0) 
-    //     return;
-    // std::cout<<"sensor_callback"<<std::endl;
     double t = imu_msg->header.stamp.toSec();
 
     // assemble sensor data
     Eigen::Vector3d acc = Eigen::Vector3d(imu_msg->linear_acceleration.x, imu_msg->linear_acceleration.y, imu_msg->linear_acceleration.z);
     Eigen::Vector3d ang_vel = Eigen::Vector3d(imu_msg->angular_velocity.x, imu_msg->angular_velocity.y, imu_msg->angular_velocity.z);
 
-
-
-    Eigen::Matrix<double, NUM_DOF,1> joint_pos;
-    Eigen::Matrix<double, NUM_DOF,1> joint_vel;
-    Eigen::Matrix<double, NUM_LEG,1> plan_contacts;
-    Eigen::Matrix<double, NUM_LEG,1> foot_force_sensor_readings;
-    for (int i = 0; i < NUM_DOF; ++i) {
+    Eigen::Matrix<double, NUM_DOF, 1> joint_pos;
+    Eigen::Matrix<double, NUM_DOF, 1> joint_vel;
+    Eigen::Matrix<double, NUM_LEG, 1> plan_contacts;
+    Eigen::Matrix<double, NUM_LEG, 1> foot_force_sensor_readings;
+    for (int i = 0; i < NUM_DOF; ++i)
+    {
         joint_pos[i] = joint_msg->position[i];
         joint_vel[i] = joint_msg->velocity[i];
     }
-    for (int i = 0; i < NUM_LEG; ++i) {
+    for (int i = 0; i < NUM_LEG; ++i)
+    {
         plan_contacts[i] = joint_msg->velocity[NUM_DOF + i];
         foot_force_sensor_readings[i] = joint_msg->effort[NUM_DOF + i];
-        // for go 1, plan contacts are not available, use sensordata to process foot force to get contact
-        // data.input_foot_force(foot_force_sensor_readings);
     }
 
     double dt;
     data.input_imu(acc, ang_vel);
-    if (ROBOT_TYPE == "go1") {
+    if (ROBOT_TYPE == "go1")
+    {
         data.input_leg(joint_pos, joint_vel, data.plan_contacts);
-    } else {
+    }
+    else
+    {
         data.input_leg(joint_pos, joint_vel, plan_contacts);
     }
 
-
-    if ( !kf.is_inited() && first_sensor_received == false ) {
+    if (!kf.is_inited() && first_sensor_received == false)
+    {
         // the callback is called the first time, filter may not be inited
         dt = 0;
         curr_t = t;
         data.input_dt(dt);
-        // init the filter 
+        // init the filter
         kf.init_filter(data);
-    } else if ( !kf.is_inited()) {
+    }
+    else if (!kf.is_inited())
+    {
         // filter may not be inited even after the callback is called multiple times
-        dt = t- curr_t;
+        dt = t - curr_t;
         data.input_dt(dt);
         curr_t = t;
-    } else {
-        dt = t- curr_t;
-        
+    }
+    else
+    {
+        dt = t - curr_t;
+
         data.input_dt(dt);
         kf.update_filter(data);
         curr_t = t;
@@ -316,15 +316,18 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
     // get filtered data from data and kf to estimator
     estimator.inputIMU(t, data.acc, data.ang_vel);
 
-    if (CONTACT_SENSOR_TYPE == 0) {
+    if (CONTACT_SENSOR_TYPE == 0)
+    {
         estimator.inputLeg(t, data.joint_pos, data.joint_vel, kf.get_contacts());
-    } else if (CONTACT_SENSOR_TYPE == 1) {
+    }
+    else if (CONTACT_SENSOR_TYPE == 1)
+    {
         estimator.inputLeg(t, data.joint_pos, data.joint_vel, data.plan_contacts);
-    } else if (CONTACT_SENSOR_TYPE == 2) {
+    }
+    else if (CONTACT_SENSOR_TYPE == 2)
+    {
         estimator.inputLeg(t, data.joint_pos, data.joint_vel, foot_force_sensor_readings);
     }
-    
-
 
     // debug print filtered data
     sensor_msgs::Imu filterd_imu_msg;
@@ -342,31 +345,38 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
 
     // use joint names in urdf so we can visualize the robot
     filterd_joint_msg.name = {"FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
-                           "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
-                           "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
-                           "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
-                           "FL_foot", "FR_foot", "RL_foot", "RR_foot"};
+                              "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                              "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+                              "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+                              "FL_foot", "FR_foot", "RL_foot", "RR_foot"};
     filterd_joint_msg.position.resize(NUM_DOF + NUM_LEG);
     filterd_joint_msg.velocity.resize(NUM_DOF + NUM_LEG);
     filterd_joint_msg.effort.resize(NUM_DOF + NUM_LEG);
-    for (int i = 0; i < NUM_DOF; ++i) {
+    for (int i = 0; i < NUM_DOF; ++i)
+    {
         filterd_joint_msg.position[i] = data.joint_pos[i];
         filterd_joint_msg.velocity[i] = data.joint_vel[i];
     }
     Eigen::Vector4d estimated_contact = kf.get_contacts();
-    for (int i = 0; i < NUM_LEG; ++i) {
-        if (CONTACT_SENSOR_TYPE == 0) {
-            filterd_joint_msg.velocity[NUM_DOF+i] = estimated_contact[i];
-        } else if (CONTACT_SENSOR_TYPE == 1) {
-            filterd_joint_msg.velocity[NUM_DOF+i] = data.plan_contacts[i];
-        } else if (CONTACT_SENSOR_TYPE == 2) {
-            filterd_joint_msg.velocity[NUM_DOF+i] = foot_force_sensor_readings[i];
+    for (int i = 0; i < NUM_LEG; ++i)
+    {
+        if (CONTACT_SENSOR_TYPE == 0)
+        {
+            filterd_joint_msg.velocity[NUM_DOF + i] = estimated_contact[i];
+        }
+        else if (CONTACT_SENSOR_TYPE == 1)
+        {
+            filterd_joint_msg.velocity[NUM_DOF + i] = data.plan_contacts[i];
+        }
+        else if (CONTACT_SENSOR_TYPE == 2)
+        {
+            filterd_joint_msg.velocity[NUM_DOF + i] = foot_force_sensor_readings[i];
         }
     }
     filterd_imu_pub.publish(filterd_imu_msg);
     filterd_joint_pub.publish(filterd_joint_msg);
 
-    Eigen::Matrix<double, EKF_STATE_SIZE,1> kf_state = kf.get_state();
+    Eigen::Matrix<double, EKF_STATE_SIZE, 1> kf_state = kf.get_state();
     nav_msgs::Odometry filterd_pos_msg;
     filterd_pos_msg.header.stamp = ros::Time::now();
     filterd_pos_msg.pose.pose.position.x = kf_state[0];
@@ -380,9 +390,7 @@ void sensor_callback(const sensor_msgs::Imu::ConstPtr& imu_msg, const sensor_msg
 
     first_sensor_received = true;
     return;
-
 }
-
 
 // if optitrack data is available, use it as ground truth
 // notice this is sort of an asynchronous callback
@@ -390,20 +398,24 @@ double opti_dt = 0;
 double opti_curr_t = 0;
 ros::Publisher filterd_opti_vel_pub;
 bool opti_callback_first_received = false;
-void opti_callback(const geometry_msgs::PoseStamped::ConstPtr& opti_msg) {
+void opti_callback(const geometry_msgs::PoseStamped::ConstPtr &opti_msg)
+{
     // std::cout<<"opti_callback"<<std::endl;
     double opti_t = opti_msg->header.stamp.toSec();
 
-    Eigen::Matrix<double, 3, 1> opti_pos; 
+    Eigen::Matrix<double, 3, 1> opti_pos;
     opti_pos << opti_msg->pose.position.x, opti_msg->pose.position.y, opti_msg->pose.position.z;
 
     // update sensor data
-    if (opti_callback_first_received == false) {
+    if (opti_callback_first_received == false)
+    {
         opti_curr_t = opti_t;
         opti_dt = 0;
         data.input_opti_dt(opti_dt);
         data.input_opti_pos(opti_pos);
-    } else {
+    }
+    else
+    {
         // only send data to KF if it is initialized and optitrack generates reliable vel data
 
         opti_dt = opti_t - opti_curr_t;
@@ -418,7 +430,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n("~");
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
-    if(argc != 2)
+    if (argc != 2)
     {
         printf("please intput: rosrun vilo vilo_feature_track_test [config file] \n"
                "for example: rosrun vilo vilo_feature_track_test "
@@ -456,13 +468,12 @@ int main(int argc, char **argv)
     message_filters::Synchronizer<MySyncPolicy> sync(MySyncPolicy(30), imu_sub, joint_state_sub);
 
     sync.registerCallback(boost::bind(&sensor_callback, _1, _2));
-    
+
     /* publishers */
     filterd_imu_pub = n.advertise<sensor_msgs::Imu>("/a1_filterd_imu", 30);
     filterd_joint_pub = n.advertise<sensor_msgs::JointState>("/a1_filterd_joint", 30);
     filterd_pos_pub = n.advertise<nav_msgs::Odometry>("/a1_filterd_pos", 30);
     registerPub(n);
-
 
     std::thread sync_thread{sync_process};
     ros::spin();
