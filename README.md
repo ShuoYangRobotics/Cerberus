@@ -18,7 +18,7 @@ During docker image compilation, the system memory may be eaten up if your compu
 The state estimation result can be visualized using Rviz. If the user's computer already has ROS installed then open Rviz directly and load config file config/rviz/vilo_rviz_config.rviz. If the user's computer does not have ROS installed, the user can use Rviz inside the docker. However in order to forward the Rviz interface to the host computer, a series of nontrivial setting should be done to have graphic driver and xhost properly configured. Please refer to [this tutorial](https://github.com/ShuoYangRobotics/A1-QP-MPC-Controller/blob/main/README.md#setup) for more information.
 
 
-## Demon Datasets
+## Demo Datasets
 A Google drive folder https://drive.google.com/drive/folders/13GsFDaBkDrslOl9BfE4AJnOn3ECDXVnc
 
 contains several dataset to test the VILO. Download them to \${PATH_TO_CODE_REPO}/bags. Since we directly map the code into a location inside the docker (/root/vilo_ws). If we download dataset rosbag to 
@@ -59,7 +59,7 @@ roslaunch vilo hardware_a1_vilo.launch
 
 Notice the rosbag play should be slow down for slow computers, otherwise the VILO cannot finish computation in time. In the launch files we play them at 0.5x original speed.
 
-## Examine Results
+## Check Results
 While the algorithm is running, a number of ROS topics contain estimation results will be published. Moreover in the output/ folder some of estimation results will be saved in csv files.
 
 ## Custom Sensor Setup
