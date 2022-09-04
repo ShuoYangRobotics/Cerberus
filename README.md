@@ -31,18 +31,25 @@ Connect to remote container, make sure you have bags in /root/vilo_ws/src/vilo/b
 ```shell
 roslaunch vilo run_street_bag_vilo.launch
 ```
+![street_trajectory](docs/images/street_trajectory.jpg)
+
 2. campus.bag. Go1 robot. Traveled 350m in 350s (average speed 1.0m/s), indoor and outdoor campus environment
 ```shell
 roslaunch vilo run_campus_bag_vilo.launch
 ```
+![campus_trajectory](docs/images/campus_trajectory.png)
+
 3. track.bag. A1 robot. Traveled 450m in 590s (average speed 0.76m/s), stadium running track.
 ```shell
 roslaunch vilo run_track_bag_vilo.launch
 ```
+![track_trajectory](docs/images/track_trajectory.png)
+
 4. cut.bag. Go1 robot. Traveled 450m in 450s (average speed 1.0m/s), Outdoor campus environment
 ```shell
 roslaunch vilo run_cut_bag_vilo.launch
 ```
+![cut_trajectory](docs/images/cut_trajectory.png)
 
 5. outdoor_snow.bag. A1 robot. Traveled ~30m in 80s (average speed 0.38m/s), in heavy snow.
 ```shell
