@@ -27,26 +27,28 @@ contains several dataset to test the VILO. Download them to \${PATH_TO_CODE_REPO
 ### List of bags and how to run them
 Connect to remote container, make sure you have bags in /root/vilo_ws/src/vilo/bag
 
-1. stree.bag. We use the following command to run this bag
+1. street.bag. A1 robot. Traveled 260m in 590s (average speed 0.44m/s), suburban environment
 ```shell
 roslaunch vilo run_street_bag_vilo.launch
 ```
-2. campus.bag
+2. campus.bag. Go1 robot. Traveled 350m in 350s (average speed 1.0m/s), indoor and outdoor campus environment
 ```shell
 roslaunch vilo run_campus_bag_vilo.launch
 ```
-3. track.bag
+3. track.bag. A1 robot. Traveled 450m in 590s (average speed 0.76m/s), stadium running track.
 ```shell
 roslaunch vilo run_track_bag_vilo.launch
 ```
-4. cut.bag
+4. cut.bag. Go1 robot. Traveled 450m in 450s (average speed 1.0m/s), Outdoor campus environment
 ```shell
 roslaunch vilo run_cut_bag_vilo.launch
 ```
 
-5. outdoor_snow.bag. The bag contains sensor data collected during the snow walking run shown in the second video above. 
-
-6. indoor_with_ground_truth_1.bag. The robot moves forward and back quickly. Groundtruh data is 
+5. outdoor_snow.bag. A1 robot. Traveled ~30m in 80s (average speed 0.38m/s), in heavy snow.
+```shell
+rosbag play -r 0.7 --clock outdoor_snow.bag
+roslaunch vilo hardware_a1_vilo.launch
+```
 
 Notice the rosbag play should be slow down for slow computers, otherwise the VILO cannot finish computation in time. In the launch files we play them at 0.5x original speed.
 

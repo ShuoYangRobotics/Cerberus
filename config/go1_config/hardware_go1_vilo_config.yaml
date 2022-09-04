@@ -18,7 +18,7 @@ image_height: 240
 
 # leg related
 robot_type: "go1"   # should be go1 or a1 
-dataset_name: "dataset"    # to keep track of datasets
+dataset_name: "snow"    # to keep track of datasets
 use_leg_odom: 1
 num_of_leg: 4
 leg_topic: "/hardware_go1/joint_foot"
