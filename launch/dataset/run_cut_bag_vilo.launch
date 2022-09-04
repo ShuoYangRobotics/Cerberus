@@ -1,14 +1,12 @@
-
-
 <launch>
-
+    <param name="/use_sim_time" value="true"/>
     <!-- VILO config -->
-    <param name="vilo_config_file" type="string" value="$(find vilo)/config/go1_config/hardware_go1_vilo_config.yaml" />
+    <param name="vilo_config_file" type="string" value="$(find vilo)/config/go1_config/hardware_go1_vilo_config_dense.yaml" />
     
     <node name="vilo" pkg="vilo" type="vilo"
-            args="$(find vilo)/config/go1_config/hardware_go1_vilo_config.yaml" output="screen"/>
+            args="$(find vilo)/config/go1_config/hardware_go1_vilo_config_dense.yaml" output="screen"/>
     <node name="vinsloopfusion" pkg="loop_fusion" type="loop_fusion_node"
-            args="$(find vilo)/config/go1_config/hardware_go1_vilo_config.yaml" />
+            args="$(find vilo)/config/go1_config/hardware_go1_vilo_config_dense.yaml" />
 
     <node pkg="tf" type="static_transform_publisher" name="ground_to_world"
           args="0.0 0.0 0.28 0.0 0.0 0.0 /a1_world /world 1000" />
@@ -25,4 +23,6 @@
     <remap from="/joint_states" to="/a1_filterd_joint" />
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
 
+    <arg name="node_start_delay" default="1.0" />  
+    <node pkg="rosbag" type="play" name="player" output="screen" args="--clock -r 0.5 $(find vilo)/bags/cut.bag" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' " />
 </launch>

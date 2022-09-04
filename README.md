@@ -39,10 +39,14 @@ roslaunch vilo run_campus_bag_vilo.launch
 ```shell
 roslaunch vilo run_track_bag_vilo.launch
 ```
+4. cut.bag
+```shell
+roslaunch vilo run_cut_bag_vilo.launch
+```
 
-4. outdoor_snow.bag. The bag contains sensor data collected during the snow walking run shown in the second video above. 
+5. outdoor_snow.bag. The bag contains sensor data collected during the snow walking run shown in the second video above. 
 
-5. indoor_with_ground_truth_1.bag. The robot moves forward and back quickly. Groundtruh data is 
+6. indoor_with_ground_truth_1.bag. The robot moves forward and back quickly. Groundtruh data is 
 
 Notice the rosbag play should be slow down for slow computers, otherwise the VILO cannot finish computation in time. In the launch files we play them at 0.5x original speed.
 
