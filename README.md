@@ -1,9 +1,17 @@
 ## Introduction
 This ROS package contains a visual-inertial-leg odometry (VILO) for Unitree A1 and Go1 robot. Our goal is to provide a compact and low-cost long term position sensing suite for legged robots (A sensing solution only has one IMU, one stereo camera, and leg sensors. Total cost <$1000).
 
-The focus of this work is adding body velocity calculated from leg joint sensors and calibrate potential kinematic parameter errors to improve its accuracy when used in VILO. This odometry uses the optimization framework from the VINS-Fusion, one of the most popular visual inertial odometry. Additional to VINS's image and IMU measurement model, we add a special contact preintegration term. It achieves lower than 1\% position estimation drift on various datasets. More details of the theoratical contribution can be found in our recent paper:
+The focus of this work is adding body velocity calculated from leg joint sensors and calibrate potential kinematic parameter errors to improve its accuracy when used in VILO. This odometry uses the optimization framework from the VINS-Fusion, one of the most popular visual inertial odometry. Additional to VINS's image and IMU measurement model, we add a special contact preintegration term. It achieves lower than 1\% position estimation drift on various datasets. More details of the theoratical contribution can be found in our recent papers:
 
-Here are two videos comparing the performance of the VILO and the VINS-Fusion:
+* **Online Kinematic Calibration for Legged Robots**, Yang, Shuo and Choset, Howie and Manchester, Zachary, IEEE Robotics and Automation Letters (& IROS 2022), [pdf](https://ieeexplore.ieee.org/abstract/document/9807408)
+
+* **Cerberus: Low-Drift Visual-Inertial-Leg Odometry For Agile Locomotion**, Yang, Shuo and Zhang, Zixin and Fu, Zhengyu and Manchester, Zachary. (submitted to ICRA 2023) [pdf](https://arxiv.org/abs/2209.07654)
+
+If you use Cerberus for your academic research, please cite at least one of our related papers.
+
+
+
+Here are two videos comparing the performance of the Cerberus VILO and the VINS-Fusion:
 [![video1](https://img.youtube.com/vi/jq9ijL9z3RI/0.jpg)](https://www.youtube.com/watch?v=jq9ijL9z3RI)
 
 [![video2](https://img.youtube.com/vi/oNwwQ0l-O4U/0.jpg)](https://www.youtube.com/watch?v=oNwwQ0l-O4U)
