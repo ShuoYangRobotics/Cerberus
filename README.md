@@ -5,7 +5,7 @@ The focus of this work is adding body velocity calculated from leg joint sensors
 
 * **Online Kinematic Calibration for Legged Robots**, Yang, Shuo and Choset, Howie and Manchester, Zachary, IEEE Robotics and Automation Letters (& IROS 2022), [pdf](https://ieeexplore.ieee.org/abstract/document/9807408)
 
-* **Cerberus: Low-Drift Visual-Inertial-Leg Odometry For Agile Locomotion**, Yang, Shuo and Zhang, Zixin and Fu, Zhengyu and Manchester, Zachary. (submitted to ICRA 2023) [pdf](https://arxiv.org/abs/2209.07654)
+* **Cerberus: Low-Drift Visual-Inertial-Leg Odometry For Agile Locomotion**, Yang, Shuo and Zhang, Zixin and Fu, Zhengyu and Manchester, Zachary. (paper accepted to ICRA 2023) [pdf](https://arxiv.org/abs/2209.07654)
 
 If you use Cerberus for your academic research, please cite at least one of our related papers.
 
