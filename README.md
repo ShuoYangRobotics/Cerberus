@@ -19,6 +19,11 @@ Here are two videos comparing the performance of the Cerberus VILO and the VINS-
 
 
 ## Installation
+git clone the repo (remember to initialize submodules):
+```shell
+git clone --recurse-submodules git@github.com:ShuoYangRobotics/Cerberus.git
+```
+
 Use Docker and VSCode ''Remote - Containers''. A dockerfile that configures an individual development environment is shown in .devcontainer/Dockerfile.
 
 During docker image compilation, the system memory may be eaten up if your computer's memory size < 16GB. Please add 8-16G swap space following [this tutorial (3. Adding swap file)](https://www.thegeekdiary.com/how-to-add-swap-space-in-linux/).
