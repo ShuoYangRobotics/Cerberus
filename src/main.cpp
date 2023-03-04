@@ -176,22 +176,26 @@ void sync_process()
                 << p_wr.x() << ","                    // 2
                 << p_wr.y() << ","                    // 3
                 << p_wr.z() << ","                    // 4
-                << v_wr.x() << ","                    // 5
-                << v_wr.y() << ","                    // 6
-                << v_wr.z() << ","                    // 7
-                << kf_state[0] << ","                 // 8
-                << kf_state[1] << ","                 // 9
-                << kf_state[2] << ","                 // 10
-                << kf_state[3] << ","                 // 11
-                << kf_state[4] << ","                 // 12
-                << kf_state[5] << ","                 // 13
-                << data.opti_pos[0] << ","            // 14
-                << data.opti_pos[1] << ","            // 15
-                << data.opti_pos[2] << ","            // 16
-                << estimator.Rho1[WINDOW_SIZE] << "," // 17
-                << estimator.Rho2[WINDOW_SIZE] << "," // 18
-                << estimator.Rho3[WINDOW_SIZE] << "," // 19
-                << estimator.Rho4[WINDOW_SIZE] << "," // 20
+                << tmp_Q.w() << ","                    // 5
+                << tmp_Q.x() << ","                    // 6
+                << tmp_Q.y() << ","                    // 7
+                << tmp_Q.z() << ","                    // 8
+                << v_wr.x() << ","                    // 9
+                << v_wr.y() << ","                    // 10
+                << v_wr.z() << ","                    // 11
+                << kf_state[0] << ","                 // 12
+                << kf_state[1] << ","                 // 13
+                << kf_state[2] << ","                 // 14
+                << kf_state[3] << ","                 // 15
+                << kf_state[4] << ","                 // 16
+                << kf_state[5] << ","                 // 17
+                << data.opti_pos[0] << ","            // 18
+                << data.opti_pos[1] << ","            // 19
+                << data.opti_pos[2] << ","            // 20
+                << estimator.Rho1[WINDOW_SIZE] << "," // 21
+                << estimator.Rho2[WINDOW_SIZE] << "," // 22
+                << estimator.Rho3[WINDOW_SIZE] << "," // 23
+                << estimator.Rho4[WINDOW_SIZE] << "," // 24
                 << endl;
             foutC.close();
         }

@@ -1,0 +1,28 @@
+
+
+<launch>
+
+    <!-- cerberus config -->
+    <param name="cerberus_config_file" type="string" value="$(find cerberus)/config/go1_config/hardware_go1_vilo_config_dense.yaml" />
+    
+    <node name="cerberus" pkg="cerberus" type="cerberus"
+            args="$(find cerberus)/config/go1_config/hardware_go1_vilo_config_dense.yaml" output="screen"/>
+    <node name="vinsloopfusion" pkg="loop_fusion" type="loop_fusion_node"
+            args="$(find cerberus)/config/go1_config/hardware_go1_vilo_config_dense.yaml" />
+
+    <node pkg="tf" type="static_transform_publisher" name="ground_to_world"
+          args="0.0 0.0 0.28 0.0 0.0 0.0 /a1_world /world 1000" />
+
+    <node pkg="tf" type="static_transform_publisher" name="body_to_a1_body"
+          args="-0.0 0.0 -0.0 0.0 0.0 0.0 /body /a1_body 1000" />
+
+    <node pkg="tf" type="static_transform_publisher" name="base_to_a1_body"
+          args="-0.0 0.0 -0.0 0.0 0.0 0.0 /a1_body /base  1000" />
+
+
+    <!-- visualization using robot description -->
+    <param name="robot_description" textfile="$(find cerberus)/urdf/a1_description/urdf/a1.urdf" />
+    <remap from="/joint_states" to="/a1_filterd_joint" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+
+</launch>
