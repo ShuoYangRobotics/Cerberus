@@ -20,7 +20,7 @@
 		"/tmp/.docker.xauth:/tmp/.docker.xauth"
 	],
 	"workspaceMount": "source=${localWorkspaceFolder},target=/home/EstimationUser/estimation_ws/src/Cerberus,type=bind",
-	"workspaceFolder": "/home/EstimationUser/estimation_ws",
+	"workspaceFolder": "/home/EstimationUser/estimation_ws/src/Cerberus",
 	"initializeCommand": "sh .devcontainer/configure_xauth.bash; echo $DISPLAY $XAUTHORITY",
 	"remoteUser": "EstimationUser",
 	"postStartCommand": "nohup zsh -c 'ls'",

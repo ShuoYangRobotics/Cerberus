@@ -24,21 +24,25 @@ git clone the repo (remember to initialize submodules):
 git clone --recurse-submodules git@github.com:ShuoYangRobotics/Cerberus.git
 ```
 
-Use Docker and VSCode ''Remote - Containers''. A dockerfile that configures an individual development environment is shown in .devcontainer/Dockerfile.
+Use Docker and VSCode ''Remote - Containers''. A **devcontainer.json** that configures the development environment is shown in .devcontainer folder. If you have Nvidia GPU on your computer this file will autmatically setup the docker container to use GPU (so you can open rviz inside docker). If not, you need to comment out devcontainer.json line 7.
 
-During docker image compilation, the system memory may be eaten up if your computer's memory size < 16GB. Please add 8-16G swap space following [this tutorial (3. Adding swap file)](https://www.thegeekdiary.com/how-to-add-swap-space-in-linux/).
+### Data visualization
+If you works on Linux machine with Nvidia GPU. To open rviz, first on your local machine, run the following command to allow docker container to open GUI on your local machine:
+```
+xhost +
+```
 
-The state estimation result can be visualized using Rviz. If the user's computer already has ROS installed then open Rviz directly and load config file config/rviz/vilo_rviz_config.rviz. If the user's computer does not have ROS installed, the user can use Rviz inside the docker. However in order to forward the Rviz interface to the host computer, a series of nontrivial setting should be done to have graphic driver and xhost properly configured. Please refer to [this tutorial](https://github.com/ShuoYangRobotics/A1-QP-MPC-Controller/blob/main/README.md#setup) for more information.
+The docker configuration file should allow users to open rviz inside the docker container. But as we said earlier it only works smoothly on Linux machine with Nvidia GPU. If you are using Mac or Windows, you can still install the dockere container but I don't know how to enable GUI for rviz. [This tutorial](https://github.com/ShuoYangRobotics/A1-QP-MPC-Controller/blob/main/README.md#setup) may help. But I always recommend to use Linux with Nvidia GPU.
 
 
 ## Demo Datasets
 A Google drive folder https://drive.google.com/drive/folders/13GsFDaBkDrslOl9BfE4AJnOn3ECDXVnc
 
-contains several dataset to test the VILO. Download them to \${PATH_TO_CODE_REPO}/bags. Since we directly map the code into a location inside the docker (/root/vilo_ws). If we download dataset rosbag to 
-\${PATH_TO_CODE_REPO}/bags, the bag file will appear in the docker container as well (/root/vilo_ws/src/vilo/bags). 
+contains several dataset to test the VILO. Download them to \${PATH_TO_CODE_REPO}/bags. Since we directly map the code into a location inside the docker (/home/EstimationUser/estimation_ws/src/Cerberus/). If we download dataset rosbag to 
+\${PATH_TO_CODE_REPO}/bags, the bag file will appear in the docker container as well (/home/EstimationUser/estimation_ws/src/Cerberus//bags). 
 
 ### List of bags and how to run them
-Connect to remote container, make sure you have bags in /root/vilo_ws/src/vilo/bag
+Connect to remote container, make sure you have bags in /home/EstimationUser/estimation_ws/src/Cerberus/bags
 
 1. street.bag. A1 robot. Traveled 260m in 590s (average speed 0.44m/s), suburban environment
 ```shell
