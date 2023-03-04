@@ -1,20 +1,58 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.238.0/containers/ubuntu
 {
 	"name": "Ubuntu",
-	"build": {
-		"dockerfile": "Dockerfile",
-		// Update 'VARIANT' to pick an Ubuntu version: jammy / ubuntu-22.04, focal / ubuntu-20.04, bionic /ubuntu-18.04
-		// Use ubuntu-22.04 or ubuntu-18.04 on local arm64/Apple Silicon.
-		"args": { "-t": "a1_vins_image"}
+	"image": "yyss2028/legged_state_estimation:1.0",
+
+	"runArgs": [
+		"--network=host",
+		"--runtime=nvidia",             // for GPU, if you don't have GPU, comment this line
+		"--privileged",
+		"--cap-add=IPC_LOCK",
+		"--cap-add=sys_nice",
+		"--device=/dev/input",
+		"--device=/dev/bus",
+		"--volume=/dev/serial:/dev/serial:ro",
+		"--name=estimation_container",
+		"-e",
+		"DISPLAY",
+		"-e",
+		"XAUTHORITY",
+		"-v",
+		"/tmp/.docker.xauth:/tmp/.docker.xauth"
+	],
+	"workspaceMount": "source=${localWorkspaceFolder},target=/home/EstimationUser/estimation_ws/src/Cerberus,type=bind",
+	"workspaceFolder": "/home/EstimationUser/estimation_ws",
+	"initializeCommand": "sh .devcontainer/configure_xauth.bash; echo $DISPLAY $XAUTHORITY",
+	"remoteUser": "EstimationUser",
+	"postStartCommand": "nohup zsh -c 'ls'",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"donjayamanne.githistory",
+				"mhutchie.git-graph",
+				"ms-vscode.cmake-tools",
+				"josetr.cmake-language-support-vscode",
+				"cheshirekow.cmake-format",
+				"tombonnike.vscode-status-bar-format-toggle",
+				"xaver.clang-format",
+				"ms-vscode.cpptools-extension-pack",
+				"streetsidesoftware.code-spell-checker",
+				"cschlosser.doxdocgen",
+				"betwo.vscode-doxygen-runner",
+				"ms-iot.vscode-ros",
+				"smilerobotics.urdf",
+				"redhat.vscode-xml",
+				"redhat.vscode-yaml"
+			]
+		}
 	},
-	
-	// TODO: change /home/shuoyang/.gitconfig and /home/shuoyang/.Xauthority to your computer's home path 
-	"runArgs": ["--network=host", "--cap-add=IPC_LOCK", 
-		        "--cap-add=sys_nice","--device=/dev/input",
-				"--device=/dev/bus",  "--volume=/dev/serial:/dev/serial:ro",
-				"--volume=/home/shuoyang/.gitconfig:/etc/gitconfig",  
-		        "--name=a1_vins_docker_vscode"],
-	"workspaceMount": "source=${localWorkspaceFolder},target=/root/vilo_ws/src/vilo,type=bind",
-	"workspaceFolder": "/root/vilo_ws/src/vilo"
+	// for X display connection
+	"containerEnv": {
+		"DISPLAY": ":0",
+		"QT_X11_NO_MITSHM": "1",
+		"NVIDIA_VISIBLE_DEVICES": "ALL",
+		"NVIDIA_DRIVER_CAPABILITIES": "compute,utility,graphics"
+	},
+	"mounts": [
+		"source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached"
+	]
 }
