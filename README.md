@@ -26,6 +26,12 @@ git clone --recurse-submodules git@github.com:ShuoYangRobotics/Cerberus.git
 
 Use Docker and VSCode ''Remote - Containers''. A **devcontainer.json** that configures the development environment is shown in .devcontainer folder. If you have Nvidia GPU on your computer this file will autmatically setup the docker container to use GPU (so you can open rviz inside docker). If not, you need to comment out devcontainer.json line 7.
 
+After the docker container starts, the default working directory is /home/EstimationUser/estimation_ws/src/Cerberus. Compile the code by open a terminal in VSCode and run:
+```shell
+catkin build
+```
+The code is mounted from your host computer to the docker container. So you can edit the code on your host computer and the changes will be reflected in the docker container and vis versa. 
+
 ### Data visualization
 If you works on Linux machine with Nvidia GPU. To open rviz, first on your local machine, run the following command to allow docker container to open GUI on your local machine:
 ```
