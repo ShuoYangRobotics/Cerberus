@@ -8,7 +8,7 @@ num_of_cam: 2
 imu_topic: "/hardware_a1/imu"
 image0_topic: "/camera_forward/infra1/image_rect_raw"
 image1_topic: "/camera_forward/infra2/image_rect_raw"
-output_path: "/home/EstimationUser/estimation_ws/src/Cerberus/output"
+output_path: "/home/shuoyang/Documents/vilo_dev/vilo_ws/bags/cerberus_output"
 
 cam0_calib: "a1_realsense_left.yaml"
 cam1_calib: "a1_realsense_right.yaml"
@@ -100,5 +100,5 @@ td: 0.00240                             # initial value of time offset. unit: s.
 
 #loop closure parameters
 load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
-pose_graph_save_path: "/home/EstimationUser/estimation_ws/src/Cerberus/output/pose_graph/" # save and load path
+pose_graph_save_path: "/home/shuoyang/Documents/vilo_dev/vilo_ws/bags/cerberus_output/pose_graph/" # save and load path
 save_image: 0                   # save image in pose graph for visualization prupose; you can close this function by setting 0 
