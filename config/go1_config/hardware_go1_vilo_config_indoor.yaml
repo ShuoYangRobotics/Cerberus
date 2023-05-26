@@ -8,7 +8,7 @@ num_of_cam: 2
 imu_topic: "/unitree_hardware/imu"
 image0_topic: "/camera_forward/infra1/image_rect_raw"
 image1_topic: "/camera_forward/infra2/image_rect_raw"
-output_path: "/home/shuoyang/Documents/vilo_dev/vilo_ws/bags/cerberus_output"
+output_path: "/home/shuoyang/Documents/vilo_dev/vilo_ws/bags/cerberus_output/OUTPUT_FOLDER"
 
 cam0_calib: "go1_realsense_left.yaml"
 cam1_calib: "go1_realsense_right.yaml"

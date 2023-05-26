@@ -36,7 +36,7 @@ for i in "${!dataset_name_list[@]}"; do
     sed -i "s/\(dataset_name: \)\"lab\"/\1\"$dataset_name\"/" "$temp_config"
     roslaunch vilo cerberus_auto.launch dataset_name:="$dataset_name" dataset_duration:="$dataset_duration"
 
-sed -i 's/\(optimize_leg_bias: \)0/\11/' "$temp_config"
+    sed -i 's/\(optimize_leg_bias: \)0/\11/' "$temp_config"
     roslaunch vilo cerberus_auto.launch dataset_name:="$dataset_name" dataset_duration:="$dataset_duration"
 
     # finally remove the temp file

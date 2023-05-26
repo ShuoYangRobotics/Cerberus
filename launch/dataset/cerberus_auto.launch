@@ -8,10 +8,11 @@
 
     <arg name="dataset_name" default="20230215_lab_short" />
     <arg name="dataset_duration" default="45.0" />
+    <arg name="dataset_foldername" default="230517_sqh_mocap" />
 
     <node pkg="rosbag" type="play" name="player" required="true"
         launch-prefix="zsh -c 'sleep $(arg node_start_delay); $0 $@' "
-        args="--clock --hz=2000 -u $(arg dataset_duration) -r 0.5 $(find vilo)/../../bags/230517_sqh_mocap/$(arg dataset_name).bag" />
+        args="--clock --hz=2000 -u $(arg dataset_duration) -r 0.5 $(find vilo)/../../bags/$(arg dataset_foldername)/$(arg dataset_name).bag" />
 
 
     <!-- cerberus2 config -->
