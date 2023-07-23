@@ -6,7 +6,7 @@
 		"dockerfile": "Dockerfile",
 		// Update 'VARIANT' to pick an Ubuntu version: jammy / ubuntu-22.04, focal / ubuntu-20.04, bionic /ubuntu-18.04
 		// Use ubuntu-22.04 or ubuntu-18.04 on local arm64/Apple Silicon.
-		"args": { "-t": "a1_vins_image"}
+		"args": { "-t": "a1_vins_image","BUILDKIT_INLINE_CACHE": "0"} // BUILDKIT_INLINE_CACHE": "0" - fixes an error when building a container 
 	},
 	
 	// use this to connect to odrive without --privileged
